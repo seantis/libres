@@ -1,7 +1,5 @@
-from libres.modules.registry import Registry
-from libres.modules.hostess import Hostess
-from libres.services import setup_services
+from libres.services import setup_registry
+registry = setup_registry()
 
-registry = Registry()
-hostess = Hostess()
-setup_services()
+from libres.modules import new_hostess
+hostess = new_hostess('master')
