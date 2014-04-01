@@ -106,7 +106,7 @@ def get_postgres_version(dsn):
     engine.dispose()
 
     version = re.findall('PostgreSQL (.*?) on', version)[0]
-    return map(int, version.split('.'))[:2]
+    return [int(fragment) for fragment in version.split('.')][:2]
 
 
 def assert_dsn(dsn):
@@ -223,6 +223,8 @@ class SessionProvider(object):
 
         """
         dsn = self.get_dsn()
+
+        assert_dsn(dsn)
 
         if not hasattr(self._threadstore, 'sessions'):
             self._threadstore.sessions = {}
