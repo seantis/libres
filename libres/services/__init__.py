@@ -1,15 +1,18 @@
 def setup_registry():
+
     from libres.services.registry import Registry
     from libres.services.email import EmailService
-    from libres.services.settings import DefaultSettings
+    from libres.services.db.session import SessionProvider
+    from libres.services.settings import set_default_settings
 
-    registry = Registry('master')
+    registry = Registry()
 
-    if not 'master' in registry.existing_contexts:
-        registry.new_context('master')
+    with registry.context(registry.master_context):
+        registry.set_service('email', EmailService)
+        registry.set_service('session', SessionProvider, single_instance=True)
 
-    with registry.context('master'):
-        registry.register_service('email', EmailService)
-        registry.register_service('settings', DefaultSettings)
+        set_default_settings(registry)
+
+    registry.lock_context(registry.master_context)
 
     return registry

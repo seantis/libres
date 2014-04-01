@@ -1,3 +1,2 @@
-def new_hostess(name):
-    from libres.modules.hostess import Hostess
-    return Hostess(name)
+from libres.modules.hostess import Hostess as new_hostess
+new_hostess  # pyflakes

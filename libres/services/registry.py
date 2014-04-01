@@ -1,69 +1,106 @@
 import threading
-import reg
 
 from contextlib import contextmanager
+from libres import errors
+
+
+missing = object()
 
 
 class Registry(object):
 
-    # each context has a key and can only exist once
-    existing_contexts = {}
+    def __init__(self, master_context='master'):
+        self.lock = threading.RLock()
 
-    # the current context is local per thread and store in the configuration
-    configuration = threading.local()
-
-    # changing existing contexts must be made thread-safe manually
-    lock = threading.Lock()
-
-    def __init__(self, master_context):
-        self.new_context(master_context)
-        self.master_context = master_context
-
-    def new_context(self, name):
-        """ Creates a new context with the given name. Services not registered
-        with the new_context are acquired through the master context.
-
-        """
         with self.lock:
-            assert name not in self.existing_contexts, """
-                context already registered
-            """
+            self.contexts = {}
+            self.locked = set()
+            self.local = threading.local()
+            self.single_instance_services = set()
 
-            self.existing_contexts[name] = reg.ClassRegistry()
-            self.existing_contexts
+            self.register_context(master_context)
+            self.master_context = master_context
+            self.local.current_context = master_context
+
+    def is_existing_context(self, name):
+        return name in self.contexts
+
+    def lock_context(self, name):
+        with self.lock:
+            self.locked.add(name)
+
+    def unlock_context(self, name):
+        with self.lock:
+            self.locked.discard(name)
+
+    def assert_context(self, name, must_exist):
+        if must_exist:
+            if not self.is_existing_context(name):
+                raise errors.UnknownContext
+        else:
+            if self.is_existing_context(name):
+                raise errors.ContextAlreadyExists
+
+    def register_context(self, name):
+        with self.lock:
+            self.assert_context(name, must_exist=False)
+            self.contexts[name] = {}
 
     def switch_context(self, name):
-        self.configuration.current_context = name
+        self.assert_context(name, must_exist=True)
+        self.local.current_context = name
 
     @contextmanager
     def context(self, name):
-        previous = getattr(self.configuration, 'current_context', None)
+        previous = self.local.current_context
         self.switch_context(name)
         yield
         self.switch_context(previous)
 
     def get_current_context(self):
-        name = getattr(self.configuration, 'current_context', None)
-        return self.existing_contexts.get(name)
+        return self.get_context(self.local.current_context)
 
-    def register_service(self, service, service_class, context=None):
-        context = self.existing_contexts.get(
-            context, self.get_current_context()
-        )
-        context.register(service, [], service_class)
+    def get_context(self, name):
+        self.assert_context(name, must_exist=True)
+        return self.contexts[name]
 
-    def get_service(self, service, context=None):
-        context = self.existing_contexts.get(
-            context, self.get_current_context()
-        )
-        factory = context.get(service, [])
+    def get(self, key):
+        context = self.get_current_context()
+        master = self.contexts[self.master_context]
 
-        if factory is None:
-            context = self.existing_contexts[self.master_context]
-            factory = context.get(service, [])
+        if key in context:
+            return context[key]
+        elif key in master:
+            return master[key]
+        else:
+            return missing
 
-        assert factory, """
-            unknown service
-        """
+    def set(self, key, value):
+        with self.lock:
+            if self.local.current_context in self.locked:
+                raise errors.ContextIsLocked
 
-        return context.get(service, [])()
+            self.get_current_context()[key] = value
+
+    def get_service(self, name):
+        service_id = '/'.join(('service', name))
+        service = self.get(service_id)
+
+        if service is missing:
+            raise errors.UnknownService
+
+        if service_id in self.single_instance_services:
+            return service
+        else:
+            return service()
+
+    def set_service(self, name, factory, single_instance=False):
+        service_id = '/'.join(('service', name))
+
+        with self.lock:
+            if single_instance:
+                self.single_instance_services.add(service_id)
+                self.set(service_id, factory())
+            else:
+                self.single_instance_services.discard(service_id)
+                self.set(service_id, factory)

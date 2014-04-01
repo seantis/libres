@@ -87,7 +87,6 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy import event
 
 from libres import errors
-from libres import registry
 
 SERIALIZABLE = 'SERIALIZABLE'
 READ_COMMITTED = 'READ_COMMITTED'
@@ -206,7 +205,16 @@ class SessionProvider(object):
         self._threadstore = threading.local()
         self._dsn_cache = {}
         self._dsn_cache_lock = threading.Lock()
-        self._dsn = registry.get_service('settings').dsn
+
+    def get_dsn(self):
+        """ Returns the DSN for the given site. Will look for those dsns
+        in the zope.conf which is preferrably modified using buildout's
+        <product-config> construct. See database.cfg.example for more info.
+
+        """
+
+        from libres import registry
+        return registry.get('settings.dsn')
 
     @property
     def sessionstore(self):
@@ -214,11 +222,15 @@ class SessionProvider(object):
         sessions if they are not yet present.
 
         """
+        dsn = self.get_dsn()
 
         if not hasattr(self._threadstore, 'sessions'):
-            self._threadstore.sessionstore = SessionStore(self._dsn)
+            self._threadstore.sessions = {}
 
-        return self._threadstore.sessionstore
+        if dsn not in self._threadstore.sessions:
+            self._threadstore.sessions[dsn] = SessionStore(dsn)
+
+        return self._threadstore.sessions[dsn]
 
     @property
     def is_serial(self):
