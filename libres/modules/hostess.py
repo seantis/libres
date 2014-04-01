@@ -9,13 +9,5 @@ class Hostess(object):
 
         self.context = context
 
-    def service(self, name):
-        return registry.get_service('email', self.context)
-
-    def send_email(self):
-        self.service('email').send_email(
-            'subject',
-            'sender@example.org',
-            ['recipient@example.org'],
-            'body'
-        )
+    def session(self):
+        return registry.get_service('session', self.context)

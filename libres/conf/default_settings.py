@@ -1,1 +1,1 @@
-DATABASE = None
+dsn = None

@@ -8,11 +8,11 @@ class TestSettings(TestCase):
         settings.reset()
 
     def test_set_settings(self):
-        settings.DATABASE = 'custom'
+        settings.dsn = 'custom'
 
-        self.assertEqual(settings.DATABASE, 'custom')
-        self.assertEqual(default_settings.DATABASE, None)
+        self.assertEqual(settings.dsn, 'custom')
+        self.assertEqual(default_settings.dsn, None)
 
         settings.reset()
-        self.assertEqual(settings.DATABASE, None)
-        self.assertEqual(default_settings.DATABASE, None)
+        self.assertEqual(settings.dsn, None)
+        self.assertEqual(default_settings.dsn, None)
