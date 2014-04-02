@@ -80,6 +80,7 @@ supported they need to be tested first!
 """
 import re
 import threading
+import functools
 
 from sqlalchemy import create_engine
 from sqlalchemy.pool import SingletonThreadPool
@@ -90,6 +91,17 @@ from libres import errors
 
 SERIALIZABLE = 'SERIALIZABLE'
 READ_COMMITTED = 'READ_COMMITTED'
+
+
+_registry = None
+
+
+def get_registry():
+    global _registry
+    if _registry is None:
+        from libres import registry
+        _registry = registry
+    return _registry
 
 
 def get_postgres_version(dsn):
@@ -213,8 +225,7 @@ class SessionProvider(object):
 
         """
 
-        from libres import registry
-        return registry.get('settings.dsn')
+        return get_registry().get('settings.dsn')
 
     @property
     def sessionstore(self):
@@ -286,3 +297,47 @@ class SessionProvider(object):
     def use_serial(self):
         self.sessionstore.current = self.sessionstore.serial
         return self.sessionstore.current
+
+
+def serialized_call(fn):
+    """ Wrapper function which wraps any function with a serial session.
+    All methods called by this wrapped function will use the serial session.
+
+    (Provided they are using seantis.reservation.Session and not some other
+    means of talking to the database).
+
+    """
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+
+        session_provider = get_registry().get_service('session')
+
+        # Since a serialized call may be part of another serialized call, we
+        # need store the current session and reset it afterwards
+        current = session_provider.sessionstore.current
+
+        serial = session_provider.use_serial()
+        serial.begin_nested()
+
+        try:
+            result = fn(*args, **kwargs)
+            serial.flush()
+            serial.expire_all()
+            return result
+        except:
+            serial.rollback()
+            raise
+        finally:
+            session_provider.sessionstore.current = current
+
+    return wrapper
+
+
+def serialized(fn):
+    """ A decorator to apply to any class method that needs to be serialized.
+    """
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        return serialized_call(fn)(*args, **kwargs)
+
+    return wrapper

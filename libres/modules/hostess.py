@@ -1,24 +1,22 @@
 from libres import registry
+from libres.modules.database import Database
+from libres.modules.utils import context_specific
 
 
 class Hostess(object):
 
-    def __init__(self, context, id):
+    def __init__(self, context):
         self.context = context
-        self.id = id
 
         if not registry.is_existing_context(self.context):
             registry.register_context(self.context)
 
-    @property
-    def session(self):
-        with registry.context(self.context):
-            return registry.get_service('session').session()
+        self.db = Database(self.context)
 
+    @context_specific
     def get_config(self, name):
-        with registry.context(self.context):
-            return registry.get(name)
+        return registry.get(name)
 
+    @context_specific
     def set_config(self, name, value):
-        with registry.context(self.context):
-            registry.set(name, value)
+        registry.set(name, value)
