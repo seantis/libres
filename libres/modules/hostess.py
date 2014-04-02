@@ -1,22 +1,22 @@
 from libres import registry
-from libres.modules.database import Database
-from libres.modules.utils import context_specific
+from libres.modules.scheduler import Scheduler
+from libres.services.accessor import ContextAccessor
 
 
 class Hostess(object):
 
-    def __init__(self, context):
-        self.context = context
+    def __init__(self, context_name, settings={}):
+        if not registry.is_existing_context(context_name):
+            registry.register_context(context_name)
 
-        if not registry.is_existing_context(self.context):
-            registry.register_context(self.context)
+        self.context_name = context_name
+        self.context = ContextAccessor(context_name)
 
-        self.db = Database(self.context)
+        for name, value in settings.items():
+            self.context.set_config(name, value)
 
-    @context_specific
-    def get_config(self, name):
-        return registry.get(name)
+        self.scheduler = Scheduler(context_name)
 
-    @context_specific
-    def set_config(self, name, value):
-        registry.set(name, value)
+    def setup(self):
+        self.scheduler.setup_database()
+        self.scheduler.transaction.commit()

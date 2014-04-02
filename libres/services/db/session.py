@@ -205,8 +205,12 @@ class SessionProvider(object):
     so it needs to be aware of different threads.
     """
 
-    def __init__(self):
-        self._reset_sessions()
+    _lock = threading.RLock()
+    _threadstore = threading.local()
+
+    def __init__(self, dsn):
+        self.dsn = dsn
+        assert_dsn(self.dsn)
 
     def _reset_sessions(self):
         """ Resets the session and threadstore. Useful for testing. """
@@ -214,18 +218,9 @@ class SessionProvider(object):
         # Session information is stored independently for each thread.
         # SQLAlchemy does provide this in a way with scoped_session, but
         # it seems sane to be independent here
-        self._threadstore = threading.local()
-        self._dsn_cache = {}
-        self._dsn_cache_lock = threading.Lock()
 
-    def get_dsn(self):
-        """ Returns the DSN for the given site. Will look for those dsns
-        in the zope.conf which is preferrably modified using buildout's
-        <product-config> construct. See database.cfg.example for more info.
-
-        """
-
-        return get_registry().get('settings.dsn')
+        with self._lock:
+            self._threadstore = threading.local()
 
     @property
     def sessionstore(self):
@@ -233,17 +228,14 @@ class SessionProvider(object):
         sessions if they are not yet present.
 
         """
-        dsn = self.get_dsn()
+        with self._lock:
+            if not hasattr(self._threadstore, 'sessions'):
+                self._threadstore.sessions = {}
 
-        assert_dsn(dsn)
+            if self.dsn not in self._threadstore.sessions:
+                self._threadstore.sessions[self.dsn] = SessionStore(self.dsn)
 
-        if not hasattr(self._threadstore, 'sessions'):
-            self._threadstore.sessions = {}
-
-        if dsn not in self._threadstore.sessions:
-            self._threadstore.sessions[dsn] = SessionStore(dsn)
-
-        return self._threadstore.sessions[dsn]
+            return self._threadstore.sessions[self.dsn]
 
     @property
     def is_serial(self):
@@ -310,7 +302,8 @@ def serialized_call(fn):
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
 
-        session_provider = get_registry().get_service('session')
+        assert hasattr(args[0], 'context')
+        session_provider = args[0].context.session_provider
 
         # Since a serialized call may be part of another serialized call, we
         # need store the current session and reset it afterwards

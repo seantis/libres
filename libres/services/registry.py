@@ -25,9 +25,6 @@ class Registry(object):
     def is_existing_context(self, name):
         return name in self.contexts
 
-    def is_current_context(self, name):
-        return self.local.current_context == name
-
     def lock_context(self, name):
         with self.lock:
             self.locked.add(name)

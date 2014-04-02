@@ -7,9 +7,15 @@ def setup_registry():
 
     registry = Registry()
 
+    def session_factory():
+        return SessionProvider(registry.get('settings.dsn'))
+
+    def email_factory():
+        return EmailService()
+
     with registry.context(registry.master_context):
-        registry.set_service('email', EmailService)
-        registry.set_service('session', SessionProvider, single_instance=True)
+        registry.set_service('email', email_factory)
+        registry.set_service('session', session_factory)
 
         set_default_settings(registry)
 
