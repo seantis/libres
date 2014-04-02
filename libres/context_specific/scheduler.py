@@ -44,17 +44,16 @@ class Scheduler(object):
 
         return self.sessions[session_id]
 
-    @serialized
     def begin(self):
-        self.session.begin(subtransactions=True)
+        return self.context.session_provider.sessionstore.serial.begin(
+            subtransactions=True
+        )
 
-    @serialized
     def commit(self):
-        self.session.commit()
+        return self.context.session_provider.sessionstore.serial.commit()
 
-    @serialized
     def rollback(self):
-        self.session.rollback()
+        return self.context.session_provider.sessionstore.serial.rollback()
 
     @serialized
     def setup_database(self):
