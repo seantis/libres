@@ -2,7 +2,7 @@ import threading
 import random
 
 from libres.testsuite import TestCase
-from libres import errors
+from libres.modules import errors
 from libres.services.registry import Registry
 
 

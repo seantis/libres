@@ -87,7 +87,7 @@ from sqlalchemy.pool import SingletonThreadPool
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy import event
 
-from libres import errors
+from libres.modules import errors
 
 SERIALIZABLE = 'SERIALIZABLE'
 READ_COMMITTED = 'READ_COMMITTED'

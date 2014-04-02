@@ -1,7 +1,7 @@
 import threading
 
 from contextlib import contextmanager
-from libres import errors
+from libres.modules import errors
 
 
 missing = object()
