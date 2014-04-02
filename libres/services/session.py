@@ -85,6 +85,7 @@ import functools
 from sqlalchemy import create_engine
 from sqlalchemy.pool import SingletonThreadPool
 from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy import event
 
 from libres.modules import errors
@@ -163,7 +164,8 @@ class SessionStore(object):
         engine = create_engine(
             dsn,
             poolclass=SingletonThreadPool,
-            isolation_level=isolation_level
+            isolation_level=isolation_level,
+            echo=True
         )
 
         session = scoped_session(sessionmaker(
@@ -310,12 +312,18 @@ def serialized_call(fn):
         current = session_provider.sessionstore.current
 
         serial = session_provider.use_serial()
-        serial.begin_nested()
+        serial.begin(subtransactions=True)
 
         try:
             result = fn(*args, **kwargs)
             serial.flush()
-            serial.expire_all()
+            try:
+                serial.commit()
+            except InvalidRequestError as e:
+                if "rolled back by a nested rollback" in str(e):
+                    serial.rollback()
+                else:
+                    raise
             return result
         except:
             serial.rollback()

@@ -37,8 +37,9 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=[
-        'SQLAlchemy>=0.8.5',
-        'psycopg2'
+        'SQLAlchemy>=0.8.6',
+        'psycopg2',
+        'arrow'
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

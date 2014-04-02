@@ -1,2 +1,2 @@
-from libres.context_specific.hostess import Hostess as new_hostess
-__all__ = ['new_hostess']
+from libres.context_specific.scheduler import Scheduler as new_scheduler
+__all__ = ['new_scheduler']
