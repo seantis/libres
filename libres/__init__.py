@@ -1,5 +1,5 @@
 from libres.services import setup_registry
 registry = setup_registry()
 
-from libres.modules import new_hostess
-new_hostess  # pyflakes
+from libres.context_specific import new_hostess
+__all__ = ['new_hostess', 'registry']

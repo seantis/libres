@@ -2,7 +2,7 @@ def setup_registry():
 
     from libres.services.registry import Registry
     from libres.services.email import EmailService
-    from libres.services.db.session import SessionProvider
+    from libres.services.session import SessionProvider
     from libres.services.settings import set_default_settings
 
     registry = Registry()

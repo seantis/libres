@@ -1,5 +1,5 @@
 from libres.models import ORMBase
-from libres.services.db.session import serialized
+from libres.services.session import serialized
 from libres.services.accessor import ContextAccessor
 
 

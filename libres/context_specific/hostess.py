@@ -1,5 +1,5 @@
 from libres import registry
-from libres.modules.scheduler import Scheduler
+from libres.context_specific.scheduler import Scheduler
 from libres.services.accessor import ContextAccessor
 
 
