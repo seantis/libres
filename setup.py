@@ -39,7 +39,7 @@ setup(
     install_requires=[
         'arrow',
         'psycopg2',
-        'SQLAlchemy'
+        'SQLAlchemy>=0.9'
     ],
     extras_require={
         'docs': [

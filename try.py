@@ -1,5 +1,5 @@
 from libres import new_scheduler
-from libres.modules.events import on_allocations_add
+from libres.models import Reservation
 
 
 scheduler = new_scheduler(
@@ -9,12 +9,10 @@ scheduler = new_scheduler(
     }
 )
 
+scheduler.setup_database()
+scheduler.commit()
 
-def on_add(context, allocations):
-    print("added {} allocations on {}".format(len(allocations), context))
-
-on_allocations_add.append(on_add)
-
-scheduler.allocate(['2013-01-01T13:00', '2013-01-01T15:00'], 'Europe/Zurich')
-scheduler.allocate(['2013-01-01T12:00', '2013-01-01T14:00'], 'Europe/Zurich')
+res = Reservation()
+res.data = {'test': 1234}
+scheduler.context.serial_session.add(res)
 scheduler.commit()

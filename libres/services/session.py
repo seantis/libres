@@ -129,13 +129,18 @@ def assert_dsn(dsn):
 
 class SessionStore(object):
 
-    def __init__(self, dsn):
-        self.readonly = self.create_session(READ_COMMITTED, dsn)
-        self.serial = self.create_session(SERIALIZABLE, dsn)
+    def __init__(self, dsn, engine_config, session_config):
+        self.readonly = self.create_session(
+            READ_COMMITTED, dsn, engine_config, session_config
+        )
+        self.serial = self.create_session(
+            SERIALIZABLE, dsn, engine_config, session_config
+        )
         self.current = self.readonly
         self.dsn = dsn
 
-    def create_session(self, isolation_level, dsn):
+    @staticmethod
+    def create_session(isolation_level, dsn, engine_config, session_config):
         """Creates a session with the given isolation level.
 
         If the isolation level is serializable (writeable) a hook is created
@@ -149,14 +154,20 @@ class SessionStore(object):
 
         """
 
+        # I don't see how overridding the following keys would end well
+        assert 'isolation_level' not in engine_config
+        assert 'poolclass' not in engine_config
+        assert 'bind' not in session_config
+
         engine = create_engine(
             dsn,
             poolclass=SingletonThreadPool,
-            isolation_level=isolation_level
+            isolation_level=isolation_level,
+            **engine_config
         )
 
         session = scoped_session(sessionmaker(
-            bind=engine, autocommit=False, autoflush=True
+            bind=engine, autocommit=False, autoflush=True, **session_config
         ))
 
         if isolation_level == READ_COMMITTED:
@@ -197,9 +208,10 @@ class SessionProvider(object):
     _lock = threading.RLock()
     _threadstore = threading.local()
 
-    def __init__(self, dsn):
+    def __init__(self, dsn, engine_config={}, session_config={}):
         self.dsn = dsn
-        assert_dsn(self.dsn)
+        self.engine_config = engine_config
+        self.session_config = session_config
 
     def _reset_sessions(self):
         """ Resets the session and threadstore. Useful for testing. """
@@ -222,7 +234,12 @@ class SessionProvider(object):
                 self._threadstore.sessions = {}
 
             if self.dsn not in self._threadstore.sessions:
-                self._threadstore.sessions[self.dsn] = SessionStore(self.dsn)
+                assert_dsn(self.dsn)
+                self._threadstore.sessions[self.dsn] = SessionStore(
+                    self.dsn,
+                    self.engine_config,
+                    self.session_config
+                )
 
             return self._threadstore.sessions[self.dsn]
 
