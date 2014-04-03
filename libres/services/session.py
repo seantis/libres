@@ -163,8 +163,7 @@ class SessionStore(object):
         engine = create_engine(
             dsn,
             poolclass=SingletonThreadPool,
-            isolation_level=isolation_level,
-            echo=True
+            isolation_level=isolation_level
         )
 
         session = scoped_session(sessionmaker(

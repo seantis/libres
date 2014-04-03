@@ -10,6 +10,7 @@ from libres.modules import calendar
 from libres.modules import errors
 from libres.modules import raster
 from libres.modules import utils
+from libres.modules import events
 
 from libres.models import ORMBase, Allocation
 from libres.services.session import serialized
@@ -186,5 +187,7 @@ class Scheduler(object):
             allocations.append(allocation)
 
         self.session.add_all(allocations)
+
+        events.on_allocations_add(self.context_name, allocations)
 
         return allocations
