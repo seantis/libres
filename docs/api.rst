@@ -9,6 +9,12 @@ Context Specific Modules
 .. autoclass:: Scheduler
     :members:
 
+.. py:currentmodule:: libres.context_specific.independent_queries
+
+.. autoclass:: IndependentQueries
+    :members:
+
+
 Settings
 --------
 

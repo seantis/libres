@@ -3,8 +3,6 @@ import arrow
 from uuid import uuid4 as new_uuid
 from uuid import uuid5 as new_namespace_uuid
 
-from sqlalchemy.sql import and_, or_
-
 from libres.modules import calendar
 from libres.modules import errors
 from libres.modules import raster
@@ -12,8 +10,11 @@ from libres.modules import utils
 from libres.modules import events
 
 from libres.models import ORMBase, Allocation
+
 from libres.services.session import serialized
 from libres.services.accessor import ContextAccessor
+
+from libres.context_specific.independent_queries import IndependentQueries
 
 
 class Scheduler(object):
@@ -37,10 +38,20 @@ class Scheduler(object):
         """
 
         self.context = ContextAccessor(context, autocreate=True)
+        self.queries = IndependentQueries(context)
+
         self.name = name
 
         for name, value in settings.items():
             self.context.set_config(name, value)
+
+    @property
+    def session(self):
+        """ Returns the current session. This can be the read-only or the
+        serialized session, depending on where it is called from.
+
+        """
+        return self.context.session
 
     @property
     def resource(self):
@@ -51,7 +62,7 @@ class Scheduler(object):
         """
         return new_namespace_uuid(
             self.context.get_config('settings.uuid_namespace'),
-            '/'.join(self.name, self.context)
+            '/'.join((self.name, self.context.name))
         )
 
     def begin(self):
@@ -62,10 +73,6 @@ class Scheduler(object):
 
     def rollback(self):
         return self.context.serial_session.rollback()
-
-    @property
-    def session(self):
-        return self.context.session
 
     @serialized
     def setup_database(self):
@@ -80,18 +87,7 @@ class Scheduler(object):
 
     def allocations_in_range(self, start, end, masters_only=True):
         query = self.managed_allocations()
-        query = query.filter(
-            or_(
-                and_(
-                    Allocation._start <= start,
-                    start <= Allocation._end
-                ),
-                and_(
-                    start <= Allocation._start,
-                    Allocation._start <= end
-                )
-            )
-        )
+        query = self.queries.allocations_in_range(query, start, end)
 
         if masters_only:
             query = query.filter(Allocation.resource == self.resource)

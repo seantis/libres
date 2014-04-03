@@ -16,9 +16,5 @@ def on_add(context, allocations):
 on_allocations_add.append(on_add)
 
 scheduler.allocate(['2013-01-01T13:00', '2013-01-01T15:00'], 'Europe/Zurich')
-scheduler.allocate(['2013-01-02T13:00', '2013-01-02T15:00'], 'Europe/Zurich')
-scheduler.rollback()
-
-scheduler.allocate(['2013-01-01T13:00', '2013-01-01T15:00'], 'Europe/Zurich')
-scheduler.allocate(['2013-01-02T13:00', '2013-01-02T15:00'], 'Europe/Zurich')
+scheduler.allocate(['2013-01-01T12:00', '2013-01-01T14:00'], 'Europe/Zurich')
 scheduler.commit()
