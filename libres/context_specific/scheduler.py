@@ -17,8 +17,25 @@ from libres.services.accessor import ContextAccessor
 
 
 class Scheduler(object):
+    """ The Scheduler is responsible for talking to the backend of the given
+    context to create reservations. It is the main part of the API.
+    """
 
     def __init__(self, context, name, settings={}):
+        """ Initializeds a new Scheduler instance.
+
+        :context:
+            The name of the context this scheduler should operate on.
+            If the context does not yet exist, it will be created.
+
+        :name:
+            The name of the Scheduler. The context and name of the scheduler
+            are used to generate the resource uuid in the database. To
+            access the data you generated with a scheduler use the same context
+            and name together.
+
+        """
+
         self.context = ContextAccessor(context, autocreate=True)
         self.name = name
 
@@ -27,8 +44,14 @@ class Scheduler(object):
 
     @property
     def resource(self):
+        """ The resource that belongs to this scheduler. The resource is
+        a uuid created from the name and context of this scheduler, based
+        on the namespace uuid defined in :ref:`settings.uuid_namespace`
+
+        """
         return new_namespace_uuid(
-            self.context.get_config('settings.uuid_namespace'), self.name
+            self.context.get_config('settings.uuid_namespace'),
+            '/'.join(self.name, self.context)
         )
 
     def begin(self):

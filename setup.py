@@ -25,7 +25,7 @@ from setuptools import setup
 
 setup(
     name='libres',
-    version='0.11-dev',
+    version='0.1',
     url='http://github.com/seantis/libres/',
     license='BSD',
     author='Denis Krienbühl',
@@ -41,6 +41,12 @@ setup(
         'psycopg2',
         'SQLAlchemy'
     ],
+    extras_require={
+        'docs': [
+            'sphinx',
+            'alabaster'
+        ]
+    },
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
