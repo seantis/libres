@@ -3,7 +3,8 @@ from libres.modules.events import on_allocations_add
 
 
 scheduler = new_scheduler(
-    'KFC', settings={
+    'KFC', 'New York Time Square',
+    settings={
         'settings.dsn': 'postgresql+psycopg2://dev:dev@localhost:15432/libres'
     }
 )

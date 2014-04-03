@@ -1,10 +1,9 @@
 import arrow
 
 from uuid import uuid4 as new_uuid
+from uuid import uuid5 as new_namespace_uuid
 
 from sqlalchemy.sql import and_, or_
-
-from libres import registry
 
 from libres.modules import calendar
 from libres.modules import errors
@@ -19,42 +18,31 @@ from libres.services.accessor import ContextAccessor
 
 class Scheduler(object):
 
-    def __init__(self, context_name, resource=None, settings={}):
-        if not registry.is_existing_context(context_name):
-            registry.register_context(context_name)
-
-        self.context_name = context_name
-        self.context = ContextAccessor(context_name)
+    def __init__(self, context, name, settings={}):
+        self.context = ContextAccessor(context, autocreate=True)
+        self.name = name
 
         for name, value in settings.items():
             self.context.set_config(name, value)
 
-        self.sessions = {
-            'readonly': None,
-            'serial': None
-        }
-        self.resource = resource or new_uuid()
+    @property
+    def resource(self):
+        return new_namespace_uuid(
+            self.context.get_config('settings.uuid_namespace'), self.name
+        )
+
+    def begin(self):
+        return self.context.serial_session.begin(subtransactions=True)
+
+    def commit(self):
+        return self.context.serial_session.commit()
+
+    def rollback(self):
+        return self.context.serial_session.rollback()
 
     @property
     def session(self):
-        provider = self.context.session_provider
-        session_id = provider.is_serial and 'serial' or 'readonly'
-
-        if not self.sessions[session_id]:
-            self.sessions[session_id] = self.context.session()
-
-        return self.sessions[session_id]
-
-    def begin(self):
-        return self.context.session_provider.sessionstore.serial.begin(
-            subtransactions=True
-        )
-
-    def commit(self):
-        return self.context.session_provider.sessionstore.serial.commit()
-
-    def rollback(self):
-        return self.context.session_provider.sessionstore.serial.rollback()
+        return self.context.session
 
     @serialized
     def setup_database(self):
@@ -188,6 +176,6 @@ class Scheduler(object):
 
         self.session.add_all(allocations)
 
-        events.on_allocations_add(self.context_name, allocations)
+        events.on_allocations_add(self.context.name, allocations)
 
         return allocations

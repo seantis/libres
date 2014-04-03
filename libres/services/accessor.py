@@ -3,8 +3,15 @@ from libres import registry
 
 class ContextAware(object):
 
-    def __init__(self, context):
+    def __init__(self, context, autocreate):
         self.context = context
+
+        if autocreate and not registry.is_existing_context(context):
+            registry.register_context(context)
+
+    @property
+    def name(self):
+        return self.context
 
 
 class ContextAccessor(ContextAware):
@@ -24,5 +31,12 @@ class ContextAccessor(ContextAware):
 
     @property
     def session(self):
-        with registry.context(self.context):
-            return registry.get_service('session').session()
+        return self.session_provider.session()
+
+    @property
+    def serial_session(self):
+        return self.session_provider.sessionstore.serial
+
+    @property
+    def readonly_session(self):
+        return self.session_provider.sessionstore.readonly
