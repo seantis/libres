@@ -57,17 +57,11 @@ class TestRegistry(TestCase):
     def test_services(self):
         r = Registry()
 
-        r.set_service('service', factory=object, single_instance=False)
+        r.set_service('service', factory=object)
         first_call = r.get_service('service')
         second_call = r.get_service('service')
 
         self.assertFalse(first_call is second_call)
-
-        r.set_service('service', factory=object, single_instance=True)
-        first_call = r.get_service('service')
-        second_call = r.get_service('service')
-
-        self.assertTrue(first_call is second_call)
 
     def test_threading_contexts(self):
         r = Registry()

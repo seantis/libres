@@ -93,17 +93,6 @@ SERIALIZABLE = 'SERIALIZABLE'
 READ_COMMITTED = 'READ_COMMITTED'
 
 
-_registry = None
-
-
-def get_registry():
-    global _registry
-    if _registry is None:
-        from libres import registry
-        _registry = registry
-    return _registry
-
-
 def get_postgres_version(dsn):
     """ Returns the postgres version in a tuple with the first value being
     the major version, the second being the minor version.

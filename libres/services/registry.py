@@ -16,7 +16,6 @@ class Registry(object):
             self.contexts = {}
             self.locked = set()
             self.local = threading.local()
-            self.single_instance_services = set()
 
             self.register_context(master_context)
             self.master_context = master_context
@@ -89,18 +88,8 @@ class Registry(object):
         if service is missing:
             raise errors.UnknownService
 
-        if service_id in self.single_instance_services:
-            return service
-        else:
-            return service()
+        return service()
 
-    def set_service(self, name, factory, single_instance=False):
+    def set_service(self, name, factory):
         service_id = '/'.join(('service', name))
-
-        with self.lock:
-            if single_instance:
-                self.single_instance_services.add(service_id)
-                self.set(service_id, factory())
-            else:
-                self.single_instance_services.discard(service_id)
-                self.set(service_id, factory)
+        self.set(service_id, factory)
