@@ -85,7 +85,6 @@ import functools
 from sqlalchemy import create_engine
 from sqlalchemy.pool import SingletonThreadPool
 from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy import event
 
 from libres.modules import errors
@@ -293,9 +292,9 @@ class SessionProvider(object):
         return self.sessionstore.current
 
 
-def serialized_call(fn):
+def serialized(fn):
     """ Wrapper function which wraps any function with a serial session.
-    All methods called by this wrapped function will use the serial session.
+    All methods called by this wrapped function will uuse the serial session.
 
     (Provided they are using seantis.reservation.Session and not some other
     means of talking to the database).
@@ -303,42 +302,18 @@ def serialized_call(fn):
     """
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
-
         assert hasattr(args[0], 'context')
-        session_provider = args[0].context.session_provider
+        provider = args[0].context.session_provider
 
-        # Since a serialized call may be part of another serialized call, we
-        # need store the current session and reset it afterwards
-        current = session_provider.sessionstore.current
-
-        serial = session_provider.use_serial()
-        serial.begin(subtransactions=True)
+        current = provider.sessionstore.current
+        serial = provider.use_serial()
 
         try:
             result = fn(*args, **kwargs)
             serial.flush()
-            try:
-                serial.commit()
-            except InvalidRequestError as e:
-                if "rolled back by a nested rollback" in str(e):
-                    serial.rollback()
-                else:
-                    raise
+            serial.expire_all()
             return result
-        except:
-            serial.rollback()
-            raise
         finally:
-            session_provider.sessionstore.current = current
-
-    return wrapper
-
-
-def serialized(fn):
-    """ A decorator to apply to any class method that needs to be serialized.
-    """
-    @functools.wraps(fn)
-    def wrapper(*args, **kwargs):
-        return serialized_call(fn)(*args, **kwargs)
+            provider.sessionstore.current = current
 
     return wrapper

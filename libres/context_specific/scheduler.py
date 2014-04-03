@@ -186,6 +186,5 @@ class Scheduler(object):
             allocations.append(allocation)
 
         self.session.add_all(allocations)
-        self.session.commit()
 
         return allocations
