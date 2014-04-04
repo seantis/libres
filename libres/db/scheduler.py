@@ -3,6 +3,8 @@ import arrow
 from uuid import uuid4 as new_uuid
 from uuid import uuid5 as new_namespace_uuid
 
+from sqlalchemy.orm import exc
+
 from libres.modules import calendar
 from libres.modules import errors
 from libres.modules import raster
@@ -142,11 +144,24 @@ class Scheduler(object):
         query = self.allocations_in_range(start, end)
         return query.one()
 
-    def get_allocation_dates_by_group(self, group):
+    def allocation_dates_by_group(self, group):
         query = self.allocations_by_group(group)
         query = query.with_entities(Allocation._start, Allocation._end)
 
         return query.all()
+
+    def reservation_by_token(self, token):
+        query = self.managed_reservations()
+        query = query.filter(Reservation.token == token)
+
+        try:
+            query.one()
+        except exc.NoResultFound:
+            raise errors.InvalidReservationToken
+        except exc.MultipleResultsFound:
+            raise NotImplementedError
+
+        return query
 
     def normalize_dates(self, dates, timezone):
         dates = list(utils.pairs(dates))
@@ -295,7 +310,7 @@ class Scheduler(object):
             raise errors.InvalidEmailAddress
 
         if group:
-            dates = self.get_allocation_dates_by_group(group)
+            dates = self.allocation_dates_by_group(group)
 
         dates = self.normalize_dates(dates, timezone)
 
@@ -401,3 +416,87 @@ class Scheduler(object):
             raise errors.InvalidReservationError
 
         return token
+
+    @serialized
+    def approve_reservation(self, token):
+        """ This function approves an existing reservation and writes the
+        reserved slots accordingly.
+
+        Returns a list with the reserved slots.
+
+        """
+
+        reservation = self.reservation_by_token(token).one()
+
+        # write out the slots
+        slots_to_reserve = []
+
+        if reservation.target_type == u'group':
+            dates = self.dates_by_group(reservation.target)
+        else:
+            dates = ((reservation.start, reservation.end),)
+
+        # the reservation quota is simply implemented by multiplying the
+        # dates which are approved
+
+        dates = dates * reservation.quota
+
+        for start, end in dates:
+
+            for allocation in self.reservation_targets(start, end):
+                for slot_start, slot_end in allocation.all_slots(start, end):
+                    slot = ReservedSlot()
+                    slot.start = slot_start
+                    slot.end = slot_end
+                    slot.resource = allocation.resource
+                    slot.reservation_token = token
+
+                    # the slots are written with the allocation
+                    allocation.reserved_slots.append(slot)
+                    slots_to_reserve.append(slot)
+
+                # the allocation may be a fake one, in which case we
+                # must make it realz yo
+                if allocation.is_transient:
+                    self.session.add(allocation)
+
+        reservation.status = u'approved'
+
+        if not slots_to_reserve:
+            raise errors.NotReservableError
+
+        events.on_reservation_approve(self.context.name, reservation)
+
+        return slots_to_reserve
+
+    @serialized
+    def deny_reservation(self, token):
+        """ Denies a pending reservation. """
+
+        query = self.reservation_by_token(token)
+        query.filter(Reservation.status == u'pending')
+
+        reservation = query.one()
+        self.session.delete(reservation)
+
+        events.on_reservation_deny(self.context.name, reservation)
+
+    @serialized
+    def remove_reservation(self, token):
+        """ Removes all reserved slots of the given reservation token. """
+
+        slots = self.reserved_slots_by_reservation(token)
+
+        for slot in slots:
+            self.session.delete(slot)
+
+        reservation = self.reservation_by_token(token).one()
+        reservation.delete()
+
+        events.on_reservation_remove(self.context.name, reservation)
+
+    @serialized
+    def update_reservation_data(self, token, data):
+
+        reservation = self.reservation_by_token(token).one()
+        reservation.data = data

@@ -66,6 +66,14 @@ class InvalidReservationError(LibresError):
     pass
 
 
+class NotReservableError(LibresError):
+    pass
+
+
+class InvalidReservationToken(LibresError):
+    pass
+
+
 class OverlappingAllocationError(LibresError):
 
     def __init__(self, start, end, existing):

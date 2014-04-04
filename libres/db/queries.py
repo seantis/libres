@@ -21,6 +21,11 @@ class Queries(object):
     def session(self):
         return self.context.session
 
+    def all_allocations_in_range(self, start, end):
+        return self.allocations_in_range(
+            self.session.query(Allocation), start, end
+        )
+
     @staticmethod
     def allocations_in_range(query, start, end):
         """ Takes an allocation query and limits it to the allocations

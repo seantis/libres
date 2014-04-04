@@ -35,3 +35,6 @@ class Event(list):
 
 on_allocations_add = Event()
 on_reservation_made = Event()
+on_reservation_approve = Event()
+on_reservation_remove = Event()
+on_reservation_deny = Event()
