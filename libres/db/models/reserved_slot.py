@@ -10,9 +10,9 @@ from libres.modules.raster import (
     rasterize_end,
 )
 
-from libres.models import ORMBase, Allocation
-from libres.models.types import GUID, UTCDateTime
-from libres.models.timestamp import TimestampMixin
+from libres.db.models import ORMBase, Allocation
+from libres.db.models.types import GUID, UTCDateTime
+from libres.db.models.timestamp import TimestampMixin
 
 
 class ReservedSlot(TimestampMixin, ORMBase):

@@ -16,10 +16,10 @@ from libres.modules.raster import (
     iterate_span
 )
 
-from libres.models import ORMBase
-from libres.models.types import GUID, UTCDateTime
-from libres.models.other import OtherModels
-from libres.models.timestamp import TimestampMixin
+from libres.db.models import ORMBase
+from libres.db.models.types import GUID, UTCDateTime
+from libres.db.models.other import OtherModels
+from libres.db.models.timestamp import TimestampMixin
 
 
 class Allocation(TimestampMixin, ORMBase, OtherModels):

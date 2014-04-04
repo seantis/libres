@@ -1,9 +1,9 @@
 import threading
 import random
 
-from libres.testsuite import TestCase
+from libres.tests import TestCase
 from libres.modules import errors
-from libres.services.registry import Registry
+from libres.context.registry import Registry
 
 
 class TestRegistry(TestCase):

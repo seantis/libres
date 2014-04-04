@@ -9,12 +9,11 @@ from libres.modules import raster
 from libres.modules import utils
 from libres.modules import events
 
-from libres.models import ORMBase, Allocation, ReservedSlot, Reservation
+from libres.context.session import serialized
+from libres.context.accessor import ContextAccessor
 
-from libres.services.session import serialized
-from libres.services.accessor import ContextAccessor
-
-from libres.context_specific.independent_queries import IndependentQueries
+from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
+from libres.db.queries import Queries
 
 
 class Scheduler(object):
@@ -38,7 +37,7 @@ class Scheduler(object):
         """
 
         self.context = ContextAccessor(context, autocreate=True)
-        self.queries = IndependentQueries(context)
+        self.queries = Queries(context)
 
         self.name = name
 

@@ -4,21 +4,21 @@ API Documentation
 Context Specific Modules
 ------------------------
 
-.. py:currentmodule:: libres.context_specific.scheduler
+.. py:currentmodule:: libres.db.scheduler
 
 .. autoclass:: Scheduler
     :members:
 
-.. py:currentmodule:: libres.context_specific.independent_queries
+.. py:currentmodule:: libres.db.queries
 
-.. autoclass:: IndependentQueries
+.. autoclass:: Queries
     :members:
 
 
 Sqlalchemy Models
 -----------------
 
-.. py:currentmodule:: libres.models
+.. py:currentmodule:: libres.db.models
 
 .. autoclass:: Allocation
     :members:
@@ -27,4 +27,4 @@ Sqlalchemy Models
 Settings
 --------
 
-.. automodule:: libres.services.settings
+.. automodule:: libres.context.settings

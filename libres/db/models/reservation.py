@@ -6,10 +6,10 @@ from sqlalchemy.schema import Column
 from sqlalchemy.schema import Index
 from sqlalchemy.dialects.postgresql import JSON
 
-from libres.models import ORMBase
-from libres.models.types import GUID, UTCDateTime
-from libres.models.other import OtherModels
-from libres.models.timestamp import TimestampMixin
+from libres.db.models import ORMBase
+from libres.db.models.types import GUID, UTCDateTime
+from libres.db.models.other import OtherModels
+from libres.db.models.timestamp import TimestampMixin
 
 
 class Reservation(TimestampMixin, ORMBase, OtherModels):

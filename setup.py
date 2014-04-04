@@ -21,7 +21,24 @@ Libres is easy
         18:00 - 19:00   jon@example.org
 
 """
-from setuptools import setup
+from setuptools import setup, Command
+
+
+class PyTest(Command):
+
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        import sys
+        import subprocess
+        errno = subprocess.call([sys.executable, 'runtests.py'])
+        raise SystemExit(errno)
 
 setup(
     name='libres',
@@ -32,7 +49,7 @@ setup(
     author_email='denis@href.ch',
     description='A library to reserve things',
     long_description=__doc__,
-    packages=['libres', 'libres.testsuite'],
+    packages=['libres'],
     include_package_data=True,
     zip_safe=False,
     platforms='any',
@@ -45,8 +62,12 @@ setup(
         'docs': [
             'sphinx',
             'alabaster'
+        ],
+        'tests': [
+            'py.test'
         ]
     },
+    cmdclass={'test': PyTest},
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

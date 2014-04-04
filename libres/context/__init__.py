@@ -3,10 +3,10 @@ def setup_registry():
     import json
     import re
 
-    from libres.services.registry import Registry
-    from libres.services.email import EmailService
-    from libres.services.session import SessionProvider
-    from libres.services.settings import set_default_settings
+    from libres.context.registry import Registry
+    from libres.context.email import EmailService
+    from libres.context.session import SessionProvider
+    from libres.context.settings import set_default_settings
 
     registry = Registry()
 

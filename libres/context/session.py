@@ -111,14 +111,6 @@ def get_postgres_version(dsn):
 
 
 def assert_dsn(dsn):
-    assert dsn, "Database connection not found (database.cfg)"
-
-    if 'test://' in dsn:
-        return dsn
-
-    assert 'postgresql+psycopg2' in dsn, \
-        "Only PostgreSQL combined with psycopg2 is supported"
-
     major, minor = get_postgres_version(dsn)
 
     assert (major >= 9 and minor >= 1) or (major >= 10), \

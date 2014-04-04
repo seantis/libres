@@ -1,10 +1,10 @@
 from sqlalchemy.sql import and_, or_
 
-from libres.models import Allocation
-from libres.services.accessor import ContextAccessor
+from libres.db.models import Allocation
+from libres.context.accessor import ContextAccessor
 
 
-class IndependentQueries(object):
+class Queries(object):
     """ Contains helper methods independent of the resource (as owned by
     :class:`.scheduler.Scheduler`)
 
