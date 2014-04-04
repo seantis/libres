@@ -7,7 +7,7 @@ from sqlalchemy.schema import Index
 from sqlalchemy.dialects.postgresql import JSON
 
 from libres.models import ORMBase
-from libres.models.types import GUID
+from libres.models.types import GUID, UTCDateTime
 from libres.models.other import OtherModels
 from libres.models.timestamp import TimestampMixin
 
@@ -46,12 +46,17 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
     )
 
     start = Column(
-        types.DateTime(),
+        UTCDateTime(),
         nullable=True
     )
 
     end = Column(
-        types.DateTime(),
+        UTCDateTime(),
+        nullable=True
+    )
+
+    timezone = Column(
+        types.String(),
         nullable=True
     )
 

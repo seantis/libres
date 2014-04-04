@@ -9,7 +9,7 @@ from libres.modules import raster
 from libres.modules import utils
 from libres.modules import events
 
-from libres.models import ORMBase, Allocation
+from libres.models import ORMBase, Allocation, ReservedSlot, Reservation
 
 from libres.services.session import serialized
 from libres.services.accessor import ContextAccessor
@@ -85,6 +85,51 @@ class Scheduler(object):
 
         return query
 
+    def managed_reserved_slots(self):
+        """ The reserved_slots managed by this scheduler / resource. """
+        uuids = self.managed_allocations().with_entities(Allocation.resource)
+
+        query = self.session.query(ReservedSlot)
+        query = query.filter(ReservedSlot.resource.in_(uuids))
+
+        return query
+
+    def managed_reservations(self):
+        """ The reservations managed by this scheduler / resource. """
+        query = self.session.query(Reservation)
+        query = query.filter(Reservation.resource == self.resource)
+
+        return query
+
+    def allocation_by_id(self, id):
+        query = self.managed_allocations()
+        query = query.filter(Allocation.mirror_of == self.resource)
+        query = query.filter(Allocation.id == id)
+        return query.one()
+
+    def allocations_by_group(self, group, masters_only=True):
+        query = self.managed_allocations()
+        query = query.filter(Allocation.group == group)
+
+        if masters_only:
+            query = query.filter(Allocation.resource == self.resource)
+
+        return query
+
+    def allocations_by_reservation(self, reservation_token):
+        """ Returns the allocations for the reservation if it was *approved*,
+        pending reservations return nothing. If you need to get the allocation
+        a pending reservation might be targeting, use _target_allocations
+        in model.reservation.
+
+        """
+        query = self.managed_allocations()
+        query = query.join(ReservedSlot)
+        query = query.filter(
+            ReservedSlot.reservation_token == reservation_token
+        )
+        return query
+
     def allocations_in_range(self, start, end, masters_only=True):
         query = self.managed_allocations()
         query = self.queries.allocations_in_range(query, start, end)
@@ -93,6 +138,34 @@ class Scheduler(object):
             query = query.filter(Allocation.resource == self.resource)
 
         return query
+
+    def allocation_by_date(self, start, end):
+        query = self.allocations_in_range(start, end)
+        return query.one()
+
+    def get_allocation_dates_by_group(self, group):
+        query = self.allocations_by_group(group)
+        query = query.with_entities(Allocation._start, Allocation._end)
+
+        return query.all()
+
+    def normalize_dates(self, dates, timezone):
+        dates = list(utils.pairs(dates))
+
+        # the dates are expected to be given local to the timezone, but
+        # they are converted to utc for storage
+        for ix, (start, end) in enumerate(dates):
+
+            start = arrow.get(start).replace(tzinfo=timezone).to('UTC')
+            end = arrow.get(end).replace(tzinfo=timezone).to('UTC')
+
+            # while we're at it let's check the dates
+            if start == end:
+                raise errors.DatesMayNotBeEqualError
+
+            dates[ix] = (start.datetime, end.datetime)
+
+        return dates
 
     @serialized
     def allocate(
@@ -134,23 +207,10 @@ class Scheduler(object):
         that allocation. See Scheduler.__doc__
 
         """
-        dates = list(utils.pairs(dates))
+        dates = self.normalize_dates(dates, timezone)
 
         group = new_uuid()
         quota = quota or 1
-
-        # the dates are expected to be given local to the timezone, but
-        # they are converted to utc for storage
-        for ix, (start, end) in enumerate(dates):
-
-            start = arrow.get(start).replace(tzinfo=timezone).to('UTC')
-            end = arrow.get(end).replace(tzinfo=timezone).to('UTC')
-
-            # while we're at it let's check the dates
-            if start == end:
-                raise errors.DatesMayNotBeEqualError
-
-            dates[ix] = (start.datetime, end.datetime)
 
         # the whole day option results in the dates being aligned to
         # the beginning of the day / end of it -> not timezone aware!
@@ -198,3 +258,147 @@ class Scheduler(object):
         events.on_allocations_add(self.context.name, allocations)
 
         return allocations
+
+    @serialized
+    def reserve(
+        self,
+        email,
+        dates=None,
+        timezone=None,
+        group=None,
+        data=None,
+        session_id=None,
+        quota=1
+    ):
+        """ First step of the reservation.
+
+        Seantis.reservation uses a two-step reservation process. The first
+        step is reserving what is either an open spot or a place on the
+        waiting list.
+
+        The second step is to actually write out the reserved slots, which
+        is done by approving an existing reservation.
+
+        Most checks are done in the reserve functions. The approval step
+        only fails if there's no open spot.
+
+        This function returns a reservation token which can be used to
+        approve the reservation in approve_reservation.
+
+        """
+
+        assert (dates or group) and not (dates and group)
+        assert dates and timezone or not dates
+
+        email = email.strip()
+
+        if not self.context.validate_email(email):
+            raise errors.InvalidEmailAddress
+
+        if group:
+            dates = self.get_allocation_dates_by_group(group)
+
+        dates = self.normalize_dates(dates, timezone)
+
+        # First, the request is checked for saneness. If any requested
+        # date cannot be reserved the request as a whole fails.
+        for start, end in dates:
+
+            # are the parameters valid?
+            if abs((end - start).days) >= 1:
+                raise errors.ReservationTooLong
+
+            if start > end or (end - start).seconds < 5 * 60:
+                raise errors.ReservationParametersInvalid
+
+            # can all allocations be reserved?
+            for allocation in self.allocations_in_range(start, end):
+
+                # start and end are not rasterized, so we need this check
+                if not allocation.overlaps(start, end):
+                    continue
+
+                assert allocation.is_master
+
+                # with manual approval the reservation ends up on the
+                # waitinglist and does not yet need a spot
+                if not allocation.approve_manually:
+                    if not self.find_spot(allocation, start, end):
+                        raise errors.AlreadyReservedError
+
+                    free = self.free_allocations_count(allocation, start, end)
+                    if free < quota:
+                        raise errors.AlreadyReservedError
+
+                if allocation.quota_limit > 0:
+                    if allocation.quota_limit < quota:
+                        raise errors.QuotaOverLimit
+
+                if allocation.quota < quota:
+                    raise errors.QuotaImpossible
+
+                if quota < 1:
+                    raise errors.InvalidQuota
+
+        # ok, we're good to go
+        token = new_uuid()
+        found = 0
+
+        # groups are reserved by group-identifier - so all members of a group
+        # or none of them. As such there's no start / end date which is defined
+        # implicitly by the allocation
+        if group:
+            found = 1
+            reservation = Reservation()
+            reservation.token = token
+            reservation.target = group
+            reservation.status = u'pending'
+            reservation.target_type = u'group'
+            reservation.resource = self.uuid
+            reservation.data = data
+            reservation.session_id = session_id
+            reservation.email = email
+            reservation.quota = quota
+            self.session.add(reservation)
+        else:
+            groups = []
+
+            for start, end in dates:
+
+                for allocation in self.allocations_in_range(start, end):
+
+                    if not allocation.overlaps(start, end):
+                        continue
+
+                    found += 1
+
+                    reservation = Reservation()
+                    reservation.token = token
+                    reservation.start, reservation.end = raster.rasterize_span(
+                        start, end, allocation.raster
+                    )
+                    reservation.timezone = timezone
+                    reservation.target = allocation.group
+                    reservation.status = u'pending'
+                    reservation.target_type = u'allocation'
+                    reservation.resource = self.resource
+                    reservation.data = data
+                    reservation.session_id = session_id
+                    reservation.email = email
+                    reservation.quota = quota
+                    self.session.add(reservation)
+
+                    groups.append(allocation.group)
+
+            # check if no group reservation is made with this request.
+            # reserve by group in this case (or make this function
+            # do that automatically)
+            assert len(groups) == len(set(groups)), \
+                'wrongly trying to reserve a group'
+
+        if found:
+            events.on_reservation_made(self.context.name, reservation)
+        else:
+            raise errors.InvalidReservationError
+
+        return token

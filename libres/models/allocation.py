@@ -17,7 +17,7 @@ from libres.modules.raster import (
 )
 
 from libres.models import ORMBase
-from libres.models.types import GUID
+from libres.models.types import GUID, UTCDateTime
 from libres.models.other import OtherModels
 from libres.models.timestamp import TimestampMixin
 
@@ -66,8 +66,8 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     # be stored in UTC
 
     # => TODO
-    _start = Column(types.DateTime(timezone=True), nullable=False)
-    _end = Column(types.DateTime(timezone=True), nullable=False)
+    _start = Column(UTCDateTime(timezone=False), nullable=False)
+    _end = Column(UTCDateTime(timezone=False), nullable=False)
     _raster = Column(types.Integer(), nullable=False)
 
     __table_args__ = (

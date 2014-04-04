@@ -1,5 +1,5 @@
+from datetime import datetime
 from libres import new_scheduler
-from libres.models import Reservation
 
 
 scheduler = new_scheduler(
@@ -12,7 +12,11 @@ scheduler = new_scheduler(
 scheduler.setup_database()
 scheduler.commit()
 
-res = Reservation()
-res.data = {'test': 1234}
-scheduler.context.serial_session.add(res)
+start = datetime(2012, 1, 1, 15, 0)
+end = datetime(2012, 1, 1, 16, 0)
+timezone = 'Europe/Zurich'
+
+scheduler.allocate((start, end), timezone)
+scheduler.reserve('test@example.org', (start, end), timezone)
+
 scheduler.commit()

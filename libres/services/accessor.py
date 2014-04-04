@@ -40,3 +40,6 @@ class ContextAccessor(ContextAware):
     @property
     def readonly_session(self):
         return self.session_provider.sessionstore.readonly
+
+    def validate_email(self, email):
+        return registry.get_service('email_validator')(email)

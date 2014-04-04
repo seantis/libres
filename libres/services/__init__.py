@@ -1,6 +1,7 @@
 def setup_registry():
 
     import json
+    import re
 
     from libres.services.registry import Registry
     from libres.services.email import EmailService
@@ -21,6 +22,14 @@ def setup_registry():
     def email_factory():
         return EmailService()
 
+    def email_validator_factory():
+        # A very simple and stupid email validator. It's way too simple, but
+        # it can be extended to do more powerful checks.
+        def is_valid_email(email):
+            return re.match(r'[^@]+@[^@]+\.[^@]+', email)
+
+        return is_valid_email
+
     def json_serializer_factory():
         return json.dumps
 
@@ -29,6 +38,7 @@ def setup_registry():
 
     with registry.context(registry.master_context):
         registry.set_service('email', email_factory)
+        registry.set_service('email_validator', email_validator_factory)
         registry.set_service('session', session_factory)
         registry.set_service('json_serializer', json_serializer_factory)
         registry.set_service('json_deserializer', json_deserializer_factory)

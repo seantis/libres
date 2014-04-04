@@ -34,6 +34,38 @@ class InvalidAllocationError(LibresError):
     pass
 
 
+class InvalidEmailAddress(LibresError):
+    pass
+
+
+class ReservationTooLong(LibresError):
+    pass
+
+
+class ReservationParametersInvalid(LibresError):
+    pass
+
+
+class AlreadyReservedError(LibresError):
+    pass
+
+
+class QuotaOverLimit(LibresError):
+    pass
+
+
+class QuotaImpossible(LibresError):
+    pass
+
+
+class InvalidQuota(LibresError):
+    pass
+
+
+class InvalidReservationError(LibresError):
+    pass
+
+
 class OverlappingAllocationError(LibresError):
 
     def __init__(self, start, end, existing):

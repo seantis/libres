@@ -11,7 +11,7 @@ from libres.modules.raster import (
 )
 
 from libres.models import ORMBase, Allocation
-from libres.models.types import GUID
+from libres.models.types import GUID, UTCDateTime
 from libres.models.timestamp import TimestampMixin
 
 
@@ -28,14 +28,14 @@ class ReservedSlot(TimestampMixin, ORMBase):
     )
 
     start = Column(
-        types.DateTime(timezone=True),
+        UTCDateTime(),
         primary_key=True,
         nullable=False,
         autoincrement=False
     )
 
     end = Column(
-        types.DateTime(timezone=True),
+        UTCDateTime(),
         nullable=False
     )
 

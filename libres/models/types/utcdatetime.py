@@ -9,7 +9,11 @@ class UTCDateTime(types.TypeDecorator):
 
     def process_bind_param(self, value, engine):
         if value is not None:
-            return value.astimezone(tzutc())
+            assert value.tzinfo, 'datetimes must be timezone-aware'
+
+            # ..though they are stored internally without timezone in utc
+            # the timezone is attached again on date retrieval, see below.
+            return value.astimezone(tzutc()).replace(tzinfo=None)
 
     def process_result_value(self, value, engine):
         if value is not None:
