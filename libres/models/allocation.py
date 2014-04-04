@@ -39,33 +39,46 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     with the real_resource is also called the master-allocation and it is
     the one allocation with mirror_of and resource being equal.
 
-    When in doubt look at the managed_* functions of seantis.reservation.db's
-    Scheduler class.
+    When in doubt look at the managed_* functions of the
+    :class:`.scheduler.Scheduler` class.
 
     """
 
     __tablename__ = 'allocations'
 
+    #: the id of the allocation, autoincremented
     id = Column(types.Integer(), primary_key=True, autoincrement=True)
+
+    #: the resource uuid of the allocation, may not be an actual resource
+    #: see :class:`.models.Allocation` for more information
     resource = Column(GUID(), nullable=False)
+
+    #: resource of which this allocation is a mirror. If the mirror_of
+    #: attribute equals the resource, this is a real resource
+    #: see :class:`.models.Allocation` for more information
     mirror_of = Column(GUID(), nullable=False)
+
+    #: Group uuid to which this allocation belongs to. Every allocation has a
+    #: group but some allcations may be the only one in their group.
     group = Column(GUID(), nullable=False)
+
+    #: Number of times this allocation may be reserved
     quota = Column(types.Integer(), default=1)
+
+    #: Maximum number of times this allocation may be reserved with one
+    #: single reservation.
     quota_limit = Column(types.Integer(), default=0, nullable=False)
+
+    #: Partly available allocations may be reserved partially. How They may
+    #: be partitioned is defined by the allocation's raster.
     partly_available = Column(types.Boolean(), default=False)
+
+    #: True if reservations for this allocation must be approved manually.
     approve_manually = Column(types.Boolean(), default=False)
+
+    #: The timezone this allocation resides in.
     timezone = Column(types.String())
 
-    # The dates are stored without any timzone information (unaware).
-    # Therefore the times are implicitly stored in the timezone the resource
-    # resides in.
-
-    # This is fine and dandy as long as all resources are in the same timezone.
-    # If they are not problems arise. So in the future the resource should
-    # carry a timezone property which is applied to the dates which will then
-    # be stored in UTC
-
-    # => TODO
     _start = Column(UTCDateTime(timezone=False), nullable=False)
     _end = Column(UTCDateTime(timezone=False), nullable=False)
     _raster = Column(types.Integer(), nullable=False)
@@ -76,6 +89,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     )
 
     def copy(self):
+        """ Creates a new copy of this allocation. """
         allocation = Allocation()
         allocation.resource = self.resource
         allocation.mirror_of = self.mirror_of
@@ -95,6 +109,8 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def set_start(self, start):
         self._start = rasterize_start(start, self.raster)
 
+    #: The start of this allocation. Must be timezone aware.
+    #: This date is rastered by the allocation's raster.
     start = property(get_start, set_start)
 
     def get_end(self):
@@ -103,6 +119,12 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def set_end(self, end):
         self._end = rasterize_end(end, self.raster)
 
+    #: The end of this allocation. Must be timezone aware.
+    #: This date is rastered by the allocation's raster.
+    #: The end date is stored with an offset of minues one microsecond
+    #: to avoid overlaps with other allocations.
+    #: That is to say an allocation that ends at 15:00 really ends at
+    #: 14:59:59.999999
     end = property(get_end, set_end)
 
     def get_raster(self):
@@ -117,12 +139,12 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     @property
     def display_start(self):
-        """Does nothing but to form a nice pair to display_end."""
+        """A pendant to display_end. Does nothing to start."""
         return self.start
 
     @property
     def display_end(self):
-        """Returns the end plus one microsecond (nicer display)."""
+        """Returns the end plus one microsecond."""
         return self.end + timedelta(microseconds=1)
 
     @property
@@ -130,7 +152,8 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         """True if the allocation is a whole-day allocation.
 
         A whole-day allocation is not really special. It's just an allocation
-        which starts at 0:00 and ends at 24:00 (or 23:59:59'999).
+        which starts at 0:00 and ends at 24:00 (or 23:59:59'999). Relative
+        to it's timezone.
 
         As such it can actually also span multiple days, only hours and minutes
         count.
@@ -141,26 +164,22 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         s, e = self.display_start, self.display_end
         assert s != e  # this can never be, except when caused by cosmic rays
 
-        return calendar.whole_day(s, e)
+        return calendar.is_whole_day(s, e, self.timezone)
 
     def overlaps(self, start, end):
-        """ Returns true if the current timespan overlaps with the given
-        start and end date.
+        """ Returns true if the allocation overlaps with the given dates. """
 
-        """
         start, end = rasterize_span(start, end, self.raster)
         return calendar.overlaps(start, end, self.start, self.end)
 
     def contains(self, start, end):
-        """ Returns true if the current timespan contains the given start
-        and end date.
+        """ Returns true if the the allocation contains the given dates. """
 
-        """
         start, end = rasterize_span(start, end, self.raster)
         return self.start <= start and end <= self.end
 
     def free_slots(self, start=None, end=None):
-        """ Returns the slots which are not yet reserved."""
+        """ Returns the slots which are not yet reserved. """
         reserved = [slot.start for slot in self.reserved_slots]
 
         slots = []
@@ -171,8 +190,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         return slots
 
     def align_dates(self, start=None, end=None):
-        """ Aligns the given dates to the start and end date of the
-        allocation.
+        """ Aligns the given dates to the start and end date of the allocation.
 
         """
 
@@ -282,13 +300,13 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         the block is reserved.
 
         So given an allocation that goes from 8 to 9 and a reservation that
-        goes from 8:15 until 8:30 we get the following blocks:
+        goes from 8:15 until 8:30 we get the following blocks::
 
-        [
-            (25%, False),
-            (25%, True),
-            (50%, False)
-        ]
+            [
+                (25%, False),
+                (25%, True),
+                (50%, False)
+            ]
 
         This is useful to divide an allocation block into different divs on the
         frontend, indicating to the user which parts of an allocation are

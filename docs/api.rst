@@ -15,6 +15,15 @@ Context Specific Modules
     :members:
 
 
+Sqlalchemy Models
+-----------------
+
+.. py:currentmodule:: libres.models
+
+.. autoclass:: Allocation
+    :members:
+
+
 Settings
 --------
 
