@@ -26,9 +26,9 @@ class TestScheduler(TestCase):
         scheduler.context.readonly_session.close()
 
         ORMBase.metadata.drop_all(scheduler.context.serial_session.bind)
-        scheduler.context.serial_session.close()
-
         scheduler.commit()
+
+        scheduler.context.serial_session.close()
 
     def test_managed_allocations(self):
         start = datetime(2014, 4, 4, 14, 0)
