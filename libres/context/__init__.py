@@ -6,6 +6,7 @@ def setup_registry():
     from libres.context.registry import Registry
     from libres.context.session import SessionProvider
     from libres.context.settings import set_default_settings
+    from libres.context.exposure import Exposure
 
     registry = Registry()
 
@@ -32,11 +33,15 @@ def setup_registry():
     def json_deserializer_factory():
         return json.loads
 
+    def exposure_factory():
+        return Exposure()
+
     with registry.context(registry.master_context):
         registry.set_service('email_validator', email_validator_factory)
         registry.set_service('session', session_factory)
         registry.set_service('json_serializer', json_serializer_factory)
         registry.set_service('json_deserializer', json_deserializer_factory)
+        registry.set_service('exposure', exposure_factory)
 
         set_default_settings(registry)
 
