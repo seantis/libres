@@ -70,6 +70,10 @@ class NotReservableError(LibresError):
     pass
 
 
+class NoReservationsToConfirm(LibresError):
+    pass
+
+
 class InvalidReservationToken(LibresError):
     pass
 
@@ -80,6 +84,16 @@ class OverlappingAllocationError(LibresError):
         self.start = start
         self.end = end
         self.existing = existing
+
+
+class AffectedReservationError(LibresError):
+
+    def __init__(self, existing):
+        self.existing = existing
+
+
+class AffectedPendingReservationError(AffectedReservationError):
+    pass
 
 
 class DatesMayNotBeEqualError(LibresError):

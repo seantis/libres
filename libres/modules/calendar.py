@@ -1,5 +1,14 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
+from dateutil.tz import tzutc
 import arrow
+
+
+def utcnow():
+    """ Returns datetime.utcnow with the timezone set to UTC (it's naive by
+    default).
+
+    """
+    return datetime.utcnow().replace(tzinfo=tzutc())
 
 
 def is_whole_day(start, end, timezone):

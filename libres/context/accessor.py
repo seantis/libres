@@ -43,3 +43,7 @@ class ContextAccessor(ContextAware):
 
     def validate_email(self, email):
         return registry.get_service('email_validator')(email)
+
+    def is_allocation_exposed(self, allocation):
+        exposure = registry.get_service('exposure')
+        return exposure.is_allocation_exposed(allocation)
