@@ -93,32 +93,6 @@ SERIALIZABLE = 'SERIALIZABLE'
 READ_COMMITTED = 'READ_COMMITTED'
 
 
-def get_postgres_version(dsn):
-    """ Returns the postgres version in a tuple with the first value being
-    the major version, the second being the minor version.
-
-    Uses it's own connection to be independent from any session.
-
-    """
-    assert 'postgres' in dsn, "Not a postgres database"
-
-    engine = create_engine(dsn)
-    version = engine.execute('select version()').fetchone()[0]
-    engine.dispose()
-
-    version = re.findall('PostgreSQL (.*?) on', version)[0]
-    return [int(fragment) for fragment in version.split('.')][:2]
-
-
-def assert_dsn(dsn):
-    major, minor = get_postgres_version(dsn)
-
-    assert (major >= 9 and minor >= 1) or (major >= 10), \
-        "PostgreSQL 9.1+ is required. Your version is %i.%i" % (major, minor)
-
-    return dsn
-
-
 class SessionStore(object):
 
     def __init__(self, dsn, engine_config, session_config):
@@ -226,7 +200,7 @@ class SessionProvider(object):
                 self._threadstore.sessions = {}
 
             if self.dsn not in self._threadstore.sessions:
-                assert_dsn(self.dsn)
+                self.assert_dsn(self.dsn)
                 self._threadstore.sessions[self.dsn] = SessionStore(
                     self.dsn,
                     self.engine_config,
@@ -287,6 +261,32 @@ class SessionProvider(object):
     def use_serial(self):
         self.sessionstore.current = self.sessionstore.serial
         return self.sessionstore.current
+
+    def get_postgres_version(self, dsn):
+        """ Returns the postgres version in a tuple with the first value being
+        the major version, the second being the minor version.
+
+        Uses it's own connection to be independent from any session.
+
+        """
+        assert 'postgres' in dsn, "Not a postgres database"
+
+        engine = create_engine(dsn)
+        version = engine.execute('select version()').fetchone()[0]
+        engine.dispose()
+
+        version = re.findall('PostgreSQL (.*?) on', version)[0]
+        return [int(fragment) for fragment in version.split('.')][:2]
+
+    def assert_dsn(self, dsn):
+        major, minor = self.get_postgres_version(dsn)
+
+        assert (major >= 9 and minor >= 1) or (major >= 10), \
+            "PostgreSQL 9.1+ is required. Your version is {}.{}".format(
+                major, minor
+            )
+
+        return dsn
 
 
 def serialized(fn):
