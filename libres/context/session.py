@@ -120,7 +120,7 @@ class SessionStore(object):
 
         """
 
-        # I don't see how overridding the following keys would end well
+        # I don't see how overriding the following keys would end well
         assert 'isolation_level' not in engine_config
         assert 'poolclass' not in engine_config
         assert 'bind' not in session_config
