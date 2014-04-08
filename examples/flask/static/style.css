@@ -1,0 +1,97 @@
+body {
+    font-family: "Lato", sans-serif;
+    margin: 0;
+}
+
+body * {
+    box-sizing: border-box;
+}
+
+.page {
+    margin: 1em;
+}
+
+h1, h2 {
+    font-weight: 300;
+    font-size: 2em;
+}
+
+h2 {
+    font-size: 1.4em;
+    font-weight: 300;
+}
+
+.description {
+    float: left;
+    width: 30%;
+    max-width: 300px;
+    margin-top: 2.5em;
+    font-weight: 100;
+    padding-right: 1em;
+}
+
+#calendar {
+    float: left;
+    width: 70%;
+}
+
+#calendar th, #calendar td {
+    font-weight: 100;
+}
+
+.allocation {
+    background-color: #389f17;
+    border-color: transparent;
+}
+
+.allocation:hover {
+    cursor: pointer;
+}
+
+.allocation.partly-available {
+    background-color: #e4990d;
+}
+
+.allocation.unavailable {
+    background-color: #c62714;
+}
+
+.tooltipster-default {
+    background-color: #efefef;    
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+.tooltipster-default li {
+   list-style: none;
+}
+.tooltipster-default a {
+    color: #333;
+    text-decoration: none;
+}
+.tooltipster-default a:hover {
+    text-decoration: underline;
+}
+
+.notes {
+    width: 100%;
+    text-align: center;
+}
+
+.note.success {
+    background-color: #389f17;
+    color: white;
+    padding: 0.5em;
+}
+
+.note.fail {
+    background-color: #c62714;
+    color: white;
+    padding: 0.5em;
+}
+
+.fc-day:hover {
+    cursor: pointer;
+}
+.fc-day:hover .fc-day-number {
+    font-weight: bold;
+}

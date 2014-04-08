@@ -10,7 +10,7 @@ if sys.version_info.major >= 3:
 
 def generate_uuids(uuid, quota):
     mirror = lambda n: new_uuid_mirror(uuid, str(n))
-    return [mirror(n) for n in xrange(1, quota)]
+    return [mirror(n) for n in range(1, quota)]
 
 
 def flatten(l):

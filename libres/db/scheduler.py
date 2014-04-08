@@ -165,6 +165,9 @@ class Scheduler(object):
 
         return query.all()
 
+    def allocation_mirrors_by_master(self, master):
+        return [s for s in master.siblings() if not s.is_master]
+
     @serialized
     def allocate(
         self,
@@ -517,7 +520,7 @@ class Scheduler(object):
             raise NotImplementedError
 
         for allocation in allocations:
-            assert allocation.mirror_of == self.uuid, """
+            assert allocation.mirror_of == self.resource, """
                 Trying to delete an allocation from a different resource than
                 the scheduler and context. This is a serious error or
                 someone trying to something funny with the POST parameters.
@@ -632,7 +635,7 @@ class Scheduler(object):
             reservation.target = group
             reservation.status = u'pending'
             reservation.target_type = u'group'
-            reservation.resource = self.uuid
+            reservation.resource = self.resource
             reservation.data = data
             reservation.session_id = session_id
             reservation.email = email
@@ -818,7 +821,7 @@ class Scheduler(object):
         targets = []
 
         query = self.queries.all_allocations_in_range(start, end)
-        query = query.filter(Allocation.resource == self.uuid)
+        query = query.filter(Allocation.resource == self.resource)
 
         for master_allocation in query:
 

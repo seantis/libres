@@ -1,17 +1,24 @@
 <!doctype html>
 <title>Libres</title>
 
+<link href='http://fonts.googleapis.com/css?family=Lato:300,400,900' rel='stylesheet' type='text/css'>
+
 <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fullcalendar.css') }}">
+<link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/tooltipster/3.0.5/css/tooltipster.min.css">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
 
+<script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.5.1/moment.min.js"></script>
 <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/tooltipster/3.0.5/js/jquery.tooltipster.min.js"></script>
 
+<script src="{{ url_for('static', filename='contextmenu.js') }}"></script>
 <script src="{{ url_for('static', filename='fullcalendar.js') }}"></script>
 <script src="{{ url_for('static', filename='script.js') }}"></script>
-
+<div class="notes">
+</div>
 <div class="page">
-  <h1>Libres</h1>
+  <h1>Libres Example</h1>
   {% for message in get_flashed_messages() %}
     <div class="flash">{{ message }}</div>
   {% endfor %}

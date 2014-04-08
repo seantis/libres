@@ -26,7 +26,7 @@ def normalize_dates(dates, timezone):
 
 
 def normalize_date(date, timezone):
-    return arrow.get(date).replace(tzinfo=timezone).to('UTC')
+    return arrow.get(date).replace(tzinfo=timezone).to('UTC').datetime
 
 
 def is_whole_day(start, end, timezone):
