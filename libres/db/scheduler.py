@@ -19,6 +19,9 @@ from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
 from libres.db.queries import Queries
 
 
+missing = object()
+
+
 class Scheduler(object):
     """ The Scheduler is responsible for talking to the backend of the given
     context to create reservations. It is the main part of the API.
@@ -173,6 +176,7 @@ class Scheduler(object):
         grouped=False,
         approve_manually=False,
         whole_day=False,
+        data=None,
         raster_value=raster.MIN_RASTER_VALUE
     ):
         """Allocates a spot in the calendar.
@@ -240,6 +244,7 @@ class Scheduler(object):
             allocation.quota_limit = quota_limit
             allocation.partly_available = partly_available
             allocation.approve_manually = approve_manually
+            allocation.data = data
 
             if grouped:
                 allocation.group = group
@@ -416,7 +421,7 @@ class Scheduler(object):
     def move_allocation(
             self, master_id, new_start=None, new_end=None,
             group=None, new_quota=None, approve_manually=None,
-            reservation_quota_limit=0, whole_day=None):
+            quota_limit=0, whole_day=None, data=missing):
 
         assert master_id
         assert any([new_start and new_end, group, new_quota])
@@ -486,8 +491,8 @@ class Scheduler(object):
             if approve_manually is not None:
                 allocation.approve_manually = approve_manually
 
-            if reservation_quota_limit is not None:
-                allocation.reservation_quota_limit = reservation_quota_limit
+            if quota_limit is not None:
+                allocation.quota_limit = quota_limit
 
             if new_quota is not None and allocation.is_master:
                 self.change_quota(allocation, new_quota)
@@ -496,6 +501,9 @@ class Scheduler(object):
             change.start = new.start
             change.end = new.end
             change.group = group or master.group
+
+            if data is not missing:
+                change.data = data
 
     @serialized
     def remove_allocation(self, id=None, group=None):

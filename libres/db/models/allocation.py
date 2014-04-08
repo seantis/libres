@@ -7,6 +7,7 @@ from sqlalchemy.schema import Index
 from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.orm import object_session
 from sqlalchemy.orm.util import has_identity
+from sqlalchemy.dialects.postgresql import JSON
 
 from libres.modules import calendar, utils
 from libres.modules.raster import (
@@ -79,6 +80,12 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     #: The timezone this allocation resides in.
     timezone = Column(types.String())
 
+    #: Custom data reserved for the user
+    data = Column(
+        JSON(),
+        nullable=True
+    )
+
     _start = Column(UTCDateTime(timezone=False), nullable=False)
     _end = Column(UTCDateTime(timezone=False), nullable=False)
     _raster = Column(types.Integer(), nullable=False)
@@ -98,6 +105,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         allocation.partly_available = self.partly_available
         allocation.approve_manually = self.approve_manually
         allocation.timezone = self.timezone
+        allocation.data = self.data
         allocation._start = self._start
         allocation._end = self._end
         allocation._raster = self._raster
