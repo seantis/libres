@@ -1,6 +1,9 @@
 from datetime import timedelta, datetime
 from dateutil.tz import tzutc
+
 import arrow
+
+from libres.modules import utils
 
 
 def utcnow():
@@ -9,6 +12,21 @@ def utcnow():
 
     """
     return datetime.utcnow().replace(tzinfo=tzutc())
+
+
+def normalize_dates(dates, timezone):
+    dates = list(utils.pairs(dates))
+
+    # the dates are expected to be given local to the timezone, but
+    # they are converted to utc for storage
+    for ix, (start, end) in enumerate(dates):
+        dates[ix] = [normalize_date(d, timezone) for d in ((start, end))]
+
+    return dates
+
+
+def normalize_date(date, timezone):
+    return arrow.get(date).replace(tzinfo=timezone).to('UTC')
 
 
 def is_whole_day(start, end, timezone):
@@ -91,4 +109,7 @@ def align_date_to_day(date, timezone, direction):
 def align_range_to_day(start, end, timezone):
     assert start <= end, "{} - {} is an invalid range".format(start, end)
 
-    return align_date_to_day(start, 'down'), align_date_to_day(end, 'up')
+    return (
+        align_date_to_day(start, timezone, 'down'),
+        align_date_to_day(end, timezone, 'up')
+    )

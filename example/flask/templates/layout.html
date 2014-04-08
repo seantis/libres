@@ -1,0 +1,19 @@
+<!doctype html>
+<title>Libres</title>
+
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='fullcalendar.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.5.1/moment.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+
+<script src="{{ url_for('static', filename='fullcalendar.js') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<div class="page">
+  <h1>Libres</h1>
+  {% for message in get_flashed_messages() %}
+    <div class="flash">{{ message }}</div>
+  {% endfor %}
+  {% block body %}{% endblock %}
+</div>

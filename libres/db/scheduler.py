@@ -1,5 +1,4 @@
 from datetime import datetime
-import arrow
 
 from uuid import uuid4 as new_uuid
 from uuid import uuid5 as new_namespace_uuid
@@ -163,24 +162,6 @@ class Scheduler(object):
 
         return query.all()
 
-    def normalize_dates(self, dates, timezone):
-        dates = list(utils.pairs(dates))
-
-        # the dates are expected to be given local to the timezone, but
-        # they are converted to utc for storage
-        for ix, (start, end) in enumerate(dates):
-
-            start = arrow.get(start).replace(tzinfo=timezone).to('UTC')
-            end = arrow.get(end).replace(tzinfo=timezone).to('UTC')
-
-            # while we're at it let's check the dates
-            if start == end:
-                raise errors.DatesMayNotBeEqualError
-
-            dates[ix] = (start.datetime, end.datetime)
-
-        return dates
-
     @serialized
     def allocate(
         self,
@@ -190,7 +171,7 @@ class Scheduler(object):
         quota_limit=0,
         partly_available=False,
         grouped=False,
-        approve_manually=True,
+        approve_manually=False,
         whole_day=False,
         raster_value=raster.MIN_RASTER_VALUE
     ):
@@ -221,7 +202,7 @@ class Scheduler(object):
         that allocation. See Scheduler.__doc__
 
         """
-        dates = self.normalize_dates(dates, timezone)
+        dates = calendar.normalize_dates(dates, timezone)
 
         group = new_uuid()
         quota = quota or 1
@@ -587,7 +568,7 @@ class Scheduler(object):
         if group:
             dates = self.allocation_dates_by_group(group)
 
-        dates = self.normalize_dates(dates, timezone)
+        dates = calendar.normalize_dates(dates, timezone)
 
         # First, the request is checked for saneness. If any requested
         # date cannot be reserved the request as a whole fails.

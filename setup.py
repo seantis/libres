@@ -65,6 +65,10 @@ setup(
         ],
         'tests': [
             'py.test'
+        ],
+        'example': [
+            'flask',
+            'isodate'
         ]
     },
     cmdclass={'test': PyTest},

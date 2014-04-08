@@ -19,7 +19,13 @@ class Registry(object):
 
             self.register_context(master_context)
             self.master_context = master_context
-            self.local.current_context = master_context
+
+    @property
+    def current_context_name(self):
+        if not hasattr(self.local, 'current_context'):
+            self.local.current_context = self.master_context
+        
+        return self.local.current_context
 
     def is_existing_context(self, name):
         return name in self.contexts
@@ -51,13 +57,13 @@ class Registry(object):
 
     @contextmanager
     def context(self, name):
-        previous = self.local.current_context
+        previous = self.current_context_name
         self.switch_context(name)
         yield
         self.switch_context(previous)
 
     def get_current_context(self):
-        return self.get_context(self.local.current_context)
+        return self.get_context(self.current_context_name)
 
     def get_context(self, name):
         self.assert_context(name, must_exist=True)
@@ -76,7 +82,7 @@ class Registry(object):
 
     def set(self, key, value):
         with self.lock:
-            if self.local.current_context in self.locked:
+            if self.current_context_name in self.locked:
                 raise errors.ContextIsLocked
 
             self.get_current_context()[key] = value
