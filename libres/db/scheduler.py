@@ -568,6 +568,8 @@ class Scheduler(object):
 
         """
 
+        timezone = timezone or 'UTC'
+
         assert (dates or group) and not (dates and group)
         assert dates and timezone or not dates
 

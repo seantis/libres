@@ -84,11 +84,7 @@ def allocation_reserve():
 
         token = scheduler.reserve(
             email='user@example.org',
-            dates=(
-                arrow.get(allocation.start).to(allocation.timezone),
-                arrow.get(allocation.end).to(allocation.timezone)
-            ),
-            timezone=allocation.timezone
+            dates=(allocation.start, allocation.end)
         )
         scheduler.approve_reservation(token)
         scheduler.commit()
