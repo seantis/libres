@@ -145,15 +145,18 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     raster = property(get_raster, set_raster)
 
-    @property
-    def display_start(self):
-        """A pendant to display_end. Does nothing to start."""
-        return self.start
+    def display_start(self, timezone=None):
+        """Returns the start in either the timezone given or the timezone
+        on the allocation."""
+        return calendar.to_timezone(self.start, timezone or self.timezone)
 
-    @property
-    def display_end(self):
-        """Returns the end plus one microsecond."""
-        return self.end + timedelta(microseconds=1)
+    def display_end(self, timezone=None):
+        """Returns the end plus one microsecond in either the timezone given
+        or the timezone on the allocation.
+
+        """
+        end = self.end + timedelta(microseconds=1)
+        return calendar.to_timezone(end, timezone or self.timezone)
 
     @property
     def whole_day(self):
@@ -169,7 +172,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         The use of this is to display allocations spanning days differently.
         """
 
-        s, e = self.display_start, self.display_end
+        s, e = self.display_start(), self.display_end()
         assert s != e  # this can never be, except when caused by cosmic rays
 
         return calendar.is_whole_day(s, e, self.timezone)

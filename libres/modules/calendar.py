@@ -29,6 +29,11 @@ def normalize_date(date, timezone):
     return arrow.get(date).replace(tzinfo=timezone).to('UTC').datetime
 
 
+def to_timezone(date, timezone):
+    assert date.tzinfo, "the date must be timezone aware"
+    return arrow.get(date).to(timezone).datetime
+
+
 def is_whole_day(start, end, timezone):
     """Returns true if the given start, end range should be considered
     a whole-day range. This is so if the start time is 0:00:00 and the end

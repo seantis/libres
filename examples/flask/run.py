@@ -19,6 +19,7 @@ scheduler = libres.new_scheduler(
 def events():
 
     timezone = request.args.get('timezone')
+
     start = arrow.get(request.args.get('start')).replace(tzinfo=timezone)
     end = arrow.get(request.args.get('end')).replace(tzinfo=timezone)
 
@@ -26,9 +27,8 @@ def events():
 
     start = start.datetime
     end = end.datetime
+
     for allocation in scheduler.allocations_in_range(start, end):
-        s = arrow.get(allocation.display_start).to(timezone)
-        e = arrow.get(allocation.display_end).to(timezone)
 
         classes = ['allocation']
         availability = scheduler.availability(allocation.start, allocation.end)
@@ -44,8 +44,8 @@ def events():
             dict(
                 id=allocation.id,
                 className=' '.join(classes),
-                start=isodate.datetime_isoformat(s),
-                end=isodate.datetime_isoformat(e),
+                start=isodate.datetime_isoformat(allocation.display_start()),
+                end=isodate.datetime_isoformat(allocation.display_end()),
                 allDay=allocation.whole_day,
                 title='{} Tickets left'.format(allocation.quota_left)
             )
