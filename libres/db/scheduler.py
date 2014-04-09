@@ -47,8 +47,8 @@ class Scheduler(object):
 
         self.name = name
 
-        for name, value in settings.items():
-            self.context.set_config(name, value)
+        for key, value in settings.items():
+            self.context.set_config(key, value)
 
     @property
     def session(self):
@@ -604,11 +604,10 @@ class Scheduler(object):
                 # with manual approval the reservation ends up on the
                 # waitinglist and does not yet need a spot
                 if not allocation.approve_manually:
-                    if not self.find_spot(allocation, start, end):
+                    if not allocation.find_spot(start, end):
                         raise errors.AlreadyReservedError
 
-                    free = self.free_allocations_count(allocation, start, end)
-                    if free < quota:
+                    if allocation.quota_left < quota:
                         raise errors.AlreadyReservedError
 
                 if allocation.quota_limit > 0:
@@ -768,51 +767,6 @@ class Scheduler(object):
         reservation = self.reservation_by_token(token).one()
         reservation.data = data
 
-    def find_spot(self, master_allocation, start, end):
-        """ Returns the first free allocation spot amongst the master and the
-        mirrors. Honors the quota set on the master and will only try the
-        master if the quota is set to 1.
-
-        If no spot can be found, None is returned.
-
-        """
-        master = master_allocation
-        if master.is_available(start, end):
-            return master
-
-        if master.quota == 1:
-            return None
-
-        mirrors = self.allocation_mirrors_by_master(master)
-        tries = master.quota - 1
-
-        for mirror in mirrors:
-            if mirror.is_available(start, end):
-                return mirror
-
-            if tries >= 1:
-                tries -= 1
-            else:
-                return None
-
-    def free_allocations_count(self, master_allocation, start, end):
-        """ Returns the number of free allocations between master_allocation
-        and it's mirrors. """
-
-        free_allocations = 0
-
-        if master_allocation.is_available(start, end):
-            free_allocations += 1
-
-        if master_allocation.quota == 1:
-            return free_allocations
-
-        for mirror in self.allocation_mirrors_by_master(master_allocation):
-            if mirror.is_available(start, end):
-                free_allocations += 1
-
-        return free_allocations
-
     def reservation_targets(self, start, end):
         """ Returns a list of allocations that are free within start and end.
         These allocations may come from the master or any of the mirrors.
@@ -828,7 +782,7 @@ class Scheduler(object):
             if not master_allocation.overlaps(start, end):
                 continue  # may happen because start and end are not rasterized
 
-            found = self.find_spot(master_allocation, start, end)
+            found = master_allocation.find_spot(start, end)
 
             if not found:
                 raise errors.AlreadyReservedError

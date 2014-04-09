@@ -31,20 +31,15 @@ def events():
         e = arrow.get(allocation.display_end).to(timezone)
 
         classes = ['allocation']
-        availability = scheduler.queries.availability_by_allocations(
-            [allocation]
-        )
+        availability = scheduler.availability(allocation.start, allocation.end)
 
-        if availability == 0:
-            classes.append('unavailable')
-        elif availability >= 80:
+        print(availability)
+        if 80 <= availability and availability <= 100:
             classes.append('available')
-        elif availability >= 40:
+        elif 0 < availability and availability <= 80:
             classes.append('partly-available')
-
-        quota_left = scheduler.free_allocations_count(
-            allocation, allocation.start, allocation.end
-        )
+        else:
+            classes.append('unavailable')
 
         events.append(
             dict(
@@ -53,7 +48,7 @@ def events():
                 start=isodate.datetime_isoformat(s),
                 end=isodate.datetime_isoformat(e),
                 allDay=allocation.whole_day,
-                title='{} Tickets left'.format(quota_left)
+                title='{} Tickets left'.format(allocation.quota_left)
             )
         )
 

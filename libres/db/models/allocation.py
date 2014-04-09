@@ -287,6 +287,47 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         return len(query.all()) > 1
 
     @property
+    def quota_left(self):
+        # this can be done quickly if this is a master with a quota of 1
+        if self.is_master and self.quota == 1:
+            return 1 if self.is_available() else 0
+
+        # if not we need to go through the mirrors
+        free_quota = 0
+
+        for mirror in self.siblings():
+            if mirror.is_available():
+                free_quota += 1
+
+        return free_quota
+
+    def find_spot(self, start, end):
+        """ Returns the first free allocation spot amongst the master and the
+        mirrors. Honors the quota set on the master and will only try the
+        master if the quota is set to 1.
+
+        If no spot can be found, None is returned.
+
+        """
+        master = self.get_master()
+        if master.is_available(start, end):
+            return master
+
+        if master.quota == 1:
+            return None
+
+        tries = master.quota - 1
+
+        for mirror in (m for m in self.siblings() if not m.is_master):
+            if mirror.is_available(start, end):
+                return mirror
+
+            if tries >= 1:
+                tries -= 1
+            else:
+                return None
+
+    @property
     def is_separate(self):
         """True if available separately (as opposed to available only as
         part of a group)."""
@@ -369,6 +410,15 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         """True if the allocation is a master allocation."""
 
         return self.resource == self.mirror_of
+
+    def get_master(self):
+        if self.is_master:
+            return self
+        else:
+            query = object_session(self).query(Allocation)
+            query = query.filter(self.resource == self.mirror_of)
+
+            return query.one()
 
     def siblings(self, imaginary=True):
         """Returns the master/mirrors group this allocation is part of.
