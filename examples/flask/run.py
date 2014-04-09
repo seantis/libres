@@ -33,7 +33,6 @@ def events():
         classes = ['allocation']
         availability = scheduler.availability(allocation.start, allocation.end)
 
-        print(availability)
         if 80 <= availability and availability <= 100:
             classes.append('available')
         elif 0 < availability and availability <= 80:
