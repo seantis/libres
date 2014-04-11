@@ -111,7 +111,8 @@ html_theme = 'alabaster'
 # documentation.
 html_theme_options = {
    'logo': 'logo.svg',
-   'description': 'a python library to reserve stuff'
+   'description': 'a python library to reserve stuff',
+   'github_button': False
 }
 
 html_style = 'custom.css'
@@ -156,7 +157,7 @@ html_static_path = ['_static']
 # Custom sidebar templates, maps document names to template names.
 html_sidebars = {
    '**': [
-       'about.html', 'navigation.html', 'searchbox.html', 'donate.html',
+       'about.html', 'navigation.html'
    ]
 }
 

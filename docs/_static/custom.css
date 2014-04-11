@@ -2,18 +2,25 @@
 
 h1, h2, h3, h4, h5, h6 {
     font-family: Georgia, serif !important;
+    color: #9f8d8d;
 }
 h1 {
     margin-top: 0.1em !important;
+    color: #fc5d62;
 }
 
 body {
     font-family: Helvetica, Arial, sans-serif !important;
     font-weight: 100;
+    font-size: 15px;
 }
 
-#searchbox {
-    margin-top: 2em;
+li {
+    margin-bottom: 0.5em;
+}
+
+.body {
+    max-width: 500px;
 }
 
 .search input[type="text"] {
@@ -31,4 +38,36 @@ body {
 .searchtip {
     clear: both;
     visibility: hidden;
+}
+
+#module-libres\.context\.settings h3,
+.class dt,
+.method dt {
+    background-color: #fff0f0;
+    border-left: 10px solid #fc5d62;
+    padding-left: 7px;
+    padding: 2px 7px 3px 7px;
+}
+
+.class {
+    margin-top: 2em;
+}
+
+.sphinxsidebar h3 {
+    display: none;
+}
+
+.sphinxsidebarwrapper h3:first-child {
+    display: none;
+}
+
+.sphinxsidebar .toctree-l1 {
+    margin-top: 1.25em;
+}
+
+#module-libres\.context\.settings h3 {
+    font-size: 1em !important;
+    font-family: Helvetica, Arial, sans-serif !important;
+    color: #222;
+    font-weight: bold;
 }
