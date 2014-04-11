@@ -1,5 +1,6 @@
-Libres, a library for reservations
-==================================
+
+Introduction
+============
 
 A while back we created `seantis.reservation`_, a Plone module to reserve
 different kinds of resources. Spots at a daycare center, tables at a
@@ -28,7 +29,13 @@ Libres is released under the `MIT license`_.
 
 Copyright (c) 2014 `Seantis GmbH`_.
 
+Credits
+=======
+
+The calendar icon in the logo was designed by `Mani Amini`_ from `The Noun Project`_.
 
 .. _`seantis.reservation`: https://github.com/seantis/seantis.reservation
 .. _`MIT license`: http://opensource.org/licenses/MIT
 .. _`Seantis GmbH`: https://www.seantis.ch
+.. _`Mani Amini`: http://thenounproject.com/man1/
+.. _`The Noun Project`: http://thenounproject.com/

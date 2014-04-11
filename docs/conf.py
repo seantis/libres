@@ -110,10 +110,11 @@ html_theme = 'alabaster'
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-   'logo': 'logo.png',
-   'logo_name': True,
-   'logo_text_align': 'center'
+   'logo': 'logo.svg',
+   'description': 'a python library to reserve stuff'
 }
+
+html_style = 'custom.css'
 
 # Add any paths that contain custom themes here, relative to this directory.
 html_theme_path = [alabaster.get_path()]
