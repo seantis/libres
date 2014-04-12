@@ -5,14 +5,11 @@ import arrow
 import libres
 import isodate
 
+from libres.modules.postgresql import Postgresql
+
 
 app = Flask(__name__)
-dsn = open('example.dsn').read()
-
-context = 'example.app'
-scheduler = libres.new_scheduler(
-    context, 'Test Scheduler', settings={'settings.dsn': dsn}
-)
+scheduler = None
 
 
 @app.route('/events')
@@ -111,6 +108,19 @@ def index():
 
 
 if __name__ == '__main__':
-    scheduler.setup_database()
-    scheduler.commit()
-    app.run(debug=True)
+
+    postgresql = Postgresql()
+
+    try:
+        scheduler = libres.new_scheduler(
+            'example.app', 'Test Scheduler', settings={
+                'settings.dsn': postgresql.url()
+            }
+        )
+        scheduler.setup_database()
+        scheduler.commit()
+
+        app.run(debug=True)
+
+    finally:
+        postgresql.stop()

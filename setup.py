@@ -64,11 +64,13 @@ setup(
             'alabaster'
         ],
         'tests': [
-            'py.test'
+            'py.test',
+            'testing.postgresql'
         ],
         'example': [
             'flask',
-            'isodate'
+            'isodate',
+            'testing.postgresql'
         ]
     },
     cmdclass={'test': PyTest},
