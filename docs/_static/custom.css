@@ -19,6 +19,10 @@ li {
     margin-bottom: 0.5em;
 }
 
+.toctree-l1 > ul {
+    margin-top: 0.5em !important;
+}
+
 .body {
     max-width: 500px;
 }

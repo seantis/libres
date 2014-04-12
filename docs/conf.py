@@ -112,7 +112,11 @@ html_theme = 'alabaster'
 html_theme_options = {
    'logo': 'logo.svg',
    'description': 'a python library to reserve stuff',
-   'github_button': False
+   'github_user': 'seantis',
+   'github_repo': 'libres',
+   'github_button': False,
+   'github_banner': False,
+   'travis_button': False,
 }
 
 html_style = 'custom.css'
