@@ -1,34 +1,9 @@
 from datetime import datetime
 
-from libres.tests import TestCase
-from libres.db.models import ORMBase
-from libres import new_scheduler
+from libres.tests import PostgresTestCase
 
 
-class TestScheduler(TestCase):
-
-    def get_new_scheduler(self, context=None, name=None):
-        return new_scheduler(
-            context or self.get_random_string(),
-            name or self.get_random_string(),
-            settings={
-                'settings.dsn': self.dsn
-            }
-        )
-
-    def setUp(self):
-        scheduler = self.get_new_scheduler()
-        scheduler.setup_database()
-        scheduler.commit()
-
-    def tearDown(self):
-        scheduler = self.get_new_scheduler()
-        scheduler.context.readonly_session.close()
-
-        ORMBase.metadata.drop_all(scheduler.context.serial_session.bind)
-        scheduler.commit()
-
-        scheduler.context.serial_session.close()
+class TestScheduler(PostgresTestCase):
 
     def test_managed_allocations(self):
         start = datetime(2014, 4, 4, 14, 0)

@@ -12,14 +12,14 @@ class TestRegistry(TestCase):
         r = Registry()
 
         self.assertEqual(r.master_context, 'master')
-        self.assertEqual(r.local.current_context, 'master')
+        self.assertEqual(r.current_context_name, 'master')
 
         self.assertTrue(r.is_existing_context('master'))
         self.assertFalse(r.is_existing_context('foo'))
 
         r.register_context('foo')
         self.assertTrue(r.is_existing_context('foo'))
-        self.assertEqual(r.local.current_context, 'master')
+        self.assertEqual(r.current_context_name, 'master')
 
         r.switch_context('foo')
         self.assertEqual(r.local.current_context, 'foo')
@@ -27,7 +27,7 @@ class TestRegistry(TestCase):
         with r.context('master'):
             self.assertEqual(r.local.current_context, 'master')
 
-        self.assertEqual(r.local.current_context, 'foo')
+        self.assertEqual(r.current_context_name, 'foo')
         self.assertEqual(r.get_context('foo'), r.get_current_context())
 
     def test_locked_contexts(self):

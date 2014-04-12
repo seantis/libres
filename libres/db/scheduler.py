@@ -58,6 +58,11 @@ class Scheduler(object):
         """
         return self.context.session
 
+    def dispose(self):
+        """ Closes all known sessions/binds. """
+        self.context.serial_session.bind.dispose()
+        self.context.readonly_session.bind.dispose()
+
     @property
     def resource(self):
         """ The resource that belongs to this scheduler. The resource is

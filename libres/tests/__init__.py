@@ -1,35 +1,57 @@
-import os.path
 import unittest
-
 from uuid import uuid4
-from textwrap import dedent
+
+from libres import new_scheduler
+from libres.modules.postgresql import Postgresql
+
+from libres.db.models import ORMBase
 
 
 class TestCase(unittest.TestCase):
+    pass
+
+
+class PostgresTestCase(TestCase):
+
+    created_schedulers = []
+
+    def get_new_scheduler(self, context=None, name=None):
+        scheduler = new_scheduler(
+            context or uuid4().hex,
+            name or uuid4().hex,
+            settings={
+                'settings.dsn': self.dsn
+            }
+        )
+        self.created_schedulers.append(scheduler)
+
+        return scheduler
 
     @property
     def dsn(self):
-        if not hasattr(self, '_dsn'):
-            self._dsn = self.get_local_dsn()
+        return self.postgresql.url()
 
-        return self._dsn
+    @classmethod
+    def setUpClass(cls):
+        cls.postgresql = Postgresql()
 
-    def get_local_dsn(self):
-        import libres
+    @classmethod
+    def tearDownClass(cls):
+        for scheduler in cls.created_schedulers:
+            scheduler.dispose()
 
-        src_folder = '/'.join((libres.__file__).split('/')[:-2])
-        dsn_file = os.path.join(src_folder, 'test.dsn')
+        cls.postgresql.stop()
 
-        if os.path.exists(dsn_file):
-            return open(dsn_file).read().strip('\n').strip('')
-        else:
-            assert False, dedent("""
-                Cannot run tests because the postgres database is not
-                configured. Add a test.dsn file to the root of the libres
-                repository and put a dsn to your local postgresql database
-                into it. Be sure to use a test database that is not used
-                otherwise, als all existing records will be deleted.
-            """)
+    def setUp(self):
+        scheduler = self.get_new_scheduler()
+        scheduler.setup_database()
+        scheduler.commit()
 
-    def get_random_string(self):
-        return uuid4().hex
+    def tearDown(self):
+        scheduler = self.get_new_scheduler()
+        scheduler.context.readonly_session.close()
+
+        ORMBase.metadata.drop_all(scheduler.context.serial_session.bind)
+        scheduler.commit()
+
+        scheduler.context.serial_session.close()
