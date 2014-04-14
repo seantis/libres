@@ -8,3 +8,8 @@ and requires Postgresql 9.2+.
 .. < package description
 
 **This package is under heavy development**
+
+Batches!
+--------
+
+.. image:: https://travis-ci.org/seantis/libres.svg?branch=master   :target: https://travis-ci.org/seantis/libres
