@@ -12,4 +12,6 @@ and requires Postgresql 9.2+.
 Batches!
 --------
 
-.. image:: https://travis-ci.org/seantis/libres.svg?branch=master   :target: https://travis-ci.org/seantis/libres
+.. image:: https://travis-ci.org/seantis/libres.svg?branch=master
+  :target: https://travis-ci.org/seantis/libres
+  :alt:    travis build status
