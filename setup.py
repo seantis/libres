@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Libres
 ------
@@ -64,8 +65,9 @@ setup(
             'alabaster'
         ],
         'tests': [
-            'py.test',
-            'testing.postgresql'
+            'pytest',
+            'testing.postgresql',
+            'tox'
         ],
         'example': [
             'flask',

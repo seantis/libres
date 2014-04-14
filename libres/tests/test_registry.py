@@ -82,8 +82,8 @@ class TestRegistry(TestCase):
                 self.result = self.registry.get_current_context()
 
             def join(self):
-                result = self.result
                 threading.Thread.join(self)
+                result = self.result
                 return result
 
         for i in range(0, 100):
