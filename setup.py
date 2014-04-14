@@ -1,28 +1,12 @@
 # -*- coding: utf-8 -*-
-"""
-Libres
-------
-
-Libres is a reservations management library to reserve things like tables at
-a restaurant or tickets at an event. It works with Python 2.7 and Python 3.3+
-and requires Postgresql 9.1+.
-
-Libres is easy
-``````````````
-
-.. code:: python
-
-    from libres import hostess
-
-    hostess.allocate('18:00 - 22:00', 'daily')
-    hostess.reserve('18:00 - 19:00', '2014-02-14', 'jon@example.org')
-
-    hostess.reservations('2014-02-14')
-
-        18:00 - 19:00   jon@example.org
-
-"""
 from setuptools import setup, Command
+
+
+def get_long_description():
+    for line in open('README.rst'):
+        if '.. < package description' in line:
+            break
+        yield line
 
 
 class PyTest(Command):
@@ -49,7 +33,7 @@ setup(
     author='Denis Krienbühl',
     author_email='denis@href.ch',
     description='A library to reserve things',
-    long_description=__doc__,
+    long_description='\n'.join(get_long_description()),
     packages=['libres'],
     include_package_data=True,
     zip_safe=False,
