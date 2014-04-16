@@ -1,4 +1,4 @@
-Conecpts
+Concepts
 ========
 
 To really get an understanding of this libarary you should learn about a number
