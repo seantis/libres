@@ -1,0 +1,7 @@
+recursive-include libres *
+recursive-include docs *
+include *.txt
+include *.rst
+global-exclude *.mo
+global-exclude *.pyc
+global-exclude */__pycache__
