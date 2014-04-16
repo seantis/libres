@@ -40,11 +40,7 @@ setup(
     platforms='any',
     install_requires=[
         'arrow',
-<<<<<<< HEAD
         'python-dateutil',
-=======
-        'dateutils',
->>>>>>> 0c3a29a6e77097a0a18b4299369539d403afdc41
         'psycopg2',
         'SQLAlchemy>=0.9',
     ],
