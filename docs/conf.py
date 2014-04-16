@@ -41,8 +41,7 @@ class MockModule(object):
         else:
             return MockModule()
 
-MOCK_MODULES = ['psycogp2']
-for mod_name in MOCK_MODULES:
+for mod_name in ['psycogp2', 'dateutil']:
     sys.modules[mod_name] = MockModule()
 
 # If extensions (or modules to document with autodoc) are in another directory,
