@@ -34,11 +34,11 @@ Go to docs and install the requirements::
     cd docs
     pip install -r requirements.txt
 
-Build the docs:
+Build the docs::
 
     make html
 
-Open the docs:
+Open the docs::
 
     open build/html/index.html
 
