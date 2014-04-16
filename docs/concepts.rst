@@ -2,7 +2,7 @@ Concepts
 ========
 
 To really get an understanding of this libarary you should learn about a number
-of core conecpts and design decisions we made whilst developing it.
+of core concepts and design decisions we made whilst developing it.
 
 Resources
 ---------
