@@ -4,4 +4,4 @@ include *.txt
 include *.rst
 global-exclude *.mo
 global-exclude *.pyc
-global-exclude */__pycache__
+global-exclude __pycache__/*

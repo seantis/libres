@@ -40,7 +40,7 @@ setup(
     platforms='any',
     install_requires=[
         'arrow',
-        'dateutil',
+        'python-dateutil',
         'psycopg2',
         'SQLAlchemy>=0.9',
     ],
@@ -49,11 +49,6 @@ setup(
             'pytest',
             'testing.postgresql',
             'tox'
-        ],
-        'example': [
-            'flask',
-            'isodate',
-            'testing.postgresql'
         ]
     },
     cmdclass={'test': PyTest},

@@ -9,6 +9,53 @@ and requires Postgresql 9.2+.
 
 **This package is under heavy development**
 
+Run the Tests
+-------------
+    
+Install tox and run it:
+
+    pip install tox
+    tox
+
+Limit the tests to a specific python version:
+
+    tox -e py27
+
+Documentation
+-------------
+
+http://libres.readthedocs.org/
+
+Build the Docs
+--------------
+
+Go to docs and install the requirements:
+
+    cd docs
+    pip install -r requirements.txt
+
+Build the docs:
+
+    make html
+
+Open the docs:
+
+    open build/html/index.html
+
+Run the Example
+---------------
+
+Go to examples/flask and install the requirements:
+
+    cd examples/flask
+    pip install -r requirements.txt
+
+Run the example:
+
+    python run.py
+
+Open http://localhost:5000 and click around.
+
 Batches!
 --------
 
