@@ -12,12 +12,12 @@ and requires Postgresql 9.2+.
 Run the Tests
 -------------
     
-Install tox and run it:
+Install tox and run it::
 
     pip install tox
     tox
 
-Limit the tests to a specific python version:
+Limit the tests to a specific python version::
 
     tox -e py27
 
@@ -29,7 +29,7 @@ http://libres.readthedocs.org/
 Build the Docs
 --------------
 
-Go to docs and install the requirements:
+Go to docs and install the requirements::
 
     cd docs
     pip install -r requirements.txt
@@ -45,12 +45,12 @@ Open the docs:
 Run the Example
 ---------------
 
-Go to examples/flask and install the requirements:
+Go to examples/flask and install the requirements::
 
     cd examples/flask
     pip install -r requirements.txt
 
-Run the example:
+Run the example::
 
     python run.py
 
