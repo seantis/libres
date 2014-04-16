@@ -40,8 +40,9 @@ setup(
     platforms='any',
     install_requires=[
         'arrow',
+        'dateutil',
         'psycopg2',
-        'SQLAlchemy>=0.9'
+        'SQLAlchemy>=0.9',
     ],
     extras_require={
         'tests': [
