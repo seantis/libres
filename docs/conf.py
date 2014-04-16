@@ -17,6 +17,34 @@ import sys
 import os
 import alabaster
 
+# -- Mock C Modules (they don't build on readthedocs.org)
+# http://read-the-docs.readthedocs.org/en/latest/faq.html
+# #i-get-import-errors-on-libraries-that-depend-on-c-modules
+class MockModule(object):
+
+    __all__ = []
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __call__(self, *args, **kwargs):
+        return MockModule()
+
+    @classmethod
+    def __getattr__(cls, name):
+        if name in ('__file__', '__path__'):
+            return '/dev/null'
+        elif name[0] == name[0].upper():
+            mockType = type(name, (), {})
+            mockType.__module__ = __name__
+            return mockType
+        else:
+            return MockModule()
+
+MOCK_MODULES = ['psycogp2']
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = MockModule()
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
