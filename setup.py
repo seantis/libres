@@ -44,10 +44,6 @@ setup(
         'SQLAlchemy>=0.9'
     ],
     extras_require={
-        'docs': [
-            'sphinx',
-            'alabaster'
-        ],
         'tests': [
             'pytest',
             'testing.postgresql',
