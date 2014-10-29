@@ -98,3 +98,7 @@ class AffectedPendingReservationError(AffectedReservationError):
 
 class DatesMayNotBeEqualError(LibresError):
     pass
+
+
+class TimerangeTooLong(LibresError):
+    pass

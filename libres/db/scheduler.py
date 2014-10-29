@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from uuid import uuid4 as new_uuid
 from uuid import uuid5 as new_namespace_uuid
 
 from sqlalchemy.orm import exc
-from sqlalchemy.sql import and_
+from sqlalchemy.sql import and_, not_
 
 from libres.modules import calendar
 from libres.modules import errors
@@ -128,26 +128,59 @@ class Scheduler(object):
         query = query.filter(Allocation.id == id)
         return query.one()
 
-    def allocations_by_group(self, group, masters_only=True):
+    def allocations_by_ids(self, ids):
         query = self.managed_allocations()
-        query = query.filter(Allocation.group == group)
+        query = query.filter(Allocation.id.in_(ids))
+        query = query.order_by(Allocation._start)
+        return query
+
+    def allocations_by_group(self, group, masters_only=True):
+        return self.allocations_by_groups([group], masters_only=masters_only)
+
+    def allocations_by_groups(self, groups, masters_only=True):
+        query = self.managed_allocations()
+        query = query.filter(Allocation.group.in_(groups))
 
         if masters_only:
             query = query.filter(Allocation.resource == self.resource)
 
         return query
 
-    def allocations_by_reservation(self, reservation_token):
+    def allocations_by_reservation(self, token, id=None):
         """ Returns the allocations for the reservation if it was *approved*,
         pending reservations return nothing. If you need to get the allocation
         a pending reservation might be targeting, use _target_allocations
         in model.reservation.
 
         """
+
+        # TODO -> this is much too joiny, it was easier when we assumed
+        # that there would be one reservation per token, now that there
+        # is more than one reservation per token we should denormalize
+        # this a little by adding the reservation_id to the reserved slot
+
+        groups = self.managed_reservations()
+        groups = groups.with_entities(Reservation.target)
+        groups = groups.filter(Reservation.token == token)
+
+        if id is not None:
+            groups = groups.filter(Reservation.id == id)
+
+        allocations = self.managed_allocations()
+        allocations = allocations.with_entities(Allocation.id)
+        allocations = allocations.filter(Allocation.group.in_(
+            groups.subquery()
+        ))
+
         query = self.managed_allocations()
         query = query.join(ReservedSlot)
         query = query.filter(
-            ReservedSlot.reservation_token == reservation_token
+            ReservedSlot.reservation_token == token
+        )
+        query = query.filter(
+            ReservedSlot.allocation_id.in_(
+                allocations.subquery()
+            )
         )
         return query
 
@@ -172,6 +205,24 @@ class Scheduler(object):
 
     def allocation_mirrors_by_master(self, master):
         return [s for s in master.siblings() if not s.is_master]
+
+    def allocation_dates_by_ids(self, ids, start_time=None, end_time=None):
+
+        for allocation in self.allocations_by_ids(ids).all():
+
+            s = start_time or allocation.display_start.time()
+            e = end_time or allocation.display_end.time()
+
+            s, e = allocation.limit_timespan(s, e)
+
+            yield s, e - timedelta(microseconds=1)
+
+    def manual_approval_required(self, ids):
+        """ Returns True if any of the allocations require manual approval. """
+        query = self.allocations_by_ids(ids)
+        query = query.filter(Allocation.approve_manually == True)
+
+        return query.first() and True or False
 
     @serialized
     def allocate(
@@ -263,7 +314,7 @@ class Scheduler(object):
 
         self.session.add_all(allocations)
 
-        events.on_allocations_add(self.context.name, allocations)
+        events.on_allocations_added(self.context.name, allocations)
 
         return allocations
 
@@ -514,13 +565,15 @@ class Scheduler(object):
                 change.data = data
 
     @serialized
-    def remove_allocation(self, id=None, group=None):
+    def remove_allocation(self, id=None, groups=None):
         if id:
             master = self.allocation_by_id(id)
             allocations = [master]
             allocations.extend(self.allocation_mirrors_by_master(master))
-        elif group:
-            allocations = self.allocations_by_group(group, masters_only=False)
+        elif groups:
+            allocations = self.allocations_by_groups(
+                groups, masters_only=False
+            )
         else:
             raise NotImplementedError
 
@@ -629,83 +682,87 @@ class Scheduler(object):
 
         # ok, we're good to go
         token = new_uuid()
-        found = 0
+        reservations = []
 
-        # groups are reserved by group-identifier - so all members of a group
+       # groups are reserved by group-identifier - so all members of a group
         # or none of them. As such there's no start / end date which is defined
         # implicitly by the allocation
-        if group:
-            found = 1
-            reservation = Reservation()
-            reservation.token = token
-            reservation.target = group
-            reservation.status = u'pending'
-            reservation.target_type = u'group'
-            reservation.resource = self.resource
-            reservation.data = data
-            reservation.session_id = session_id
-            reservation.email = email
-            reservation.quota = quota
-            self.session.add(reservation)
-        else:
-            groups = []
+        def new_reservations_by_group(group):
+            if group:
+                reservation = Reservation()
+                reservation.token = token
+                reservation.target = group
+                reservation.status = u'pending'
+                reservation.target_type = u'group'
+                reservation.resource = self.resource
+                reservation.data = data
+                reservation.session_id = session_id
+                reservation.email = email.strip()
+                reservation.quota = quota
+
+                yield reservation
+
+        # all other reservations are reserved by start/end date
+        def new_reservations_by_dates(dates):
+            already_reserved_groups = set()
 
             for start, end in dates:
-
                 for allocation in self.allocations_in_range(start, end):
+                    if allocation.group in already_reserved_groups:
+                        continue
 
                     if not allocation.overlaps(start, end):
                         continue
 
-                    found += 1
+                    # automatically reserve the whole group if the allocation
+                    # is part of a group
+                    if allocation.in_group:
+                        already_reserved_groups.add(allocation.group)
 
-                    reservation = Reservation()
-                    reservation.token = token
-                    reservation.start, reservation.end = raster.rasterize_span(
-                        start, end, allocation.raster
-                    )
-                    reservation.timezone = timezone
-                    reservation.target = allocation.group
-                    reservation.status = u'pending'
-                    reservation.target_type = u'allocation'
-                    reservation.resource = self.resource
-                    reservation.data = data
-                    reservation.session_id = session_id
-                    reservation.email = email
-                    reservation.quota = quota
-                    self.session.add(reservation)
+                        # I really want to use 'yield from'. Python 3 ftw!
+                        for r in new_reservations_by_group(allocation.group):
+                            yield r
+                    else:
+                        reservation = Reservation()
+                        reservation.token = token
+                        reservation.start, reservation.end\
+                            = raster.rasterize_span(
+                                start, end, allocation.raster
+                            )
+                        reservation.target = allocation.group
+                        reservation.status = u'pending'
+                        reservation.target_type = u'allocation'
+                        reservation.resource = self.resource
+                        reservation.data = data
+                        reservation.session_id = session_id
+                        reservation.email = email.strip()
+                        reservation.quota = quota
 
-                    groups.append(allocation.group)
+                        yield reservation
 
-            # check if no group reservation is made with this request.
-            # reserve by group in this case (or make this function
-            # do that automatically)
-            assert len(groups) == len(set(groups)), \
-                'wrongly trying to reserve a group'
-
-        if found:
-            events.on_reservation_made(self.context.name, reservation)
+        # create the reservations
+        if group:
+            reservations = tuple(new_reservations_by_group(group))
         else:
+            reservations = tuple(new_reservations_by_dates(dates))
+
+        if not reservations:
             raise errors.InvalidReservationError
+
+        for reservation in reservations:
+            self.session.add(reservation)
+
+        events.on_reservations_made(self.context.name, reservations)
 
         return token
 
     @serialized
-    def approve_reservation(self, token):
-        """ This function approves an existing reservation and writes the
-        reserved slots accordingly.
-
-        Returns a list with the reserved slots.
-
-        """
-
-        reservation = self.reservation_by_token(token).one()
-
+    def _approve_reservation_record(self, reservation):
         # write out the slots
         slots_to_reserve = []
 
         if reservation.target_type == u'group':
-            dates = self.dates_by_group(reservation.target)
+            dates = self.allocation_dates_by_group(reservation.target)
         else:
             dates = ((reservation.start, reservation.end),)
 
@@ -717,12 +774,15 @@ class Scheduler(object):
         for start, end in dates:
 
             for allocation in self.reservation_targets(start, end):
-                for slot_start, slot_end in allocation.all_slots(start, end):
+
+                allocation_slots = allocation.all_slots(start, end)
+
+                for slot_start, slot_end in allocation_slots:
                     slot = ReservedSlot()
                     slot.start = slot_start
                     slot.end = slot_end
                     slot.resource = allocation.resource
-                    slot.reservation_token = token
+                    slot.reservation_token = reservation.token
 
                     # the slots are written with the allocation
                     allocation.reserved_slots.append(slot)
@@ -738,41 +798,362 @@ class Scheduler(object):
         if not slots_to_reserve:
             raise errors.NotReservableError
 
-        events.on_reservation_approve(self.context.name, reservation)
+        return slots_to_reserve
+
+    @serialized
+    def approve_reservations(self, token):
+        """ This function approves an existing reservation and writes the
+        reserved slots accordingly.
+
+        Returns a list with the reserved slots.
+
+        """
+
+        slots_to_reserve = []
+
+        reservations = self.reservations_by_token(token).all()
+
+        for reservation in reservations:
+            slots_to_reserve.extend(
+                self._approve_reservation_record(reservation)
+            )
+
+        events.on_reservations_approved(self.context.name, reservations)
 
         return slots_to_reserve
 
     @serialized
     def deny_reservation(self, token):
-        """ Denies a pending reservation. """
+        """ Denies a pending reservation, removing it from the records and
+        sending an email to the reservee.
 
-        query = self.reservation_by_token(token)
-        query.filter(Reservation.status == u'pending')
+        """
 
-        reservation = query.one()
-        self.session.delete(reservation)
+        query = self.reservations_by_token(token)
+        query = query.filter(Reservation.status == u'pending')
 
-        events.on_reservation_deny(self.context.name, reservation)
+        reservations = query.all()
+
+        query.delete()
+
+        events.on_reservations_denied(self.context.name, reservations)
 
     @serialized
-    def remove_reservation(self, token):
-        """ Removes all reserved slots of the given reservation token. """
+    def remove_reservation(self, token, id=None):
+        """ Removes all reserved slots of the given reservation token.
 
-        slots = self.reserved_slots_by_reservation(token)
+        Note that removing a reservation does not let the reservee know that
+        his reservation has been removed.
+
+        If you want to let the reservee know what happened,
+        use revoke_reservation.
+
+        The id is optional. If given, only the reservation with the given
+        token AND id is removed.
+
+        """
+
+        slots = self.reserved_slots_by_reservation(token, id)
 
         for slot in slots:
             self.session.delete(slot)
 
-        reservation = self.reservation_by_token(token).one()
-        reservation.delete()
+        reservations = self.reservations_by_token(token, id)
+        reservations.delete('fetch')
 
-        events.on_reservation_remove(self.context.name, reservation)
+        events.on_reservations_removed(self.context.name, reservations)
 
     @serialized
-    def update_reservation_data(self, token, data):
+    def change_email(self, token, new_email):
+        for reservation in self.reservations_by_token(token).all():
+            reservation.email = new_email
 
-        reservation = self.reservation_by_token(token).one()
-        reservation.data = data
+    @serialized
+    def change_reservation_data(self, token, data):
+
+        for reservation in self.reservations_by_token(token).all():
+            reservation.data = data
+
+    @serialized
+    def change_reservation_time_candidates(self, tokens=None):
+        """ Returns the reservations that fullfill the restrictions
+        imposed by change_reservation_time.
+
+        Pass a list of reservaiton tokens to further limit the results.
+
+        """
+
+        query = self.managed_reservations()
+        query = query.filter(Reservation.status == 'approved')
+        query = query.filter(Reservation.target_type == 'allocation')
+
+        groups = self.managed_allocations().with_entities(Allocation.group)
+        groups = groups.filter(Allocation.partly_available == True)
+
+        query = query.filter(Reservation.target.in_(groups.subquery()))
+
+        if tokens:
+            query = query.filter(Reservation.token.in_(tokens))
+
+        return query
+
+    @serialized
+    def change_reservation_time(self, token, id, new_start, new_end):
+        """ Allows to change the timespan of a reservation under certain
+        conditions:
+
+        - The new timespan must be reservable inside the existing allocation.
+          (So you cannot use this method to reserve another allocation)
+        - The referenced allocation must not be in a group.
+        - The referenced allocation must be partly available.
+        - The referenced reservation must be approved
+
+        There is really only one usecase that this function works for:
+
+        The user wants to change the timespan of a reservation in a meeting
+        room kind of setup where you have lots of partly-available
+        allocations.
+
+        Returns True if a change was made.
+
+        Just like revoke_reservation, this function raises an event which
+        includes a send_email flag and a reason which may be used to inform
+        the user of the changes to his reservation.
+
+        """
+
+        # check for the reservation first as the allocation won't exist
+        # if the reservation has not been approved yet
+        assert new_start and new_end
+        existing_reservation = self.reservations_by_token(token, id).one()
+
+        assert existing_reservation.status == 'approved', """
+            Reservation must be approved.
+        """
+
+        # if there's nothing to change, do not change
+        if existing_reservation.start == new_start:
+            if existing_reservation.end == new_end:
+                return False
+            if existing_reservation.end == new_end - timedelta(microseconds=1):
+                return False
+
+        # will return raise a MultipleResultsFound exception if this is a group
+        allocation = self.allocations_by_reservation(token, id).one()
+
+        assert allocation.partly_available, """
+            Allocation must be partly available.
+        """
+
+        if not allocation.contains(new_start, new_end):
+            raise errors.TimerangeTooLong()
+
+        reservation_arguments = dict(
+            email=existing_reservation.email,
+            dates=(new_start, new_end),
+            data=existing_reservation.data,
+            quota=existing_reservation.quota
+        )
+
+        old_start = existing_reservation.display_start
+        old_end = existing_reservation.display_end
+
+        self.session.begin_nested()
+
+        try:
+            self.remove_reservation(token, id)
+
+            new_token = self.reserve(**reservation_arguments)
+            new_reservation = self.reservations_by_token(new_token).one()
+            new_reservation.id = id
+            new_reservation.token = token
+
+            self._approve_reservation_record(new_reservation)
+
+            events.on_reservation_time_changed(
+                self.context.name,
+                old_time=(old_start, old_end),
+                new_time=(new_start, new_end),
+            )
+        except:
+            self.session.rollback()
+            raise
+        else:
+            self.session.commit()
+
+        return True
+
+    def search_allocations(
+        self, start, end,
+        days=None,
+        minspots=0,
+        available_only=False,
+        whole_day='any',
+        groups='any',
+        strict=False
+    ):
+        """ Search allocations using a number of options. The date is split
+        into date/time. All allocations between start and end date within
+        the given time (on each day) are included.
+
+        For example, start=01.01.2012 12:00 end=31.01.2012 14:00 will include
+        all allocaitons in January 2012 which OVERLAP the given times. So an
+        allocation starting at 11:00 and ending at 12:00 will be included!
+
+        WARNING allocations not matching the start/end date may be included
+        if they belong to a group from which a member *is* included!
+
+        If that behavior is not wanted set 'strict' to True
+        or set 'include_groups' to 'no' (though you won't get any groups then).
+
+        Allocations which are included in this way will return True in the
+        following expression:
+
+        getattr(allocation, 'is_extra_result', False)
+
+        :start:
+            Include allocations starting on or after this date.
+
+        :end:
+            Include allocations ending on or before this date.
+
+        :days:
+            List of days which should be considered, a subset of:
+            (['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'])
+
+            If left out, all days are included.
+
+        :minspots:
+            Minimum number of spots reservable.
+
+        :available_only:
+            If True, unavailable allocations are left out
+            (0% availability). Default is False.
+
+        :whole_day:
+            May have one of the following values: 'yes', 'no', 'any'
+
+            If yes, only whole_day allocations are returned.
+            If no, whole_day allocations are filtered out.
+            If any (default), all allocations are included.
+
+            Any is the same as leaving the option out.
+
+        :include_groups:
+            'any' if all allocations should be included.
+            'yes' if only group-allocations should be included.
+            'no' if no group-allocations should be included.
+
+            See allocation.in_group to see what constitutes a group
+
+        :strict:
+            Set to True if you don't want groups included as a whole if a
+            groupmember is found. See comment above.
+        """
+
+        assert start
+        assert end
+
+        assert whole_day in ('yes', 'no', 'any')
+        assert groups in ('yes', 'no', 'any')
+
+        if days:
+            days_map = {
+                'mo': 0,
+                'tu': 1,
+                'we': 2,
+                'th': 3,
+                'fr': 4,
+                'sa': 5,
+                'su': 6
+            }
+
+            # get the day from the map - if impossible take the verbatim value
+            # this allows for using strings or integers
+            days = set(days_map.get(day, day) for day in days)
+
+        query = self.allocations_in_range(start, end)
+        query = query.order_by(Allocation._start)
+
+        allocations = []
+
+        known_groups = set()
+        known_ids = set()
+
+        for allocation in query.all():
+
+            if not self.context.allocation_is_exposed(allocation):
+                continue
+
+            s = datetime.combine(allocation.start.date(), start.time())
+            e = datetime.combine(allocation.end.date(), end.time())
+
+            if not allocation.overlaps(s, e):
+                continue
+
+            if days:
+                if allocation.start.weekday() not in days:
+                    continue
+
+            if whole_day != 'any':
+                if whole_day == 'yes' and not allocation.whole_day:
+                    continue
+                if whole_day == 'no' and allocation.whole_day:
+                    continue
+
+            # minspots means that we don't show allocations which cannot
+            # be reserved with the required spots in one reservation
+            # so we can disregard all allocations with a lower quota limit.
+            #
+            # the spots are later checked again for actual availability, but
+            # that is a heavier check, so it doesn't belong here.
+            if minspots:
+                if allocation.reservation_quota_limit > 0:
+                    if allocation.reservation_quota_limit < minspots:
+                        continue
+
+            if available_only:
+                if not allocation.find_spot(allocation, s, e):
+                    continue
+
+            if minspots:
+                availability = self.availability(
+                    allocation.start, allocation.end
+                )
+
+                if (minspots / float(allocation.quota) * 100.0) > availability:
+                    continue
+
+            # keep track of allocations in groups as those need to be added
+            # to the result, even though they don't match the search
+            in_group = (
+                allocation.group in known_groups or allocation.in_group
+            )
+
+            if in_group:
+                known_groups.add(allocation.group)
+                known_ids.add(allocation.id)
+
+            if groups != 'any':
+                if groups == 'yes' and not in_group:
+                    continue
+                if groups == 'no' and in_group:
+                    continue
+
+            allocations.append(allocation)
+
+        if not strict and groups != 'no' and known_ids and known_groups:
+            query = self.managed_allocations()
+            query = query.filter(not_(Allocation.id.in_(known_ids)))
+            query = query.filter(Allocation.group.in_(known_groups))
+
+            for allocation in query.all():
+                allocation.is_extra_result = True
+                allocations.append(allocation)
+
+            allocations.sort(key=lambda a: a._start)
+
+        return allocations
 
     def reservation_targets(self, start, end):
         """ Returns a list of allocations that are free within start and end.
@@ -798,71 +1179,51 @@ class Scheduler(object):
 
         return targets
 
-    def reserved_slots_by_reservation(self, reservation_token):
-        """Returns all reserved slots of the given reservation."""
+    def reserved_slots_by_reservation(self, token, id=None):
+        """ Returns all reserved slots of the given reservation.
+        The id is optional and may be used only return the slots from a
+        specific reservation matching token and id.
+        """
 
-        assert reservation_token
-
-        query = self.managed_reserved_slots()
-        query = query.filter(
-            ReservedSlot.reservation_token == reservation_token
-        )
-
-        return query
-
-    def reserved_slots_by_range(self, reservation_token, start, end):
-        assert start and end
-
-        query = self.reserved_slots_by_reservation(reservation_token)
-        query = query.filter(start <= ReservedSlot.start)
-        query = query.filter(ReservedSlot.end <= end)
-
-        slots = []
-        for slot in query:
-            if not slot.allocation.overlaps(start, end):
-                # Might happen because start and end are not rasterized
-                continue
-
-            slots.append(slot)
-
-        return slots
-
-    def reserved_slots_by_group(self, group):
-        query = self.managed_reserved_slots()
-        query = query.filter(Allocation.group == group)
-
-        return query
-
-    def reserved_slots_by_allocation(self, allocation_id):
-        master = self.allocation_by_id(allocation_id)
-        mirrors = self.allocation_mirrors_by_master(master)
-        ids = [master.id] + [m.id for m in mirrors]
+        assert token
 
         query = self.managed_reserved_slots()
-        query = query.filter(ReservedSlot.allocation_id.in_(ids))
+        query = query.filter(ReservedSlot.reservation_token == token)
 
-        return query
+        if id is None:
+            return query
+        else:
+            ids = self.allocations_by_reservation(token, id)
+            ids = ids.with_entities(Allocation.id)
+            return query.filter(
+                ReservedSlot.allocation_id.in_(ids.subquery())
+            )
 
     def reservations_by_group(self, group):
-        query = self.managed_reservations()
-        query = query.filter(Reservation.target == group)
+        tokens = self.managed_reservations().with_entities(Reservation.token)
+        tokens = tokens.filter(Reservation.target == group)
 
-        return query
+        return self.managed_reservations().filter(
+            Reservation.token.in_(
+                tokens.subquery()
+            )
+        )
 
     def reservations_by_allocation(self, allocation_id):
         master = self.allocation_by_id(allocation_id)
 
         return self.reservations_by_group(master.group)
 
-    def reservation_by_token(self, token):
+    def reservations_by_token(self, token, id=None):
         query = self.managed_reservations()
         query = query.filter(Reservation.token == token)
 
+        if id:
+            query = query.filter(Reservation.id == id)
+
         try:
-            query.one()
+            query.first()
         except exc.NoResultFound:
             raise errors.InvalidReservationToken
-        except exc.MultipleResultsFound:
-            raise NotImplementedError
 
         return query

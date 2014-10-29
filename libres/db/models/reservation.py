@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from sqlalchemy import types
-from sqlalchemy.orm import object_session
+from sqlalchemy.orm import object_session, deferred
 from sqlalchemy.schema import Column
 from sqlalchemy.schema import Index
 from sqlalchemy.dialects.postgresql import JSON
@@ -65,9 +65,11 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         nullable=False
     )
 
-    data = Column(
-        JSON(),
-        nullable=True
+    data = deferred(
+        Column(
+            JSON(),
+            nullable=True
+        )
     )
 
     email = Column(

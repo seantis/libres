@@ -83,7 +83,7 @@ def allocation_reserve():
             email='user@example.org',
             dates=(allocation.start, allocation.end)
         )
-        scheduler.approve_reservation(token)
+        scheduler.approve_reservations(token)
         scheduler.commit()
     except libres.modules.errors.AlreadyReservedError:
         scheduler.rollback()

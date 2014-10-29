@@ -33,9 +33,10 @@ class Event(list):
         return "Event(%s)" % list.__repr__(self)
 
 
-on_allocations_add = Event()
-on_reservation_made = Event()
-on_reservation_approve = Event()
-on_reservation_remove = Event()
-on_reservation_deny = Event()
-on_reservations_confirm = Event()
+on_allocations_added = Event()
+on_reservations_made = Event()
+on_reservations_approved = Event()
+on_reservations_removed = Event()
+on_reservations_denied = Event()
+on_reservations_confirmed = Event()
+on_reservation_time_changed = Event()
