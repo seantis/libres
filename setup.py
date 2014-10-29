@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from setuptools import setup, Command
+from setuptools import setup
 
 
 def get_long_description():
@@ -8,22 +8,6 @@ def get_long_description():
             break
         yield line
 
-
-class PyTest(Command):
-
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        import sys
-        import subprocess
-        errno = subprocess.call([sys.executable, 'runtests.py'])
-        raise SystemExit(errno)
 
 setup(
     name='libres',
@@ -51,7 +35,6 @@ setup(
             'tox'
         ]
     },
-    cmdclass={'test': PyTest},
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

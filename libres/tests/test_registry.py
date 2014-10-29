@@ -1,107 +1,108 @@
 import threading
+import pytest
 import random
 
-from libres.tests import TestCase
 from libres.modules import errors
 from libres.context.registry import Registry
 
 
-class TestRegistry(TestCase):
+def test_registry_contexts():
+    r = Registry()
 
-    def test_registry_contexts(self):
-        r = Registry()
+    assert r.master_context == 'master'
+    assert r.current_context_name == 'master'
 
-        self.assertEqual(r.master_context, 'master')
-        self.assertEqual(r.current_context_name, 'master')
+    assert r.is_existing_context('master')
+    assert not r.is_existing_context('foo')
 
-        self.assertTrue(r.is_existing_context('master'))
-        self.assertFalse(r.is_existing_context('foo'))
+    r.register_context('foo')
+    assert r.is_existing_context('foo')
+    assert r.current_context_name == 'master'
 
-        r.register_context('foo')
-        self.assertTrue(r.is_existing_context('foo'))
-        self.assertEqual(r.current_context_name, 'master')
+    r.switch_context('foo')
+    assert r.local.current_context == 'foo'
 
-        r.switch_context('foo')
-        self.assertEqual(r.local.current_context, 'foo')
+    with r.context('master'):
+        assert r.local.current_context == 'master'
 
-        with r.context('master'):
-            self.assertEqual(r.local.current_context, 'master')
+    assert r.current_context_name == 'foo'
+    assert r.get_context('foo') == r.get_current_context()
 
-        self.assertEqual(r.current_context_name, 'foo')
-        self.assertEqual(r.get_context('foo'), r.get_current_context())
 
-    def test_locked_contexts(self):
-        r = Registry()
+def test_locked_contexts():
+    r = Registry()
+    r.set('foo', 'bar')
+
+    r.lock_context('master')
+
+    with pytest.raises(errors.ContextIsLocked):
         r.set('foo', 'bar')
 
-        r.lock_context('master')
-        self.assertRaises(errors.ContextIsLocked, r.set, 'foo', 'bar')
 
-    def test_master_fallback(self):
-        r = Registry()
-        r.set('settings.host', 'localhost')
-        self.assertEqual(r.get('settings.host'), 'localhost')
+def test_master_fallback():
+    r = Registry()
+    r.set('settings.host', 'localhost')
+    assert r.get('settings.host') == 'localhost'
 
-        r.register_context('my-app')
-        self.assertEqual(r.get('settings.host'), 'localhost')
+    r.register_context('my-app')
+    assert r.get('settings.host') == 'localhost'
 
-        r.switch_context('my-app')
-        self.assertEqual(r.get('settings.host'), 'localhost')
+    r.switch_context('my-app')
+    assert r.get('settings.host') == 'localhost'
 
-        r.set('settings.host', 'remotehost')
-        self.assertEqual(r.get('settings.host'), 'remotehost')
+    r.set('settings.host', 'remotehost')
+    assert r.get('settings.host') == 'remotehost'
 
-        r.switch_context('master')
-        self.assertEqual(r.get('settings.host'), 'localhost')
+    r.switch_context('master')
+    assert r.get('settings.host') == 'localhost'
 
-    def test_services(self):
-        r = Registry()
 
-        r.set_service('service', factory=object)
-        first_call = r.get_service('service')
-        second_call = r.get_service('service')
+def test_services():
+    r = Registry()
 
-        self.assertFalse(first_call is second_call)
+    r.set_service('service', factory=object)
+    first_call = r.get_service('service')
+    second_call = r.get_service('service')
 
-    def test_threading_contexts(self):
-        r = Registry()
+    assert not first_call is second_call
 
-        class Application(threading.Thread):
 
-            def __init__(self, context, registry):
-                threading.Thread.__init__(self)
-                self.registry = registry
-                self.context = context
+def test_threading_contexts():
+    r = Registry()
 
-            def run(self):
-                if not self.registry.is_existing_context(self.context):
-                    self.registry.register_context(self.context)
+    class Application(threading.Thread):
 
-                self.registry.switch_context(self.context)
-                self.registry.set('current_context', self.context)
-                self.result = self.registry.get_current_context()
+        def __init__(self, context, registry):
+            threading.Thread.__init__(self)
+            self.registry = registry
+            self.context = context
 
-            def join(self):
-                threading.Thread.join(self)
-                result = self.result
-                return result
+        def run(self):
+            if not self.registry.is_existing_context(self.context):
+                self.registry.register_context(self.context)
 
-        for i in range(0, 100):
+            self.registry.switch_context(self.context)
+            self.registry.set('current_context', self.context)
+            self.result = self.registry.get_current_context()
 
-            threads = [
-                Application('one', r),
-                Application('two', r),
-                Application('three', r),
-                Application('four', r)
-            ]
+        def join(self):
+            threading.Thread.join(self)
+            result = self.result
+            return result
 
-            random.shuffle(threads)
+    for i in range(0, 100):
 
-            for t in threads:
-                t.start()
+        threads = [
+            Application('one', r),
+            Application('two', r),
+            Application('three', r),
+            Application('four', r)
+        ]
 
-            results = [t.join()['current_context'] for t in threads]
-            self.assertEqual(
-                sorted(results),
-                sorted(['one', 'two', 'three', 'four'])
-            )
+        random.shuffle(threads)
+
+        for t in threads:
+            t.start()
+
+        results = [t.join()['current_context'] for t in threads]
+        assert sorted(results) == sorted(['one', 'two', 'three', 'four'])
