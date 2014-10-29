@@ -5,7 +5,7 @@ import arrow
 import libres
 import isodate
 
-from libres.modules.postgresql import Postgresql
+from testing.postgresql import Postgresql
 
 
 app = Flask(__name__)
