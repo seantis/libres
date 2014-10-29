@@ -28,13 +28,6 @@ setup(
         'psycopg2',
         'SQLAlchemy>=0.9',
     ],
-    extras_require={
-        'tests': [
-            'pytest',
-            'testing.postgresql',
-            'tox'
-        ]
-    },
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
