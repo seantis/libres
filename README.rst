@@ -7,7 +7,12 @@ and requires Postgresql 9.2+.
 
 .. < package description
 
-**This package is under heavy development**
+**This is at an experimental stage and not yet suitable for production**
+
+Documentation
+-------------
+
+http://libres.readthedocs.org/
 
 Run the Tests
 -------------
@@ -27,11 +32,6 @@ Conventions
 Libres follows PEP8 as close as possible. To test for it run::
 
     tox -e pep8
-
-Documentation
--------------
-
-http://libres.readthedocs.org/
 
 Build the Docs
 --------------
