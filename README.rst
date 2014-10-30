@@ -9,10 +9,32 @@ and requires Postgresql 9.2+.
 
 **This is at an experimental stage and not yet suitable for production**
 
+.. image:: https://travis-ci.org/seantis/libres.svg?branch=master
+  :target: https://travis-ci.org/seantis/libres
+  :alt:    travis build status
+
+.. image:: https://coveralls.io/repos/seantis/libres/badge.png 
+  :target: https://coveralls.io/r/seantis/libres
+  :alt:    coveralls.io coverage
+
 Documentation
 -------------
 
 http://libres.readthedocs.org/
+
+Run the Example
+---------------
+
+Go to examples/flask and install the requirements::
+
+    cd examples/flask
+    pip install -r requirements.txt
+
+Run the example::
+
+    python run.py
+
+Open http://localhost:5000 and click around.
 
 Run the Tests
 -------------
@@ -48,28 +70,3 @@ Build the docs::
 Open the docs::
 
     open build/html/index.html
-
-Run the Example
----------------
-
-Go to examples/flask and install the requirements::
-
-    cd examples/flask
-    pip install -r requirements.txt
-
-Run the example::
-
-    python run.py
-
-Open http://localhost:5000 and click around.
-
-Batches!
---------
-
-.. image:: https://travis-ci.org/seantis/libres.svg?branch=master
-  :target: https://travis-ci.org/seantis/libres
-  :alt:    travis build status
-
-.. image:: https://coveralls.io/repos/seantis/libres/badge.png 
-  :target: https://coveralls.io/r/seantis/libres
-  :alt:    coveralls.io coverage
