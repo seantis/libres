@@ -95,3 +95,33 @@ def test_reserve(scheduler):
     # remove the reservation
     scheduler.remove_reservation(token)
     assert len(allocation.free_slots()) == 2
+
+
+def test_change_email(scheduler):
+    # reserve multiple allocations
+    dates = (
+        (datetime(2014, 8, 7, 11, 0), datetime(2014, 8, 7, 12, 0)),
+        (datetime(2014, 8, 8, 11, 0), datetime(2014, 8, 8, 12, 0))
+    )
+
+    scheduler.allocate(dates)
+    token = scheduler.reserve(u'original@example.org', dates)
+    scheduler.commit()
+
+    assert [r.email for r in scheduler.reservations_by_token(token)]\
+        == [u'original@example.org'] * 2
+
+    # change the email and ensure that all reservation records are changed
+    scheduler.change_email(token, u'newmail@example.org')
+    scheduler.commit()
+
+    assert [r.email for r in scheduler.reservations_by_token(token)]\
+        == [u'newmail@example.org'] * 2
+
+    # approve the reservation and change again
+    scheduler.approve_reservations(token)
+    scheduler.change_email(token, u'another@example.org')
+    scheduler.commit()
+
+    assert [r.email for r in scheduler.reservations_by_token(token)]\
+        == [u'another@example.org'] * 2

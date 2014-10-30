@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from libres.context import setup_registry
 registry = setup_registry()
 
