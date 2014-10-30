@@ -5,6 +5,23 @@ from datetime import datetime
 from libres.modules import errors
 
 
+def test_transaction(scheduler):
+
+    # begin a transaction
+    scheduler.begin()
+
+    # write something in the transaction
+    scheduler.allocate(
+        (datetime(2014, 4, 4, 14, 0), datetime(2014, 4, 4, 15, 0))
+    )
+
+    # rollback the transaction
+    scheduler.rollback()
+
+    # nothing should have happened
+    assert scheduler.managed_allocations().count() == 0
+
+
 def test_managed_allocations(scheduler):
 
     start = datetime(2014, 4, 4, 14, 0)

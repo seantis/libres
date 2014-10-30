@@ -34,6 +34,7 @@ def scheduler(request, dsn):
 
     yield scheduler
 
+    scheduler.rollback()
     scheduler.extinguish_managed_records()
     scheduler.commit()
 
