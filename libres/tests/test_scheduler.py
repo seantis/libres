@@ -5,9 +5,8 @@ def test_managed_allocations(scheduler):
 
     start = datetime(2014, 4, 4, 14, 0)
     end = datetime(2014, 4, 4, 15, 0)
-    timezone = 'Europe/Zurich'
 
-    allocations = scheduler.allocate((start, end), timezone)
+    allocations = scheduler.allocate((start, end))
     assert len(allocations) == 1
 
     scheduler.commit()
@@ -20,7 +19,7 @@ def test_managed_allocations(scheduler):
     s2.name = 'clone'
     assert s2.managed_allocations().count() == 0
 
-    s2.allocate((start, end), timezone)
+    s2.allocate((start, end))
     s2.commit()
 
     assert s2.managed_allocations().count() == 1
@@ -31,7 +30,6 @@ def test_managed_allocations(scheduler):
 
 def test_reserve(scheduler):
 
-    scheduler.default_timezone = 'Europe/Zurich'
     start = datetime(2011, 1, 1, 15)
     end = datetime(2011, 1, 1, 16)
 

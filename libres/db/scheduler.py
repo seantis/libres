@@ -27,7 +27,7 @@ class Scheduler(object):
     context to create reservations. It is the main part of the API.
     """
 
-    def __init__(self, context, name, settings={}, default_timezone='UTC'):
+    def __init__(self, context, name, timezone, settings={}):
         """ Initializeds a new Scheduler instance.
 
         :context:
@@ -40,14 +40,25 @@ class Scheduler(object):
             access the data you generated with a scheduler use the same context
             and name together.
 
+        :timezone:
+            A single scheduler always operates on the same timezone. This is
+            used to determine what a whole day means for example (given that
+            a whole day starts at 0:00 and ends at 23:59:59).
+
+            Dates passed to the scheduler that are not timezone-aware are
+            assumed to be of this timezone!
+
+            This timezone cannot change after allocations have been created!
+            If it does, a migration has to be written (as of yet no such
+            migration exists).
         """
 
         self.context = ContextAccessor(context, autocreate=True)
         self.queries = Queries(context)
 
         self.name = name
+        self.timezone = timezone
         self.settings = settings
-        self.default_timezone = default_timezone
 
         for key, value in settings.items():
             self.context.set_config(key, value)
@@ -59,7 +70,7 @@ class Scheduler(object):
         """
 
         return Scheduler(
-            self.context.name, self.name, self.settings, self.default_timezone
+            self.context.name, self.name, self.timezone, self.settings
         )
 
     def close(self):
@@ -86,6 +97,9 @@ class Scheduler(object):
             self.context.get_config('settings.uuid_namespace'),
             '/'.join((self.name, self.context.name))
         )
+
+    def prepare_dates(self, dates):
+        return calendar.normalize_dates(dates, self.timezone)
 
     def begin(self):
         return self.context.serial_session.begin(subtransactions=True)
@@ -240,7 +254,6 @@ class Scheduler(object):
     def allocate(
         self,
         dates,
-        timezone=None,
         quota=None,
         quota_limit=0,
         partly_available=False,
@@ -277,8 +290,7 @@ class Scheduler(object):
         that allocation. See Scheduler.__doc__
 
         """
-        timezone = timezone or self.default_timezone
-        dates = calendar.normalize_dates(dates, timezone)
+        dates = self.prepare_dates(dates)
 
         group = new_uuid()
         quota = quota or 1
@@ -287,7 +299,9 @@ class Scheduler(object):
         # the beginning of the day / end of it -> not timezone aware!
         if whole_day:
             for ix, (start, end) in enumerate(dates):
-                dates[ix] = calendar.align_range_to_day(start, end, timezone)
+                dates[ix] = calendar.align_range_to_day(
+                    start, end, self.timezone
+                )
 
         # Ensure that the list of dates contains no overlaps inside
         for start, end in dates:
@@ -309,7 +323,7 @@ class Scheduler(object):
             allocation.raster = raster_value
             allocation.start = start
             allocation.end = end
-            allocation.timezone = timezone
+            allocation.timezone = self.timezone
             allocation.resource = self.resource
             allocation.mirror_of = self.resource
             allocation.quota = quota
@@ -616,7 +630,6 @@ class Scheduler(object):
         self,
         email,
         dates=None,
-        timezone=None,
         group=None,
         data=None,
         session_id=None,
@@ -639,10 +652,7 @@ class Scheduler(object):
 
         """
 
-        timezone = timezone or self.default_timezone
-
         assert (dates or group) and not (dates and group)
-        assert dates and timezone or not dates
 
         email = email.strip()
 
@@ -652,7 +662,7 @@ class Scheduler(object):
         if group:
             dates = self.allocation_dates_by_group(group)
 
-        dates = calendar.normalize_dates(dates, timezone)
+        dates = self.prepare_dates(dates)
 
         # First, the request is checked for saneness. If any requested
         # date cannot be reserved the request as a whole fails.

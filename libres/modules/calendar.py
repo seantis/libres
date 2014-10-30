@@ -26,7 +26,10 @@ def normalize_dates(dates, timezone):
 
 
 def normalize_date(date, timezone):
-    return arrow.get(date).replace(tzinfo=timezone).to('UTC').datetime
+    if date.tzinfo is None:
+        date = arrow.get(date).replace(tzinfo=timezone)
+
+    return to_timezone(date, 'UTC')
 
 
 def to_timezone(date, timezone):
