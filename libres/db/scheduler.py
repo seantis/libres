@@ -108,9 +108,11 @@ class Scheduler(object):
         return self.context.serial_session.begin(subtransactions=True)
 
     def commit(self):
+        self.context.readonly_session.expire_all()
         return self.context.serial_session.commit()
 
     def rollback(self):
+        self.context.readonly_session.expire_all()
         return self.context.serial_session.rollback()
 
     @serialized
@@ -908,6 +910,7 @@ class Scheduler(object):
 
     @serialized
     def change_email(self, token, new_email):
+
         for reservation in self.reservations_by_token(token).all():
             reservation.email = new_email
 
