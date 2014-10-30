@@ -1,0 +1,27 @@
+import pytest
+
+from datetime import datetime
+
+
+@pytest.mark.parametrize('execution_number', range(2))
+@pytest.mark.parametrize('scheduler_context', ['test'])
+@pytest.mark.parametrize('scheduler_name', ['test'])
+def test_independence(
+    scheduler, execution_number, scheduler_context, scheduler_name
+):
+    """ Test the independence of tests. This test is run twice with the exact
+    same records written. If any records remain after a single test run, the
+    second run of this test fails.
+
+    This ensures proper separation between tests.
+
+    """
+    assert scheduler.context.name == scheduler_context
+    assert scheduler.name == scheduler_name
+
+    scheduler.allocate(
+        (datetime(2014, 4, 4, 14, 0), datetime(2014, 4, 4, 15, 0))
+    )
+    scheduler.commit()
+
+    assert scheduler.managed_allocations().count() == 1
