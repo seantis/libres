@@ -12,4 +12,4 @@ install:
 script:
     - tox -e $TOXENV
 after_success:
-  - if [ "$TOX_ENV" = 'py34' ]; then coveralls; fi
+    - if [ "$TOXENV" = 'py34' ]; then coveralls; fi
