@@ -1,12 +1,15 @@
 language: python
 addons:
-  postgresql: 9.2
+    postgresql: 9.2
 env:
     - TOXENV=py27
     - TOXENV=py33
     - TOXENV=py34
     - TOXENV=pep8
 install:
-    - pip install tox
+    - pip install tox --use-mirrors
+    - if [ "x$TOXENV" = 'py34' ]; then pip install coveralls --use-mirrors; fi
 script:
-    - tox
+    - tox -e $TOXENV
+after_success:
+  - if [ "x$TOX_ENV" = 'py34' ]; then coveralls; fi

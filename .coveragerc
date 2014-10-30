@@ -1,0 +1,4 @@
+[run]
+branch = True
+source = libres
+omit = libres/tests/*
