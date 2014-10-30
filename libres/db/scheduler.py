@@ -52,6 +52,21 @@ class Scheduler(object):
         for key, value in settings.items():
             self.context.set_config(key, value)
 
+    def clone(self):
+        """ Clones the scheduler. The result will be a new scheduler using the
+        same context, name, settings and attributes.
+
+        """
+
+        return Scheduler(
+            self.context.name, self.name, self.settings, self.default_timezone
+        )
+
+    def close(self):
+        """ Closes all known sessions/binds. """
+        self.context.serial_session.close()
+        self.context.readonly_session.close()
+
     @property
     def session(self):
         """ Returns the current session. This can be the read-only or the
@@ -59,11 +74,6 @@ class Scheduler(object):
 
         """
         return self.context.session
-
-    def dispose(self):
-        """ Closes all known sessions/binds. """
-        self.context.serial_session.bind.dispose()
-        self.context.readonly_session.bind.dispose()
 
     @property
     def resource(self):
@@ -114,10 +124,10 @@ class Scheduler(object):
         return query
 
     @serialized
-    def extinguish_managed_records(self, resource_uuid):
+    def extinguish_managed_records(self):
         """ WARNING:
-        Completely removes any trace of the given resource uuid. That means
-        all reservations, reserved slots and allocations!
+        Completely removes any trace of the records managed by this scheduler.
+        That means all reservations, reserved slots and allocations!
 
         """
         self.managed_reservations().delete('fetch')
