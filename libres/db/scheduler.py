@@ -27,7 +27,7 @@ class Scheduler(object):
     context to create reservations. It is the main part of the API.
     """
 
-    def __init__(self, context, name, settings={}):
+    def __init__(self, context, name, settings={}, default_timezone='UTC'):
         """ Initializeds a new Scheduler instance.
 
         :context:
@@ -46,6 +46,8 @@ class Scheduler(object):
         self.queries = Queries(context)
 
         self.name = name
+        self.settings = settings
+        self.default_timezone = default_timezone
 
         for key, value in settings.items():
             self.context.set_config(key, value)
@@ -228,7 +230,7 @@ class Scheduler(object):
     def allocate(
         self,
         dates,
-        timezone,
+        timezone=None,
         quota=None,
         quota_limit=0,
         partly_available=False,
@@ -265,6 +267,7 @@ class Scheduler(object):
         that allocation. See Scheduler.__doc__
 
         """
+        timezone = timezone or self.default_timezone
         dates = calendar.normalize_dates(dates, timezone)
 
         group = new_uuid()
@@ -626,7 +629,7 @@ class Scheduler(object):
 
         """
 
-        timezone = timezone or 'UTC'
+        timezone = timezone or self.default_timezone
 
         assert (dates or group) and not (dates and group)
         assert dates and timezone or not dates
