@@ -1,17 +1,8 @@
-from datetime import timedelta, datetime
-from dateutil.tz import tzutc
+from datetime import timedelta
 
 import arrow
 
-from libres.modules import utils
-
-
-def utcnow():
-    """ Returns datetime.utcnow with the timezone set to UTC (it's naive by
-    default).
-
-    """
-    return datetime.utcnow().replace(tzinfo=tzutc())
+from libres.modules import errors, utils
 
 
 def normalize_dates(dates, timezone):
@@ -33,7 +24,10 @@ def normalize_date(date, timezone):
 
 
 def to_timezone(date, timezone):
-    assert date.tzinfo, "the date must be timezone aware"
+
+    if not date.tzinfo:
+        raise errors.NotTimezoneAware()
+
     return arrow.get(date).to(timezone).datetime
 
 
@@ -48,8 +42,10 @@ def is_whole_day(start, end, timezone):
 
     """
 
-    start = arrow.get(start).to(timezone)
-    end = arrow.get(end).to(timezone)
+    # remove the timezone information after converting, to still detect
+    # days during which sumemrtime is enabled as 24 hour days.
+    start = to_timezone(start, timezone).replace(tzinfo=None)
+    end = to_timezone(end, timezone).replace(tzinfo=None)
 
     assert start <= end, "The end needs to be equal or greater than the start"
 
@@ -66,6 +62,7 @@ def is_whole_day(start, end, timezone):
 
 
 def overlaps(start, end, otherstart, otherend):
+
     if otherstart <= start and start <= otherend:
         return True
 
@@ -101,7 +98,7 @@ def align_date_to_day(date, timezone, direction):
 
     aligned = (0, 0, 0, 0) if direction == 'down' else (23, 59, 59, 999999)
 
-    local = arrow.get(date).to(timezone)
+    local = to_timezone(date, timezone)
 
     if (local.hour, local.minute, local.second, local.microsecond) == aligned:
         return date
@@ -111,7 +108,7 @@ def align_date_to_day(date, timezone, direction):
     if direction == 'up':
         local = local + timedelta(days=1, microseconds=-1)
 
-    return local.to(date.tzinfo)
+    return to_timezone(local, date.tzinfo)
 
 
 def align_range_to_day(start, end, timezone):

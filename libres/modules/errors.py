@@ -102,3 +102,7 @@ class DatesMayNotBeEqualError(LibresError):
 
 class TimerangeTooLong(LibresError):
     pass
+
+
+class NotTimezoneAware(LibresError):
+    pass

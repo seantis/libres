@@ -25,6 +25,7 @@ setup(
     install_requires=[
         'arrow',
         'python-dateutil',
+        'pytz',
         'psycopg2',
         'SQLAlchemy>=0.9',
     ],
