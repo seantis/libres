@@ -8,8 +8,8 @@ env:
     - TOXENV=pep8
 install:
     - pip install tox --use-mirrors
-    - if [ "x$TOXENV" = 'py34' ]; then pip install coveralls --use-mirrors; fi
+    - if [ "$TOXENV" = 'py34' ]; then pip install coveralls --use-mirrors; fi
 script:
     - tox -e $TOXENV
 after_success:
-  - if [ "x$TOX_ENV" = 'py34' ]; then coveralls; fi
+  - if [ "$TOX_ENV" = 'py34' ]; then coveralls; fi
