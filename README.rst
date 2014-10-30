@@ -69,3 +69,7 @@ Batches!
 .. image:: https://travis-ci.org/seantis/libres.svg?branch=master
   :target: https://travis-ci.org/seantis/libres
   :alt:    travis build status
+
+.. image:: https://coveralls.io/repos/seantis/libres/badge.png 
+  :target: https://coveralls.io/r/seantis/libres
+  :alt:    coveralls.io coverage
