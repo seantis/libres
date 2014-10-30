@@ -14,7 +14,8 @@ from libres.modules.raster import (
     rasterize_start,
     rasterize_span,
     rasterize_end,
-    iterate_span
+    iterate_span,
+    MIN_RASTER_VALUE
 )
 
 from libres.db.models import ORMBase
@@ -115,7 +116,10 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         return self._start
 
     def set_start(self, start):
-        self._start = rasterize_start(start, self.raster)
+        if self.raster is not None:
+            self._start = rasterize_start(start, self.raster)
+        else:
+            self._start = rasterize_start(start, MIN_RASTER_VALUE)
 
     #: The start of this allocation. Must be timezone aware.
     #: This date is rastered by the allocation's raster.
@@ -125,7 +129,10 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         return self._end
 
     def set_end(self, end):
-        self._end = rasterize_end(end, self.raster)
+        if self.raster is not None:
+            self._end = rasterize_end(end, self.raster)
+        else:
+            self._end = rasterize_end(end, MIN_RASTER_VALUE)
 
     #: The end of this allocation. Must be timezone aware.
     #: This date is rastered by the allocation's raster.
@@ -140,8 +147,20 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def set_raster(self, raster):
         # the raster can only be set once!
-        assert(not self._raster)
+        assert not self._raster
         self._raster = raster
+
+        # re-rasterize start/end - during initialization it's possible for
+        # them not to be setup correctly because that's done using
+        # kwargs which has a random order. So it might set start, end, raster
+        # in this order one time, then raster, start, end another time.
+        #
+        # this should of course only happen once - hence the assertion above
+        if self._start:
+            self._start = rasterize_start(self._start, self.raster)
+
+        if self._end:
+            self._end = rasterize_end(self._end, self.raster)
 
     raster = property(get_raster, set_raster)
 

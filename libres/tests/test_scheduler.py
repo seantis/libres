@@ -1,4 +1,8 @@
+import pytest
+
 from datetime import datetime
+
+from libres.modules import errors
 
 
 def test_managed_allocations(scheduler):
@@ -68,26 +72,26 @@ def test_reserve(scheduler):
     assert list(sorted(slots, key=by_start)) \
         == list(sorted(reserved_slots, key=by_start))
 
-    # # try to illegally move the slot
-    # with pytest.raises(errors.AffectedReservationError):
-    #     scheduler.move_allocation(
-    #         master_id=allocation.id,
-    #         new_start=datetime(2011, 1, 1, 15, 30),
-    #         new_end=datetime(2011, 1, 1, 16),
-    #     )
+    # try to illegally move the slot
+    with pytest.raises(errors.AffectedReservationError):
+        scheduler.move_allocation(
+            master_id=allocation.id,
+            new_start=datetime(2011, 1, 1, 15, 30),
+            new_end=datetime(2011, 1, 1, 16),
+        )
 
-    # assert len(allocation.free_slots()) == 2
+    assert len(allocation.free_slots()) == 2
 
-    # # actually move the slot
-    # scheduler.move_allocation(
-    #     master_id=allocation.id,
-    #     new_start=datetime(2011, 1, 1, 15),
-    #     new_end=datetime(2011, 1, 1, 15, 30)
-    # )
+    # actually move the slot
+    scheduler.move_allocation(
+        master_id=allocation.id,
+        new_start=datetime(2011, 1, 1, 15),
+        new_end=datetime(2011, 1, 1, 15, 30)
+    )
 
-    # # there should be fewer slots now
-    # assert len(allocation.free_slots()) == 0
+    # there should be fewer slots now
+    assert len(allocation.free_slots()) == 0
 
-    # # remove the reservation
-    # scheduler.remove_reservation(token)
-    # assert len(allocation.free_slots()) == 2
+    # remove the reservation
+    scheduler.remove_reservation(token)
+    assert len(allocation.free_slots()) == 2

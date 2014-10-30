@@ -98,6 +98,9 @@ class Scheduler(object):
             '/'.join((self.name, self.context.name))
         )
 
+    def prepare_date(self, date):
+        return calendar.normalize_date(date, self.timezone)
+
     def prepare_dates(self, dates):
         return calendar.normalize_dates(dates, self.timezone)
 
@@ -512,11 +515,21 @@ class Scheduler(object):
         assert master_id
         assert any([new_start and new_end, group, new_quota])
 
+        new_start = self.prepare_date(new_start)
+        new_end = self.prepare_date(new_end)
+
         # Find allocation
         master = self.allocation_by_id(master_id)
         mirrors = self.allocation_mirrors_by_master(master)
+
         changing = [master] + mirrors
         ids = [c.id for c in changing]
+
+        assert master.timezone == self.timezone, """
+            You are trying to move an allocation that was created with a
+            different timezone. This is currently unsupported. See
+            Scheduler.__init__ -> timezone
+        """
 
         assert(group or master.group)
 
@@ -525,9 +538,16 @@ class Scheduler(object):
         new_end = new_end or master.end
 
         if whole_day:
-            new_start, new_end = utils.align_range_to_day(new_start, new_end)
+            new_start, new_end = utils.align_range_to_day(
+                new_start, new_end, self.timezone
+            )
 
-        new = Allocation(start=new_start, end=new_end, raster=master.raster)
+        new = Allocation(
+            start=new_start,
+            end=new_end,
+            raster=master.raster,
+            timezone=self.timezone
+        )
 
         # Ensure that the new span does not overlap an existing one
         existing_allocations = self.allocations_in_range(new.start, new.end)
