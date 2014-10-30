@@ -697,7 +697,7 @@ class Scheduler(object):
         token = new_uuid()
         reservations = []
 
-       # groups are reserved by group-identifier - so all members of a group
+        # groups are reserved by group-identifier - so all members of a group
         # or none of them. As such there's no start / end date which is defined
         # implicitly by the allocation
         def new_reservations_by_group(group):

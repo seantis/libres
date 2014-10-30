@@ -283,8 +283,7 @@ class SessionProvider(object):
 
         assert (major >= 9 and minor >= 2) or (major >= 10), \
             "PostgreSQL 9.2+ is required. Your version is {}.{}".format(
-                major, minor
-            )
+                major, minor)
 
         return dsn
 

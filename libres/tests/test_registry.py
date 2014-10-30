@@ -64,7 +64,7 @@ def test_services():
     first_call = r.get_service('service')
     second_call = r.get_service('service')
 
-    assert not first_call is second_call
+    assert first_call is not second_call
 
 
 def test_threading_contexts():

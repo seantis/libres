@@ -195,7 +195,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         slots = []
         for start, end in self.all_slots(start, end):
-            if not start in reserved:
+            if start not in reserved:
                 slots.append((start, end))
 
         return slots

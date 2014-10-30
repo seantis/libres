@@ -34,7 +34,7 @@ doc = []
 
 for name, (value, help) in _default.items():
     reference = '.. _{name}:\n'.format(name=name)
-    title = '{name}\n{line}'.format(name=name, line='-'*len(name))
+    title = '{name}\n{line}'.format(name=name, line='-' * len(name))
     default = 'default: **{value}**'.format(value=repr(value))
     help = textwrap.dedent(help)
 

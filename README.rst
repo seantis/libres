@@ -21,6 +21,13 @@ Limit the tests to a specific python version::
 
     tox -e py27
 
+Conventions
+-----------
+
+Libres follows PEP8 as close as possible. To test for it run::
+
+    tox -e pep8
+
 Documentation
 -------------
 

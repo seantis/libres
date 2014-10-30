@@ -24,7 +24,7 @@ class Registry(object):
     def current_context_name(self):
         if not hasattr(self.local, 'current_context'):
             self.local.current_context = self.master_context
-        
+
         return self.local.current_context
 
     def is_existing_context(self, name):
