@@ -1,9 +1,11 @@
 import pytest
 
 from datetime import datetime, timedelta
+from libres.db.models import Reservation
 from libres.modules import calendar, errors, events
 from mock import Mock
 from sqlalchemy.orm.exc import MultipleResultsFound
+from uuid import uuid4 as new_uuid
 
 
 def test_transaction(scheduler):
@@ -379,3 +381,90 @@ def test_change_reservation_quota(scheduler):
         datetime(2014, 8, 7, 8, 0),
         datetime(2014, 8, 7, 10, 0)
     )
+
+
+def test_group_reserve(scheduler):
+    dates = [
+        (datetime(2013, 4, 6, 12, 0), datetime(2013, 4, 6, 16, 0)),
+        (datetime(2013, 4, 7, 12, 0), datetime(2013, 4, 7, 16, 0))
+    ]
+
+    allocations = scheduler.allocate(
+        dates, grouped=True, approve_manually=True, quota=3
+    )
+
+    assert len(allocations) == 2
+
+    group = allocations[0].group
+
+    # reserve the same thing three times, which should yield equal results
+    def reserve():
+        token = scheduler.reserve(u'test@example.com', group=group)
+        scheduler.commit()
+
+        reservation = scheduler.reservations_by_token(token).one()
+
+        targets = reservation._target_allocations().all()
+        assert len(targets) == 2
+
+        scheduler.approve_reservations(token)
+        scheduler.commit()
+
+        targets = reservation._target_allocations().all()
+        assert len(targets) == 2
+
+    reserve()
+    reserve()
+    reserve()
+
+    # the fourth time will fail
+    with pytest.raises(errors.AlreadyReservedError):
+        reserve()
+
+
+def test_session_expiration(scheduler):
+    session_id = new_uuid()
+
+    start, end = datetime(2013, 5, 1, 13, 0), datetime(2013, 5, 1, 14)
+    scheduler.allocate(dates=(start, end), approve_manually=True)
+    scheduler.reserve(u'test@example.com', (start, end), session_id=session_id)
+    scheduler.commit()
+
+    created = calendar.utcnow()
+
+    # Do NOT use the serial session directly outside of tests!
+    res = scheduler.context.serial_session.query(Reservation)
+    res = res.filter(Reservation.session_id == session_id)
+    res.update({'created': created, 'modified': None})
+
+    scheduler.commit()
+
+    expired = scheduler.queries.find_expired_reservation_sessions(
+        expiration_date=created
+    )
+    assert len(expired) == 0
+
+    expired = scheduler.queries.find_expired_reservation_sessions(
+        expiration_date=created + timedelta(microseconds=1)
+    )
+    assert len(expired) == 1
+
+    # Do NOT use the serial session directly outside of tests!
+    res = scheduler.context.serial_session.query(Reservation)
+    res = res.filter(Reservation.session_id == session_id)
+    res.update({
+        'created': created,
+        'modified': created + timedelta(microseconds=1)
+    })
+
+    scheduler.commit()
+
+    expired = scheduler.queries.find_expired_reservation_sessions(
+        expiration_date=created + timedelta(microseconds=1)
+    )
+    assert len(expired) == 0
+
+    expired = scheduler.queries.find_expired_reservation_sessions(
+        expiration_date=created + timedelta(microseconds=2)
+    )
+    assert len(expired) == 1

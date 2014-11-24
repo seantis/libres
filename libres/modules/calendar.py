@@ -1,7 +1,6 @@
-from datetime import timedelta
-
 import arrow
 
+from datetime import datetime, timedelta
 from libres.modules import errors, utils
 
 
@@ -29,6 +28,10 @@ def to_timezone(date, timezone):
         raise errors.NotTimezoneAware()
 
     return arrow.get(date).to(timezone).datetime
+
+
+def utcnow():
+    return normalize_date(datetime.utcnow(), 'UTC')
 
 
 def is_whole_day(start, end, timezone):

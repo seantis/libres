@@ -212,9 +212,8 @@ class Queries(object):
         unconfirmed ones which are older than the given expiration date.
         By default the expiration date is now - 15 minutes.
 
-        Note that this method goes through ALL RESERVATIONS OF THE DATABASE. If
-        this is not desired have a look at buildout/database.cfg.example to
-        setup each site with its own database.
+        Note that this method goes through ALL RESERVATIONS OF THE CURRENT
+        SESSION. This is NOT limited to a specific context or scheduler.
 
         """
 
@@ -251,11 +250,13 @@ class Queries(object):
 
     @serialized
     def remove_expired_reservation_sessions(self, expiration_date=None):
-        """ Removes all reservations from all databases which have an
-        expired session_id.
+        """ Removes all reservations which have an expired session id.
+        By default the expiration date is now - 15 minutes.
 
-        Since this only concerns 'old' sessions it shouldn't be a problem
-        however.
+        See :func:`find_expired_reservation_sessions`
+
+        Note that this method goes through ALL RESERVATIONS OF THE CURRENT
+        SESSION. This is NOT limited to a specific context or scheduler.
 
         """
 
