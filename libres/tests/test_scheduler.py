@@ -317,3 +317,65 @@ def test_change_reservation(scheduler):
             datetime(2014, 8, 7, 8, 0),
             datetime(2014, 8, 7, 10, 0)
         )
+
+
+def test_change_reservation_quota(scheduler):
+    dates = (
+        datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 10, 0)
+    )
+
+    scheduler.allocate(dates, partly_available=True, quota=2)
+
+    # have three reservations, one occupying the whole allocation,
+    # two others occupying one half each (1 + .5 +.5 = 2 (quota))
+    tokens = [
+        scheduler.reserve(u'original@example.org', (
+            datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 10, 0)
+        )),
+        scheduler.reserve(u'original@example.org', (
+            datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 9, 0)
+        )),
+        scheduler.reserve(u'original@example.org', (
+            datetime(2014, 8, 7, 9, 0), datetime(2014, 8, 7, 10, 0)
+        ))
+    ]
+    scheduler.commit()
+
+    assert scheduler.change_reservation_time_candidates().count() == 0
+
+    for token in tokens:
+        scheduler.approve_reservations(token)
+
+    scheduler.commit()
+
+    assert scheduler.change_reservation_time_candidates().count() == 3
+    reservation = scheduler.reservations_by_token(tokens[2]).one()
+
+    # with 100% occupancy we can't change one of the small reservations
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.change_reservation_time(
+            tokens[2], reservation.id,
+            datetime(2014, 8, 7, 8, 0),
+            datetime(2014, 8, 7, 10, 0)
+        )
+
+    # ensure that the failed removal didn't affect the reservations
+    # (a rollback should have occured)
+    for token in tokens:
+        assert scheduler.reservations_by_token(token).one().token == token
+
+    # removing the big reservation allows us to scale the other two
+    scheduler.remove_reservation(tokens[0])
+
+    assert scheduler.change_reservation_time(
+        tokens[2], reservation.id,
+        datetime(2014, 8, 7, 8, 0),
+        datetime(2014, 8, 7, 10, 0)
+    )
+
+    reservation = scheduler.reservations_by_token(tokens[1]).one()
+    assert scheduler.change_reservation_time(
+        tokens[1], reservation.id,
+        datetime(2014, 8, 7, 8, 0),
+        datetime(2014, 8, 7, 10, 0)
+    )
