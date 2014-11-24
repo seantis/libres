@@ -20,6 +20,11 @@ def new_test_scheduler(dsn, context=None, name=None):
 @pytest.yield_fixture(scope="function")
 def scheduler(request, dsn):
 
+    # clear the events before each test
+    from libres.modules import events
+    for event in (e for e in dir(events) if e.startswith('on_')):
+        del getattr(events, event)[:]
+
     if 'scheduler_context' in request.funcargnames:
         context = request.getfuncargvalue('scheduler_context')
     else:

@@ -1,8 +1,9 @@
 import pytest
 
 from datetime import datetime
-
-from libres.modules import errors
+from libres.modules import errors, events
+from mock import Mock
+from sqlalchemy.orm.exc import MultipleResultsFound
 
 
 def test_transaction(scheduler):
@@ -142,3 +143,86 @@ def test_change_email(scheduler):
 
     assert [r.email for r in scheduler.reservations_by_token(token)]\
         == [u'another@example.org'] * 2
+
+
+def test_change_reservation_assertions(scheduler):
+    reservation_changed = Mock()
+    events.on_reservation_time_changed.append(reservation_changed)
+
+    dates = (datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 17, 0))
+
+    scheduler.allocate(dates, partly_available=False)
+    token = scheduler.reserve(u'original@example.org', dates)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+
+    # will fail with an assertion because the reservation was not approved
+    with pytest.raises(AssertionError) as assertion:
+        scheduler.change_reservation_time(token, reservation.id, *dates)
+    assert "must be approved" in str(assertion.value)
+
+    assert scheduler.change_reservation_time_candidates().count() == 0
+    assert not reservation_changed.called
+
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    # fail with an assertion as the allocation is not partly available
+    with pytest.raises(AssertionError) as assertion:
+        scheduler.change_reservation_time(
+            token, reservation.id, datetime.now(), datetime.now()
+        )
+    assert "must be partly available" in str(assertion.value)
+
+    assert scheduler.change_reservation_time_candidates().count() == 0
+    assert not reservation_changed.called
+
+    # let's try it again with a group allocation (which should also fail)
+    dates = (
+        (datetime(2014, 8, 10, 11, 0), datetime(2014, 8, 10, 12, 0)),
+        (datetime(2014, 8, 11, 11, 0), datetime(2014, 8, 11, 12, 0))
+    )
+
+    scheduler.allocate(dates, partly_available=True, grouped=True)
+    token = scheduler.reserve(u'original@example.org', dates)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    with pytest.raises(MultipleResultsFound):
+        scheduler.change_reservation_time(
+            token, reservation.id, datetime.now(), datetime.now()
+        )
+
+    assert scheduler.change_reservation_time_candidates().count() == 0
+    assert not reservation_changed.called
+
+    # fail if the dates are outside the allocation
+    dates = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 0))
+
+    scheduler.allocate(dates, partly_available=True)
+    token = scheduler.reserve(u'original@example.org', dates)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    assert scheduler.change_reservation_time_candidates().count() == 1
+    assert not reservation_changed.called
+
+    # make sure that the timerange given fits inside the allocation
+    with pytest.raises(errors.TimerangeTooLong):
+        scheduler.change_reservation_time(
+            token, reservation.id,
+            datetime(2014, 3, 7, 7, 0), datetime(2014, 3, 7, 17, 0)
+        )
+
+    with pytest.raises(errors.TimerangeTooLong):
+        scheduler.change_reservation_time(
+            token, reservation.id,
+            datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 1)
+        )

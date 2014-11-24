@@ -971,6 +971,10 @@ class Scheduler(object):
         # check for the reservation first as the allocation won't exist
         # if the reservation has not been approved yet
         assert new_start and new_end
+
+        new_start = self.prepare_date(new_start)
+        new_end = self.prepare_date(new_end)
+
         existing_reservation = self.reservations_by_token(token, id).one()
 
         assert existing_reservation.status == 'approved', """
