@@ -1,7 +1,7 @@
 import pytest
 
-from datetime import datetime
-from libres.modules import errors, events
+from datetime import datetime, timedelta
+from libres.modules import calendar, errors, events
 from mock import Mock
 from sqlalchemy.orm.exc import MultipleResultsFound
 
@@ -225,4 +225,95 @@ def test_change_reservation_assertions(scheduler):
         scheduler.change_reservation_time(
             token, reservation.id,
             datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 1)
+        )
+
+
+def test_change_reservation(scheduler):
+    reservation_changed = Mock()
+    events.on_reservation_time_changed.append(reservation_changed)
+
+    dates = (datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 10, 0))
+
+    scheduler.allocate(dates, partly_available=True)
+
+    data = {
+        'foo': 'bar'
+    }
+    token = scheduler.reserve(u'original@example.org', (
+        datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 9)
+    ), data=data)
+
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+    original_id = reservation.id
+
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    assert scheduler.change_reservation_time_candidates().count() == 1
+
+    # make sure that no changes are made in these cases
+    assert not scheduler.change_reservation_time(
+        token, reservation.id,
+        datetime(2014, 8, 7, 8, 0),
+        datetime(2014, 8, 7, 9)
+    )
+
+    assert not scheduler.change_reservation_time(
+        token, reservation.id,
+        datetime(2014, 8, 7, 8, 0),
+        datetime(2014, 8, 7, 9) - timedelta(microseconds=1)
+    )
+
+    assert not reservation_changed.called
+
+    # make sure the change is propagated
+    scheduler.change_reservation_time(
+        token, reservation.id,
+        datetime(2014, 8, 7, 8, 0),
+        datetime(2014, 8, 7, 10)
+    )
+    scheduler.commit()
+
+    assert reservation_changed.called
+    assert reservation_changed.call_args[0][0] == scheduler.context.name
+    assert reservation_changed.call_args[1]['old_time'][0].hour == 8
+    assert reservation_changed.call_args[1]['old_time'][1].hour == 9
+    assert reservation_changed.call_args[1]['new_time'][0].hour == 8
+    assert reservation_changed.call_args[1]['new_time'][1].hour == 10
+
+    reservation = scheduler.reservations_by_token(token).one()
+
+    assert reservation.start == calendar.normalize_date(
+        datetime(2014, 8, 7, 8, 0), scheduler.timezone
+    )
+    assert reservation.end == calendar.normalize_date(
+        datetime(2014, 8, 7, 10, 0) - timedelta(microseconds=1),
+        scheduler.timezone
+    )
+
+    # the data must stay the same
+    assert reservation.data == data
+    assert reservation.email == u'original@example.org'
+    assert reservation.id == original_id
+    assert reservation.token == token
+
+    scheduler.change_reservation_time(
+        token, reservation.id,
+        datetime(2014, 8, 7, 9, 0),
+        datetime(2014, 8, 7, 10, 0)
+    )
+
+    scheduler.approve_reservations(
+        scheduler.reserve(u'original@example.org', (
+            datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 9)
+        ))
+    )
+
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.change_reservation_time(
+            token, reservation.id,
+            datetime(2014, 8, 7, 8, 0),
+            datetime(2014, 8, 7, 10, 0)
         )

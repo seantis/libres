@@ -712,7 +712,8 @@ class Scheduler(object):
                     if not allocation.find_spot(start, end):
                         raise errors.AlreadyReservedError
 
-                    if allocation.quota_left < quota:
+                    free = self.free_allocations_count(allocation, start, end)
+                    if free < quota:
                         raise errors.AlreadyReservedError
 
                 if allocation.quota_limit > 0:
@@ -774,6 +775,7 @@ class Scheduler(object):
                             = raster.rasterize_span(
                                 start, end, allocation.raster
                             )
+                        reservation.timezone = allocation.timezone
                         reservation.target = allocation.group
                         reservation.status = u'pending'
                         reservation.target_type = u'allocation'
@@ -925,7 +927,7 @@ class Scheduler(object):
         """ Returns the reservations that fullfill the restrictions
         imposed by change_reservation_time.
 
-        Pass a list of reservaiton tokens to further limit the results.
+        Pass a list of reservation tokens to further limit the results.
 
         """
 
@@ -1005,8 +1007,8 @@ class Scheduler(object):
             quota=existing_reservation.quota
         )
 
-        old_start = existing_reservation.display_start
-        old_end = existing_reservation.display_end
+        old_start = existing_reservation.display_start()
+        old_end = existing_reservation.display_end()
 
         self.session.begin_nested()
 
@@ -1023,7 +1025,10 @@ class Scheduler(object):
             events.on_reservation_time_changed(
                 self.context.name,
                 old_time=(old_start, old_end),
-                new_time=(new_start, new_end),
+                new_time=(
+                    new_reservation.display_start(),
+                    new_reservation.display_end()
+                ),
             )
         except:
             self.session.rollback()
@@ -1204,6 +1209,26 @@ class Scheduler(object):
             allocations.sort(key=lambda a: a._start)
 
         return allocations
+
+    def free_allocations_count(self, master_allocation, start, end):
+        """ Returns the number of free allocations between master_allocation
+        and it's mirrors.
+
+        """
+
+        free_allocations = 0
+
+        if master_allocation.is_available(start, end):
+            free_allocations += 1
+
+        if master_allocation.quota == 1:
+            return free_allocations
+
+        for mirror in self.allocation_mirrors_by_master(master_allocation):
+            if mirror.is_available(start, end):
+                free_allocations += 1
+
+        return free_allocations
 
     def reservation_targets(self, start, end):
         """ Returns a list of allocations that are free within start and end.

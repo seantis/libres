@@ -10,6 +10,7 @@ from libres.db.models import ORMBase
 from libres.db.models.types import GUID, UTCDateTime
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
+from libres.modules import calendar
 
 
 class Reservation(TimestampMixin, ORMBase, OtherModels):
@@ -46,12 +47,12 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
     )
 
     start = Column(
-        UTCDateTime(),
+        UTCDateTime(timezone=False),
         nullable=True
     )
 
     end = Column(
-        UTCDateTime(),
+        UTCDateTime(timezone=False),
         nullable=True
     )
 
@@ -110,6 +111,15 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         query = query.filter(Allocation.resource == Allocation.mirror_of)
 
         return query
+
+    def display_start(self, timezone=None):
+        """Does nothing but to form a nice pair to display_end."""
+        return calendar.to_timezone(self.start, timezone or self.timezone)
+
+    def display_end(self, timezone=None):
+        """Returns the end plus one microsecond (nicer display)."""
+        end = self.end + timedelta(microseconds=1)
+        return calendar.to_timezone(end, timezone or self.timezone)
 
     def timespans(self, start=None, end=None):
 

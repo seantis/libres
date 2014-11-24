@@ -13,6 +13,7 @@ from libres.modules.raster import (
 from libres.db.models import ORMBase, Allocation
 from libres.db.models.types import GUID, UTCDateTime
 from libres.db.models.timestamp import TimestampMixin
+from libres.modules import calendar
 
 
 class ReservedSlot(TimestampMixin, ORMBase):
@@ -28,14 +29,14 @@ class ReservedSlot(TimestampMixin, ORMBase):
     )
 
     start = Column(
-        UTCDateTime(),
+        UTCDateTime(timezone=False),
         primary_key=True,
         nullable=False,
         autoincrement=False
     )
 
     end = Column(
-        UTCDateTime(),
+        UTCDateTime(timezone=False),
         nullable=False
     )
 
@@ -68,11 +69,17 @@ class ReservedSlot(TimestampMixin, ORMBase):
         Index('reservation_resource_ix', 'reservation_token', 'resource'),
     )
 
-    def display_start(self):
-        return rasterize_start(self.start, self.allocation.raster)
+    def display_start(self, timezone=None):
+        start = rasterize_start(self.start, self.allocation.raster)
+        return calendar.to_timezone(
+            start, timezone or self.allocation.timezone
+        )
 
-    def display_end(self):
-        return rasterize_end(self.end, self.allocation.raster)
+    def display_end(self, timezone=None):
+        end = rasterize_end(self.end, self.allocation.raster)
+        return calendar.to_timezone(
+            end, timezone or self.allocation.timezone
+        )
 
     def __eq__(self, other):
         return self.start == other.start and \
