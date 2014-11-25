@@ -867,3 +867,34 @@ def test_allocation_overlap(scheduler):
 
     sc3.extinguish_managed_records()
     sc3.commit()
+
+
+def test_allocation_partition(scheduler):
+    allocations = scheduler.allocate(
+        (
+            datetime(2011, 1, 1, 8, 0),
+            datetime(2011, 1, 1, 10, 0)
+        ),
+        partly_available=True
+    )
+
+    allocation = allocations[0]
+    partitions = allocation.availability_partitions()
+    assert len(partitions) == 1
+    assert partitions[0][0] == 100.0
+    assert partitions[0][1] == False
+
+    start, end = datetime(2011, 1, 1, 8, 30), datetime(2011, 1, 1, 9, 00)
+
+    token = scheduler.reserve(u'test@example.org', (start, end))
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    partitions = allocation.availability_partitions()
+    assert len(partitions) == 3
+    assert partitions[0][0] == 25.00
+    assert partitions[0][1] == False
+    assert partitions[1][0] == 25.00
+    assert partitions[1][1] == True
+    assert partitions[2][0] == 50.00
+    assert partitions[2][1] == False
