@@ -1137,3 +1137,107 @@ def test_allocations_by_multiple_reservations(scheduler):
 
     query = scheduler.allocations_by_reservation(token, reservations[1].id)
     assert query.count() == 1
+
+
+def test_quota_changes(scheduler):
+    start = datetime(2011, 1, 1, 15, 0)
+    end = datetime(2011, 1, 1, 16, 0)
+    daterange = (start, end)
+
+    master = scheduler.allocate(daterange, quota=5)[0]
+
+    reservations = []
+    for i in range(0, 5):
+        reservations.append(scheduler.reserve(u'test@example.org', daterange))
+
+    for r in reservations:
+        scheduler.approve_reservations(r)
+
+    scheduler.commit()
+
+    mirrors = scheduler.allocation_mirrors_by_master(master)
+
+    assert not master.is_available()
+    assert len([m for m in mirrors if not m.is_available()]) == 4
+
+    scheduler.remove_reservation(reservations[0])
+    scheduler.commit()
+
+    assert master.is_available()
+    reservations = reservations[1:]
+
+    # by removing the reservation on the master and changing the quota
+    # a reordering is triggered which will ensure that the master and the
+    # mirrors are reserved without gaps (master, mirror 0, mirror 1 usw..)
+    # so we should see an unavailable master after changing the quota
+    scheduler.change_quota(master, 4)
+    scheduler.commit()
+
+    assert not master.is_available()
+    assert master.quota == 4
+
+    mirrors = scheduler.allocation_mirrors_by_master(master)
+    assert len([m for m in mirrors if not m.is_available()]) == 3
+
+    for reservation in reservations:
+        scheduler.remove_reservation(reservation)
+        scheduler.commit()
+
+    assert master.is_available()
+    mirrors = scheduler.allocation_mirrors_by_master(master)
+    assert len([m for m in mirrors if not m.is_available()]) == 0
+
+    # this is a good time to check if the siblings function from the
+    # allocation acts the same on each mirror and master
+    siblings = master.siblings()
+    for s in siblings:
+        assert s.siblings() == siblings
+
+    # let's do another round, adding 7 reservations and removing the three
+    # in the middle, which should result in a reordering:
+    # -> 1, 2, 3, 4, 5, 6, 7
+    # -> 1, 2, -, -, 5, -, 7
+    # => 1, 2, 3, 4, -, - ,-
+
+    scheduler.change_quota(master, 7)
+
+    scheduler.reserve(u'test@example.org', daterange)
+    r2 = scheduler.reserve(u'test@example.org', daterange)
+    r3 = scheduler.reserve(u'test@example.org', daterange)
+    r4 = scheduler.reserve(u'test@example.org', daterange)
+    r5 = scheduler.reserve(u'test@example.org', daterange)
+    r6 = scheduler.reserve(u'test@example.org', daterange)
+    r7 = scheduler.reserve(u'test@example.org', daterange)
+
+    scheduler.commit()
+
+    for r in [r2, r3, r4, r5, r6, r7]:
+        scheduler.approve_reservations(r)
+
+    scheduler.commit()
+
+    a2 = scheduler.allocations_by_reservation(r2).one().id
+    a3 = scheduler.allocations_by_reservation(r3).one().id
+    a4 = scheduler.allocations_by_reservation(r4).one().id
+    a5 = scheduler.allocations_by_reservation(r5).one().id
+    a7 = scheduler.allocations_by_reservation(r7).one().id
+
+    scheduler.remove_reservation(r3)
+    scheduler.remove_reservation(r4)
+    scheduler.remove_reservation(r6)
+
+    scheduler.change_quota(master, 4)
+
+    scheduler.commit()
+
+    a2_ = scheduler.allocations_by_reservation(r2).one().id
+    a5_ = scheduler.allocations_by_reservation(r5).one().id
+    a7_ = scheduler.allocations_by_reservation(r7).one().id
+
+    assert a2_ == a2
+
+    assert a5_ == a3
+    assert a5_ != a5
+
+    assert a7_ == a4
+    assert a7_ != a7
