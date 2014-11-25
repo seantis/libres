@@ -3,6 +3,7 @@ import pytest
 from datetime import datetime, timedelta
 from libres.db.models import Reservation, Allocation, ReservedSlot
 from libres.modules import calendar, errors, events
+from libres.modules import utils
 from mock import Mock
 from sqlalchemy.orm.exc import MultipleResultsFound
 from uuid import uuid4 as new_uuid
@@ -642,3 +643,89 @@ def test_waitinglist_group(scheduler):
 
     scheduler.remove_reservation(maintoken)
     scheduler.approve_reservations(token)
+
+
+def test_group_move(scheduler):
+    dates = [
+        (datetime(2013, 1, 1, 12, 0), datetime(2013, 1, 1, 13, 0)),
+        (datetime(2013, 1, 2, 12, 0), datetime(2013, 1, 2, 13, 0))
+    ]
+
+    allocations = scheduler.allocate(
+        dates, grouped=True, quota=3, approve_manually=True, quota_limit=3
+    )
+    scheduler.commit()
+
+    for allocation in allocations:
+        assert len(allocation.siblings()) == 3
+
+    assert allocations[0].group == allocations[1].group
+
+    # it is possible to move one allocation of a group, but all properties
+    # but the date should remain the same
+
+    newstart, newend = (
+        datetime(2014, 1, 1, 12, 0), datetime(2014, 1, 1, 13, 0)
+    )
+    scheduler.move_allocation(
+        allocations[0].id, newstart, newend,
+        new_quota=2, approve_manually=True, quota_limit=2
+    )
+    scheduler.commit()
+
+    group_allocations = scheduler.allocations_by_group(
+        allocations[0].group).all()
+    assert len(group_allocations) == 2
+
+    for a in group_allocations:
+        assert a.is_master
+        assert a.quota == 2
+        assert a.quota_limit == 2
+
+        for allocation in a.siblings():
+            # can't check transient allocations for siblings as it requires
+            # the session to be set -> this test worked in seantis.reservation
+            # because it always operated under one session
+            if not allocation.is_transient:
+                assert len(allocation.siblings()) == 2
+
+    token = scheduler.reserve(u'test@example.com', group=allocations[0].group)
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    group_allocations = scheduler.allocations_by_group(
+        allocations[0].group).all()
+    assert len(group_allocations) == 2
+
+    all = utils.flatten([a.siblings() for a in group_allocations])
+    assert scheduler.queries.availability_by_allocations(all) == 50.0
+
+    scheduler.move_allocation(
+        allocations[0].id, newstart, newend, new_quota=1
+    )
+    scheduler.commit()
+
+    group_allocations = scheduler.allocations_by_group(
+        allocations[0].group).all()
+    all = list(utils.flatten([a.siblings() for a in group_allocations]))
+    assert scheduler.queries.availability_by_allocations(all) == 0.0
+
+    scheduler.move_allocation(allocations[0].id, newstart, newend, new_quota=2)
+    scheduler.commit()
+
+    token = scheduler.reserve(u'test@example.com', group=allocations[0].group)
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    group_allocations = scheduler.allocations_by_group(
+        allocations[0].group).all()
+    all = list(utils.flatten([a.siblings() for a in group_allocations]))
+    assert scheduler.queries.availability_by_allocations(all) == 0.0
+
+    for a in all:
+        assert not a.is_available()
+
+    assert len(all) == 4
+
+    with pytest.raises(errors.AffectedReservationError):
+        scheduler.move_allocation(allocations[0].id, newstart, newend, None, 1)
