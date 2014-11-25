@@ -1081,3 +1081,29 @@ def test_imaginary_mirrors(scheduler):
     imaginary = len([m for m in mirrors if m.is_transient])
     assert imaginary == 0
     assert len(mirrors) + 1 == len(allocation.siblings())
+
+
+def test_allocations_by_reservation(scheduler):
+    start = datetime(2013, 12, 3, 13, 0)
+    end = datetime(2013, 12, 3, 15, 0)
+    daterange = (start, end)
+
+    allocations = scheduler.allocate(daterange, approve_manually=True)
+    token = scheduler.reserve(u'test@example.org', daterange)
+    scheduler.commit()
+
+    # pending reservations return empty
+    assert scheduler.allocations_by_reservation(token).all() == []
+
+    # on the reservation itself, the target can be found however
+    reservation = scheduler.reservations_by_token(token).one()
+    assert reservation._target_allocations().all() == allocations
+
+    # note how this changes once the reservation is approved
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    assert scheduler.allocations_by_reservation(token).all() == allocations
+
+    # all the while it stays the same here
+    assert reservation._target_allocations().all() == allocations

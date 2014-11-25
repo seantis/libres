@@ -96,6 +96,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         UniqueConstraint('resource', '_start', name='resource_start_ix')
     )
 
+    def __eq__(self, other):
+        return self.resource == other.resource and self._start == other._start
+
     def copy(self):
         """ Creates a new copy of this allocation. """
         allocation = Allocation()
