@@ -1241,3 +1241,88 @@ def test_quota_changes(scheduler):
 
     assert a7_ == a4
     assert a7_ != a7
+
+
+def test_availability(scheduler):
+    start = datetime(2011, 1, 1, 15, 0)
+    end = datetime(2011, 1, 1, 16, 0)
+
+    a = scheduler.allocate(
+        (start, end), raster_value=15, partly_available=True)[0]
+
+    scheduler.approve_reservations(
+        scheduler.reserve(
+            u'test@example.org',
+            (datetime(2011, 1, 1, 15, 0), datetime(2011, 1, 1, 15, 15))
+        )
+    )
+    scheduler.commit()
+
+    assert a.availability == 75.0
+    assert a.availability == scheduler.availability()
+
+    scheduler.approve_reservations(
+        scheduler.reserve(
+            u'test@example.org',
+            (datetime(2011, 1, 1, 15, 45), datetime(2011, 1, 1, 16, 0))
+        )
+    )
+    scheduler.commit()
+
+    assert a.availability == 50.0
+    assert a.availability == scheduler.availability()
+
+    scheduler.approve_reservations(
+        scheduler.reserve(
+            u'test@example.org',
+            (datetime(2011, 1, 1, 15, 15), datetime(2011, 1, 1, 15, 30))
+        )
+    )
+    scheduler.commit()
+
+    assert a.availability == 25.0
+    assert a.availability == scheduler.availability()
+
+    scheduler.approve_reservations(
+        scheduler.reserve(
+            u'test@example.org',
+            (datetime(2011, 1, 1, 15, 30), datetime(2011, 1, 1, 15, 45))
+        )
+    )
+    scheduler.commit()
+
+    assert a.availability == 0.0
+    assert a.availability == scheduler.availability()
+
+    sc2 = scheduler.clone()
+    sc2.name = 'clone'
+
+    a = sc2.allocate((start, end), quota=4)[0]
+    assert a.availability == 100.0  # master only!
+
+    sc2.approve_reservations(sc2.reserve(u'test@example.org', (start, end)))
+    sc2.commit()
+
+    assert sc2.availability() == 75.0
+    assert a.availability == 0.0  # master only!
+
+    sc2.approve_reservations(
+        sc2.reserve(u'test@example.org', (start, end))
+    )
+    sc2.commit()
+    assert sc2.availability() == 50.0
+
+    sc2.approve_reservations(
+        sc2.reserve(u'test@example.org', (start, end))
+    )
+    sc2.commit()
+    assert sc2.availability() == 25.0
+
+    sc2.approve_reservations(
+        sc2.reserve(u'test@example.org', (start, end))
+    )
+    sc2.commit()
+    assert sc2.availability() == 0.0
+
+    sc2.extinguish_managed_records()
+    sc2.commit()

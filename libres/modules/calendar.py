@@ -4,6 +4,10 @@ from datetime import datetime, timedelta
 from libres.modules import errors, utils
 
 
+mindatetime = arrow.get(datetime.min).datetime
+maxdatetime = arrow.get(datetime.max).datetime
+
+
 def normalize_dates(dates, timezone):
     dates = list(utils.pairs(dates))
 

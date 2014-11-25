@@ -511,8 +511,10 @@ class Scheduler(object):
     def availability(self, start=None, end=None):
         """Goes through all allocations and sums up the availability."""
 
-        start = start if start else datetime.min
-        end = end if end else datetime.max
+        start = start if start else calendar.mindatetime
+        end = end if end else calendar.maxdatetime
+
+        start, end = self.prepare_range(start, end)
 
         return self.queries.availability_by_range(start, end, [self.resource])
 
