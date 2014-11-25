@@ -1107,3 +1107,33 @@ def test_allocations_by_reservation(scheduler):
 
     # all the while it stays the same here
     assert reservation._target_allocations().all() == allocations
+
+
+def test_allocations_by_multiple_reservations(scheduler):
+    ranges = (
+        (datetime(2013, 12, 3, 13, 0), datetime(2013, 12, 3, 15, 0)),
+        (datetime(2014, 12, 3, 13, 0), datetime(2014, 12, 3, 15, 0))
+    )
+
+    allocations = []
+    for start, end in ranges:
+        allocations.extend(
+            scheduler.allocate((start, end), approve_manually=True)
+        )
+
+    token = scheduler.reserve(u'test@example.org', ranges)
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    # we now have multiple reservations pointing to multiple tokens
+    # bound together in one reservation token
+    assert len(scheduler.allocations_by_reservation(token).all()) == 2
+
+    # which we can limit by reservation id
+    reservations = scheduler.managed_reservations().all()
+
+    query = scheduler.allocations_by_reservation(token, reservations[0].id)
+    assert query.count() == 1
+
+    query = scheduler.allocations_by_reservation(token, reservations[1].id)
+    assert query.count() == 1
