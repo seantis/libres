@@ -1,6 +1,7 @@
 import pytest
 
 from datetime import datetime
+from libres.db.models import Allocation
 
 
 @pytest.mark.parametrize('execution_number', range(2))
@@ -25,3 +26,4 @@ def test_independence(
     scheduler.commit()
 
     assert scheduler.managed_allocations().count() == 1
+    assert scheduler.session.query(Allocation).count() == 1
