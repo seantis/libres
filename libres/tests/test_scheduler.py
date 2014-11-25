@@ -898,3 +898,39 @@ def test_allocation_partition(scheduler):
     assert partitions[1][1] == True
     assert partitions[2][0] == 50.00
     assert partitions[2][1] == False
+
+
+def test_partly(scheduler):
+    allocations = scheduler.allocate(
+        (
+            datetime(2011, 1, 1, 8, 0),
+            datetime(2011, 1, 1, 18, 0)
+        ),
+        partly_available=False,
+        approve_manually=False
+    )
+
+    assert len(allocations) == 1
+    allocation = allocations[0]
+
+    assert len(list(allocation.all_slots())) == 1
+    assert len(list(allocation.free_slots())) == 1
+
+    slot = list(allocation.all_slots())[0]
+    assert slot[0] == allocation.start
+    assert slot[1] == allocation.end
+
+    slot = list(allocation.free_slots())[0]
+    assert slot[0] == allocation.start
+    assert slot[1] == allocation.end
+
+    token = scheduler.reserve(
+        u'info@example.org',
+        (datetime(2011, 1, 1, 16, 0), datetime(2011, 1, 1, 18, 0))
+    )
+    scheduler.approve_reservations(token)
+
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.reserve(u'info@example.org', (
+            datetime(2011, 1, 1, 8, 0), datetime(2011, 1, 1, 9, 0)
+        ))
