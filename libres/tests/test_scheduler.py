@@ -520,3 +520,55 @@ def test_invalid_reservation(scheduler):
 
     with pytest.raises(errors.InvalidReservationError):
         scheduler.reserve(u'test@example.org', rdates)
+
+
+def test_waitinglist(scheduler):
+    start = datetime(2012, 2, 29, 15, 0)
+    end = datetime(2012, 2, 29, 19, 0)
+    dates = (start, end)
+
+    # let's create an allocation with a waitinglist
+    allocation = scheduler.allocate(dates, approve_manually=True)[0]
+    assert allocation.waitinglist_length == 0
+
+    # reservation should work
+    approval_token = scheduler.reserve(u'test@example.org', dates)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(approval_token).one()
+
+    assert not reservation.autoapprovable
+    assert allocation.is_available(start, end)
+    assert allocation.waitinglist_length == 1
+
+    # as well as it's approval
+    scheduler.approve_reservations(approval_token)
+    scheduler.commit()
+
+    assert not allocation.is_available(start, end)
+    assert allocation.waitinglist_length == 0
+
+    # at this point we can only reserve, not approve
+    waiting_token = scheduler.reserve(u'test@example.org', dates)
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.approve_reservations(waiting_token)
+
+    assert allocation.waitinglist_length == 1
+
+    # try to illegally move the allocation now
+    with pytest.raises(errors.AffectedReservationError):
+        scheduler.move_allocation(
+            allocation.id, start + timedelta(days=1), end + timedelta(days=1)
+        )
+
+    # we may now get rid of the existing approved reservation
+    scheduler.remove_reservation(approval_token)
+    scheduler.commit()
+
+    assert allocation.waitinglist_length == 1
+
+    # which should allow us to approve the reservation in the waiting list
+    scheduler.approve_reservations(waiting_token)
+    scheduler.commit()
+
+    assert allocation.waitinglist_length == 0

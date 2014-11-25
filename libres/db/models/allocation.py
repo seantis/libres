@@ -177,6 +177,14 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         end = self.end + timedelta(microseconds=1)
         return calendar.to_timezone(end, timezone or self.timezone)
 
+    def prepare_daterange(self, start, end):
+        if start:
+            start = calendar.normalize_date(start, self.timezone)
+        if end:
+            end = calendar.normalize_date(end, self.timezone)
+
+        return start, end
+
     @property
     def whole_day(self):
         """True if the allocation is a whole-day allocation.
@@ -199,13 +207,17 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def overlaps(self, start, end):
         """ Returns true if the allocation overlaps with the given dates. """
 
+        start, end = self.prepare_daterange(start, end)
         start, end = rasterize_span(start, end, self.raster)
+
         return calendar.overlaps(start, end, self.start, self.end)
 
     def contains(self, start, end):
         """ Returns true if the the allocation contains the given dates. """
 
+        start, end = self.prepare_daterange(start, end)
         start, end = rasterize_span(start, end, self.raster)
+
         return self.start <= start and end <= self.end
 
     def free_slots(self, start=None, end=None):
@@ -223,6 +235,8 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         """ Aligns the given dates to the start and end date of the allocation.
 
         """
+
+        start, end = self.prepare_daterange(start, end)
 
         start = start or self.start
         start = start < self.start and self.start or start
