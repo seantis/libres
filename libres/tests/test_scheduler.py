@@ -934,3 +934,83 @@ def test_partly(scheduler):
         scheduler.reserve(u'info@example.org', (
             datetime(2011, 1, 1, 8, 0), datetime(2011, 1, 1, 9, 0)
         ))
+
+
+def test_quotas(scheduler):
+    start = datetime(2011, 1, 1, 15, 0)
+    end = datetime(2011, 1, 1, 16, 0)
+
+    # setup an allocation with ten spots
+    allocations = scheduler.allocate(
+        (start, end), raster_value=15, quota=10, approve_manually=False
+    )
+    allocation = allocations[0]
+    scheduler.commit()
+
+    # which should give us ten allocations (-1 as the master is not
+    # counted)
+    assert len(scheduler.allocation_mirrors_by_master(allocation)) == 9
+
+    # the same reservation can now be made ten times
+    for i in range(0, 10):
+        scheduler.approve_reservations(
+            scheduler.reserve(u'test@example.org', (start, end))
+        )
+    scheduler.commit()
+
+    # the 11th time it'll fail
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.reserve(u'test@example.org', [(start, end)])
+
+    other = scheduler.clone()
+    other.name = 'other'
+
+    # setup an allocation with five spots
+    allocations = other.allocate(
+        [(start, end)], raster_value=15, quota=5, partly_available=True,
+        approve_manually=False
+    )
+    allocation = allocations[0]
+
+    assert len(other.allocation_mirrors_by_master(allocation)) == 4
+
+    # we can do ten reservations if every reservation only occupies half
+    # of the allocation
+    for i in range(0, 5):
+        other.approve_reservations(
+            other.reserve(
+                u'test@example.org',
+                (datetime(2011, 1, 1, 15, 0), datetime(2011, 1, 1, 15, 30))
+            )
+        )
+        other.approve_reservations(
+            other.reserve(
+                u'test@example.org',
+                (datetime(2011, 1, 1, 15, 30), datetime(2011, 1, 1, 16, 0))
+            )
+        )
+
+    scheduler.commit()
+
+    with pytest.raises(errors.AlreadyReservedError):
+        other.reserve(u'test@example.org', (
+            (datetime(2011, 1, 1, 15, 30), datetime(2011, 1, 1, 16, 0))
+        ))
+
+    # test some queries
+    allocations = scheduler.allocations_in_range(start, end)
+    assert allocations.count() == 1
+
+    allocations = other.allocations_in_range(start, end)
+    assert allocations.count() == 1
+
+    allocation = scheduler.allocation_by_date(start, end)
+    scheduler.allocation_by_id(allocation.id)
+    assert len(scheduler.allocation_mirrors_by_master(allocation)) == 9
+
+    allocation = other.allocation_by_date(start, end)
+    other.allocation_by_id(allocation.id)
+    assert len(other.allocation_mirrors_by_master(allocation)) == 4
+
+    other.extinguish_managed_records()
+    other.commit()

@@ -25,5 +25,9 @@ def test_independence(
     )
     scheduler.commit()
 
+    # note, if this fails for you you probably created your own
+    # scheduler, or cloned an existing one -> those schedulers are for you
+    # to clean up, by calling scheduler.extinguish_managed_records followed
+    # by a commit!
     assert scheduler.managed_allocations().count() == 1
     assert scheduler.session.query(Allocation).count() == 1

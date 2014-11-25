@@ -104,6 +104,12 @@ class Scheduler(object):
     def prepare_dates(self, dates):
         return calendar.normalize_dates(dates, self.timezone)
 
+    def prepare_range(self, start, end):
+        return (
+            calendar.normalize_date(start, self.timezone),
+            calendar.normalize_date(end, self.timezone)
+        )
+
     def begin(self):
         return self.context.serial_session.begin(subtransactions=True)
 
@@ -216,6 +222,8 @@ class Scheduler(object):
         return query
 
     def allocations_in_range(self, start, end, masters_only=True):
+        start, end = self.prepare_range(start, end)
+
         query = self.managed_allocations()
         query = self.queries.allocations_in_range(query, start, end)
 
