@@ -504,3 +504,19 @@ def test_session_removal_is_complete(scheduler):
     assert scheduler.session.query(Reservation).count() == 0
     assert scheduler.session.query(Allocation).count() == 1
     assert scheduler.session.query(ReservedSlot).count() == 0
+
+
+def test_invalid_reservation(scheduler):
+    # try to reserve aspot that doesn't exist
+    astart = datetime(2012, 1, 1, 15, 0)
+    aend = datetime(2012, 1, 1, 16, 0)
+    adates = (astart, aend)
+
+    rstart = datetime(2012, 2, 1, 15, 0)
+    rend = datetime(2012, 2, 1, 16, 0)
+    rdates = (rstart, rend)
+
+    scheduler.allocate(dates=adates, approve_manually=True)
+
+    with pytest.raises(errors.InvalidReservationError):
+        scheduler.reserve(u'test@example.org', rdates)
