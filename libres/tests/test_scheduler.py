@@ -729,3 +729,35 @@ def test_group_move(scheduler):
 
     with pytest.raises(errors.AffectedReservationError):
         scheduler.move_allocation(allocations[0].id, newstart, newend, None, 1)
+
+
+def test_no_waitinglist(scheduler):
+
+    start = datetime(2012, 4, 6, 22, 0)
+    end = datetime(2012, 4, 6, 23, 0)
+    dates = (start, end)
+
+    allocation = scheduler.allocate(dates, approve_manually=False)[0]
+    scheduler.commit()
+
+    assert allocation.waitinglist_length == 0
+
+    # the first reservation kinda gets us in a waiting list, though
+    # this time there can be only one spot in the list as long as there's
+    # no reservation
+
+    token = scheduler.reserve(u'test@example.org', dates)
+    scheduler.commit()
+
+    assert scheduler.reservations_by_token(token).one().autoapprovable
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    # it is now that we should have a problem reserving
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.reserve(u'test@example.org', dates)
+    assert allocation.waitinglist_length == 0
+
+    # until we delete the existing reservation
+    scheduler.remove_reservation(token)
+    scheduler.reserve(u'test@example.org', dates)
