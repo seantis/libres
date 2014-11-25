@@ -1326,3 +1326,78 @@ def test_availability(scheduler):
 
     sc2.extinguish_managed_records()
     sc2.commit()
+
+
+def test_events(scheduler):
+
+    # hookup test event subscribers
+    allocations_added = Mock()
+    reservations_made = Mock()
+    reservations_approved = Mock()
+    reservations_denied = Mock()
+    reservations_removed = Mock()
+
+    events.on_allocations_added.append(allocations_added)
+    events.on_reservations_made.append(reservations_made)
+    events.on_reservations_approved.append(reservations_approved)
+    events.on_reservations_denied.append(reservations_denied)
+    events.on_reservations_removed.append(reservations_removed)
+
+    assert not allocations_added.called
+    assert not reservations_made.called
+    assert not reservations_approved.called
+    assert not reservations_denied.called
+    assert not reservations_removed.called
+
+    # prepare reservation
+    start = datetime(2012, 2, 29, 15, 0)
+    end = datetime(2012, 2, 29, 19, 0)
+    dates = (start, end)
+
+    # create allocations
+    start = datetime(2012, 1, 1, 15, 0)
+    end = datetime(2012, 1, 1, 19, 0)
+    dates = (start, end)
+
+    scheduler.allocate(dates, approve_manually=True)
+    assert allocations_added.called
+    assert allocations_added.call_args[0][0] == scheduler.context.name
+    assert len(allocations_added.call_args[0][1]) == 1
+
+    # create reservations
+
+    token = scheduler.reserve(u'test@example.org', dates)
+    assert reservations_made.called
+    assert reservations_made.call_args[0][0] == scheduler.context.name
+    assert reservations_made.call_args[0][0] == scheduler.context.name
+    assert reservations_made.call_args[0][1][0].token == token
+
+    reservations_made.reset_mock()
+
+    # approve reservations
+    scheduler.approve_reservations(token)
+
+    assert reservations_approved.called
+    assert not reservations_denied.called
+    assert not reservations_made.called
+    assert reservations_approved.call_args[0][0] == scheduler.context.name
+    assert reservations_approved.call_args[0][1][0].token == token
+
+    reservations_approved.reset_mock()
+    reservations_denied.reset_mock()
+
+    # remove the reservation and deny the next one
+    scheduler.remove_reservation(token)
+    assert reservations_removed.called
+    assert reservations_removed.call_args[0][0] == scheduler.context.name
+
+    token = scheduler.reserve(u'test@example.org', dates)
+    assert reservations_made.called
+    assert reservations_made.call_args[0][0] == scheduler.context.name
+
+    scheduler.deny_reservation(token)
+
+    assert not reservations_approved.called
+    assert reservations_denied.call_args[0][0] == scheduler.context.name
+    assert reservations_denied.called
+    assert reservations_denied.call_args[0][1][0].token == token
