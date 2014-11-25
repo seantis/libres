@@ -82,6 +82,7 @@ import re
 import threading
 import functools
 
+from sqlalchemy.sql.dml import UpdateBase
 from sqlalchemy import create_engine
 from sqlalchemy.pool import SingletonThreadPool
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -137,15 +138,27 @@ class SessionStore(object):
         ))
 
         if isolation_level == READ_COMMITTED:
-
-            def guard_changes(session, *args):
+            # TODO I suspect that I can remove 'guard_flush' in favor of
+            # 'guard_execute'. They basically do the same thing, but
+            # 'guard_execute' is simpler and faster (though it will be
+            # called more often). Not to mention that it also catches
+            # statements created directly without the help of the orm.
+            #
+            # Once all tests are migrated from seantis.reservation it's
+            # worth a try.
+            def guard_flush(session, *args):
                 changelists = [session.dirty, session.deleted, session.new]
 
                 # sum up the len of all changelists
                 if sum(map(len, changelists)):
                     raise errors.ModifiedReadOnlySession
 
-            event.listen(session, 'before_flush', guard_changes)
+            def guard_execute(conn, clauseelement, multiparams, params):
+                if isinstance(clauseelement, UpdateBase):
+                    raise errors.ModifiedReadOnlySession
+
+            event.listen(session, 'before_flush', guard_flush)
+            event.listen(session.bind, 'before_execute', guard_execute)
 
         if isolation_level == SERIALIZABLE:
 
