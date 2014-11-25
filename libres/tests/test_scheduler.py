@@ -797,3 +797,18 @@ def test_quota_waitinglist(scheduler):
 
     with pytest.raises(errors.AlreadyReservedError):
         scheduler.approve_reservations(t4)
+
+
+def test_userlimits(scheduler):
+    # ensure that no user can make a reservation for more than 24 hours at
+    # the time. the user acutally can't do that anyway, since we do not
+    # offer start / end dates, but a day and two times. But if this changes
+    # in the future it should throw en error first, because it would mean
+    # that we have to look at how to stop the user from reserving one year
+    # with a single form.
+
+    start = datetime(2011, 1, 1, 15, 0)
+    end = start + timedelta(days=1)
+
+    with pytest.raises(errors.ReservationTooLong):
+        scheduler.reserve(u'test@example.org', (start, end))
