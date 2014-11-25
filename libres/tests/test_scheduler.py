@@ -1041,3 +1041,43 @@ def test_fragmentation(scheduler):
 
     with pytest.raises(errors.AffectedReservationError):
         scheduler.remove_allocation(allocation.id)
+
+
+def test_imaginary_mirrors(scheduler):
+    start = datetime(2011, 1, 1, 15, 0)
+    end = datetime(2011, 1, 1, 16, 0)
+    daterange = (start, end)
+
+    allocation = scheduler.allocate(daterange, quota=3)[0]
+    assert allocation.is_master
+
+    mirrors = scheduler.allocation_mirrors_by_master(allocation)
+    imaginary = len([m for m in mirrors if m.is_transient])
+    assert imaginary == 2
+    assert len(allocation.siblings()) == 3
+
+    masters = len([m for m in mirrors if m.is_master])
+    assert masters == 0
+    assert len([s for s in allocation.siblings(imaginary=False)]) == 1
+
+    scheduler.approve_reservations(
+        scheduler.reserve(u'test@example.org', daterange)
+    )
+    mirrors = scheduler.allocation_mirrors_by_master(allocation)
+    imaginary = len([m for m in mirrors if m.is_transient])
+    assert imaginary == 2
+
+    scheduler.approve_reservations(
+        scheduler.reserve(u'test@example.org', daterange)
+    )
+    mirrors = scheduler.allocation_mirrors_by_master(allocation)
+    imaginary = len([m for m in mirrors if m.is_transient])
+    assert imaginary == 1
+
+    scheduler.approve_reservations(
+        scheduler.reserve(u'test@example.org', daterange)
+    )
+    mirrors = scheduler.allocation_mirrors_by_master(allocation)
+    imaginary = len([m for m in mirrors if m.is_transient])
+    assert imaginary == 0
+    assert len(mirrors) + 1 == len(allocation.siblings())
