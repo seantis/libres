@@ -594,3 +594,51 @@ def test_no_bleed(scheduler):
     # expect no exceptions
     scheduler.reserve(u'test@example.org', d2)
     scheduler.reserve(u'test@example.org', d1)
+
+
+def test_waitinglist_group(scheduler):
+    from dateutil.rrule import rrule, DAILY, MO
+
+    days = list(rrule(
+        DAILY, count=5, byweekday=(MO,), dtstart=datetime(2012, 1, 1)
+    ))
+    dates = []
+    for d in days:
+        dates.append(
+            (
+                datetime(d.year, d.month, d.day, 15, 0),
+                datetime(d.year, d.month, d.day, 16, 0)
+            )
+        )
+
+    allocations = scheduler.allocate(
+        dates, grouped=True, approve_manually=True
+    )
+    assert len(allocations) == 5
+
+    group = allocations[0].group
+
+    # reserving groups is no different than single allocations
+    maintoken = scheduler.reserve(u'test@example.org', group=group)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(maintoken).one()
+
+    assert not reservation.autoapprovable
+
+    for allocation in allocations:
+        assert allocation.waitinglist_length == 1
+
+    scheduler.approve_reservations(maintoken)
+    scheduler.commit()
+
+    token = scheduler.reserve(u'test@example.org', group=group)
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.approve_reservations(token)
+
+    token = scheduler.reserve(u'test@example.org', group=group)
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.approve_reservations(token)
+
+    scheduler.remove_reservation(maintoken)
+    scheduler.approve_reservations(token)
