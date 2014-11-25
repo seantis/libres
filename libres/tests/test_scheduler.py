@@ -1014,3 +1014,30 @@ def test_quotas(scheduler):
 
     other.extinguish_managed_records()
     other.commit()
+
+
+def test_fragmentation(scheduler):
+    start = datetime(2011, 1, 1, 15, 0)
+    end = datetime(2011, 1, 1, 16, 0)
+    daterange = (start, end)
+
+    allocation = scheduler.allocate(daterange, quota=3)[0]
+    reservation = scheduler.reserve(u'test@example.org', daterange)
+    slots = scheduler.approve_reservations(reservation)
+
+    assert all(True for s in slots if s.resource == scheduler.resource)
+
+    slots = scheduler.approve_reservations(
+        scheduler.reserve(u'test@example.org', daterange)
+    )
+    assert not any(False for s in slots if s.resource == scheduler.resource)
+
+    scheduler.remove_reservation(reservation)
+
+    slots = scheduler.approve_reservations(
+        scheduler.reserve(u'test@example.org', daterange)
+    )
+    assert all(True for s in slots if s.resource == scheduler.resource)
+
+    with pytest.raises(errors.AffectedReservationError):
+        scheduler.remove_allocation(allocation.id)
