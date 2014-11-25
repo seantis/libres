@@ -812,3 +812,58 @@ def test_userlimits(scheduler):
 
     with pytest.raises(errors.ReservationTooLong):
         scheduler.reserve(u'test@example.org', (start, end))
+
+
+def test_allocation_overlap(scheduler):
+
+    sc1 = scheduler
+    sc2 = scheduler.clone()
+    sc2.name = 'clone'
+
+    start = datetime(2011, 1, 1, 15, 0)
+    end = datetime(2011, 1, 1, 16, 0)
+
+    sc1.allocate((start, end), raster_value=15)
+    sc1.commit()
+
+    sc2.allocate((start, end), raster_value=15)
+    sc2.commit()
+
+    with pytest.raises(errors.OverlappingAllocationError):
+        sc1.allocate((start, end), raster_value=15)
+
+    # there's another way this could happen, which is illegal usage
+    # of scheduler.allocate - we stop this befor it hits the database
+    sc3 = scheduler.clone()
+    sc3.name = 'another_clone'
+
+    dates = [
+        (datetime(2013, 1, 1, 12, 0), datetime(2013, 1, 1, 13, 0)),
+        (datetime(2013, 1, 1, 12, 0), datetime(2013, 1, 1, 13, 0))
+    ]
+
+    with pytest.raises(errors.InvalidAllocationError):
+        sc3.allocate(dates)
+
+    dates = [
+        (datetime(2013, 1, 1, 12, 0), datetime(2013, 1, 1, 13, 0)),
+        (datetime(2013, 1, 1, 13, 0), datetime(2013, 1, 1, 14, 0))
+    ]
+
+    with pytest.raises(errors.InvalidAllocationError):
+        sc3.allocate(dates)
+
+    dates = [
+        (datetime(2013, 1, 1, 12, 0), datetime(2013, 1, 1, 13, 0)),
+        (datetime(2013, 1, 1, 13, 15), datetime(2013, 1, 1, 14, 0))
+    ]
+
+    sc3.allocate(dates)
+    sc3.commit()
+
+    # only sc1 is cleaned up automatically
+    sc2.extinguish_managed_records()
+    sc2.commit()
+
+    sc3.extinguish_managed_records()
+    sc3.commit()
