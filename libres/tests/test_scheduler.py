@@ -761,3 +761,39 @@ def test_no_waitinglist(scheduler):
     # until we delete the existing reservation
     scheduler.remove_reservation(token)
     scheduler.reserve(u'test@example.org', dates)
+
+
+def test_quota_waitinglist(scheduler):
+    start = datetime(2012, 3, 4, 2, 0)
+    end = datetime(2012, 3, 4, 3, 0)
+    dates = (start, end)
+
+    # in this example the waiting list will kick in only after
+    # the quota has been filled
+
+    allocation = scheduler.allocate(dates, quota=2, approve_manually=True)[0]
+    assert allocation.waitinglist_length == 0
+
+    t1 = scheduler.reserve(u'test@example.org', dates)
+    t2 = scheduler.reserve(u'test@example.org', dates)
+    scheduler.commit()
+
+    assert allocation.waitinglist_length == 2
+
+    scheduler.approve_reservations(t1)
+    scheduler.approve_reservations(t2)
+    scheduler.commit()
+
+    assert allocation.waitinglist_length == 0
+
+    t3 = scheduler.reserve(u'test@example.org', dates)
+    t4 = scheduler.reserve(u'test@example.org', dates)
+    scheduler.commit()
+
+    assert allocation.waitinglist_length == 2
+
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.approve_reservations(t3)
+
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.approve_reservations(t4)
