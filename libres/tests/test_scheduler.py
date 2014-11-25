@@ -572,3 +572,25 @@ def test_waitinglist(scheduler):
     scheduler.commit()
 
     assert allocation.waitinglist_length == 0
+
+
+def test_no_bleed(scheduler):
+    """ Ensures that two allocations close to each other are not mistaken
+    when using scheduler.reserve. If they do then they bleed over, hence
+    the name.
+
+    """
+    d1 = (datetime(2011, 1, 1, 15, 0), datetime(2011, 1, 1, 16, 0))
+    d2 = (datetime(2011, 1, 1, 16, 0), datetime(2011, 1, 1, 17, 0))
+
+    a1 = scheduler.allocate(d1)[0]
+    a2 = scheduler.allocate(d2)[0]
+
+    scheduler.commit()
+
+    assert not a1.overlaps(*d2)
+    assert not a2.overlaps(*d1)
+
+    # expect no exceptions
+    scheduler.reserve(u'test@example.org', d2)
+    scheduler.reserve(u'test@example.org', d1)
