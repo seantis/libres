@@ -1216,6 +1216,7 @@ def test_quota_changes(scheduler):
 
     for r in [r2, r3, r4, r5, r6, r7]:
         scheduler.approve_reservations(r)
+        scheduler.commit()
 
     scheduler.commit()
 
