@@ -25,7 +25,7 @@ def setup_registry():
 
     with registry.context(registry.master_context):
         registry.set_service('email_validator', email_validator_factory)
-        registry.set_service('session_provider', session_provider)
+        registry.set_service('session_provider', session_provider, cache=True)
         registry.set_service('exposure', exposure_factory)
 
         set_default_settings(registry)
