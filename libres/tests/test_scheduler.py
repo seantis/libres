@@ -1218,8 +1218,6 @@ def test_quota_changes(scheduler):
         scheduler.approve_reservations(r)
         scheduler.commit()
 
-    scheduler.commit()
-
     a2 = scheduler.allocations_by_reservation(r2).one().id
     a3 = scheduler.allocations_by_reservation(r3).one().id
     a4 = scheduler.allocations_by_reservation(r4).one().id
