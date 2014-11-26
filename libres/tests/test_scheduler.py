@@ -1557,3 +1557,22 @@ def test_search_allocations(scheduler):
     assert len(scheduler.search_allocations(*daterange, minspots=1)) == 0
     assert len(scheduler.search_allocations(*daterange, minspots=2)) == 0
     assert len(scheduler.search_allocations(*daterange, minspots=3)) == 0
+
+
+def test_search_allocation_groups(scheduler):
+    s1, e1 = datetime(2014, 8, 3, 13, 0), datetime(2014, 8, 3, 15, 0)
+    s2, e2 = datetime(2014, 8, 4, 13, 0), datetime(2014, 8, 4, 15, 0)
+
+    scheduler.allocate([(s1, e1), (s2, e2)], grouped=True)
+    scheduler.commit()
+
+    assert len(scheduler.search_allocations(s1, e1, strict=True)) == 1
+    assert len(scheduler.search_allocations(s2, e2, strict=True)) == 1
+
+    assert len(scheduler.search_allocations(s1, e1, strict=False)) == 2
+    assert len(scheduler.search_allocations(s2, e2, strict=False)) == 2
+
+    assert len(scheduler.search_allocations(s1, e2)) == 2
+
+    assert len(scheduler.search_allocations(s1, e2, groups='yes')) == 2
+    assert len(scheduler.search_allocations(s1, e2, groups='no')) == 0
