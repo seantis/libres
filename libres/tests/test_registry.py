@@ -67,6 +67,16 @@ def test_services():
     assert first_call is not second_call
 
 
+def test_services_cache():
+    r = Registry()
+    r.set_service('service', factory=object, cache=True)
+
+    first_call = r.get_service('service')
+    second_call = r.get_service('service')
+
+    assert first_call is second_call
+
+
 def test_threading_contexts():
     r = Registry()
 

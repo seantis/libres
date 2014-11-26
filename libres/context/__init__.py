@@ -1,6 +1,5 @@
 def setup_registry():
 
-    import json
     import re
 
     from libres.context.registry import Registry
@@ -10,14 +9,8 @@ def setup_registry():
 
     registry = Registry()
 
-    def session_factory():
-        return SessionProvider(
-            registry.get('settings.dsn'),
-            engine_config={
-                'json_serializer': registry.get_service('json_serializer'),
-                'json_deserializer': registry.get_service('json_deserializer')
-            }
-        )
+    def session_provider():
+        return SessionProvider(registry.get('settings.dsn'))
 
     def email_validator_factory():
         # A very simple and stupid email validator. It's way too simple, but
@@ -27,20 +20,12 @@ def setup_registry():
 
         return is_valid_email
 
-    def json_serializer_factory():
-        return json.dumps
-
-    def json_deserializer_factory():
-        return json.loads
-
     def exposure_factory():
         return Exposure()
 
     with registry.context(registry.master_context):
         registry.set_service('email_validator', email_validator_factory)
-        registry.set_service('session', session_factory)
-        registry.set_service('json_serializer', json_serializer_factory)
-        registry.set_service('json_deserializer', json_deserializer_factory)
+        registry.set_service('session_provider', session_provider)
         registry.set_service('exposure', exposure_factory)
 
         set_default_settings(registry)

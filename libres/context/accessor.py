@@ -24,10 +24,17 @@ class ContextAccessor(ContextAware):
         with registry.context(self.context):
             return registry.set(name, value)
 
+    def get_service(self, name):
+        with registry.context(self.context):
+            return registry.get_service(name)
+
+    def set_service(self, name, value):
+        with registry.context(self.context):
+            return registry.set_service(name, value)
+
     @property
     def session_provider(self):
-        with registry.context(self.context):
-            return registry.get_service('session')
+        return self.get_service('session_provider')
 
     @property
     def session(self):
@@ -42,8 +49,8 @@ class ContextAccessor(ContextAware):
         return self.session_provider.sessionstore.readonly
 
     def validate_email(self, email):
-        return registry.get_service('email_validator')(email)
+        return self.get_service('email_validator')(email)
 
     def is_allocation_exposed(self, allocation):
-        exposure = registry.get_service('exposure')
+        exposure = self.get_service('exposure')
         return exposure.is_allocation_exposed(allocation)

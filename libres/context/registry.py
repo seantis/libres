@@ -5,6 +5,7 @@ from libres.modules import errors
 
 
 missing = object()
+required = object()
 
 
 class Registry(object):
@@ -92,10 +93,26 @@ class Registry(object):
         service = self.get(service_id)
 
         if service is missing:
-            raise errors.UnknownService
+            raise errors.UnknownService(service_id)
 
-        return service()
+        cache_id = '/'.join(('service', name, 'cache'))
+        cache = self.get(cache_id)
 
-    def set_service(self, name, factory):
+        # no cache
+        if cache is missing:
+            return service()
+        else:
+            # first call, cache it!
+            if cache is required:
+                self.set(cache_id, service())
+
+            # nth call, use cached value
+            return self.get(cache_id)
+
+    def set_service(self, name, factory, cache=False):
         service_id = '/'.join(('service', name))
         self.set(service_id, factory)
+
+        if cache:
+            cache_id = '/'.join(('service', name, 'cache'))
+            self.set(cache_id, required)
