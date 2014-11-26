@@ -1478,3 +1478,82 @@ def test_no_reservations_to_confirm(scheduler):
         scheduler.queries.confirm_reservations_for_session(
             session_id=new_uuid()
         )
+
+
+def test_search_allocations(scheduler):
+    start = datetime(2014, 8, 3, 13, 0)
+    end = datetime(2014, 8, 3, 15, 0)
+    daterange = (start, end)
+    maxrange = (calendar.mindatetime, calendar.maxdatetime)
+
+    # test empty
+    assert len(scheduler.search_allocations(*daterange)) == 0
+    assert len(scheduler.search_allocations(*maxrange)) == 0
+
+    # test matching
+    scheduler.allocate(daterange, quota_limit=2, quota=4)
+    scheduler.commit()
+
+    assert len(scheduler.search_allocations(*maxrange)) == 1
+    assert len(scheduler.search_allocations(*daterange)) == 1
+
+    # test overlapping
+    adjusted = (start - timedelta(hours=1), end - timedelta(hours=1))
+    assert len(scheduler.search_allocations(*adjusted)) == 1
+    adjusted = (start - timedelta(hours=2), end - timedelta(minutes=59))
+    assert len(scheduler.search_allocations(*adjusted)) == 1
+    adjusted = (start - timedelta(hours=2), end - timedelta(hours=2))
+    assert len(scheduler.search_allocations(*adjusted)) == 0
+
+    # test days
+    assert len(scheduler.search_allocations(*daterange, days=['su'])) == 1
+    assert len(scheduler.search_allocations(*daterange, days=['mo'])) == 0
+
+    # make sure the exposure is taken into account
+    class MockExposure(object):
+
+        def __init__(self, return_value):
+            self.return_value = return_value
+
+        def is_allocation_exposed(self, allocation):
+            return self.return_value
+
+    scheduler.context.set_service('exposure', lambda: MockExposure(False))
+    assert len(scheduler.search_allocations(*daterange)) == 0
+
+    scheduler.context.set_service('exposure', lambda: MockExposure(True))
+    assert len(scheduler.search_allocations(*daterange)) == 1
+
+    # test available only
+    assert len(scheduler.search_allocations(
+        *daterange, available_only=True)) == 1
+
+    for i in range(0, 4):
+        scheduler.approve_reservations(
+            scheduler.reserve(u'test@example.org', daterange)
+        )
+        scheduler.commit()
+
+    assert len(scheduler.search_allocations(
+        *daterange, available_only=True)) == 0
+
+    # test minspots (takes quota_limit into account)
+    scheduler.availability = Mock(return_value=100.0)
+    assert len(scheduler.search_allocations(*daterange, minspots=1)) == 1
+    assert len(scheduler.search_allocations(*daterange, minspots=2)) == 1
+    assert len(scheduler.search_allocations(*daterange, minspots=3)) == 0
+
+    scheduler.availability = Mock(return_value=50.0)
+    assert len(scheduler.search_allocations(*daterange, minspots=1)) == 1
+    assert len(scheduler.search_allocations(*daterange, minspots=2)) == 1
+    assert len(scheduler.search_allocations(*daterange, minspots=3)) == 0
+
+    scheduler.availability = Mock(return_value=25.0)
+    assert len(scheduler.search_allocations(*daterange, minspots=1)) == 1
+    assert len(scheduler.search_allocations(*daterange, minspots=2)) == 0
+    assert len(scheduler.search_allocations(*daterange, minspots=3)) == 0
+
+    scheduler.availability = Mock(return_value=0.0)
+    assert len(scheduler.search_allocations(*daterange, minspots=1)) == 0
+    assert len(scheduler.search_allocations(*daterange, minspots=2)) == 0
+    assert len(scheduler.search_allocations(*daterange, minspots=3)) == 0

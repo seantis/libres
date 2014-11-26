@@ -1119,6 +1119,8 @@ class Scheduler(object):
         assert start
         assert end
 
+        start, end = self.prepare_range(start, end)
+
         assert whole_day in ('yes', 'no', 'any')
         assert groups in ('yes', 'no', 'any')
 
@@ -1147,11 +1149,14 @@ class Scheduler(object):
 
         for allocation in query.all():
 
-            if not self.context.allocation_is_exposed(allocation):
+            if not self.context.is_allocation_exposed(allocation):
                 continue
 
             s = datetime.combine(allocation.start.date(), start.time())
             e = datetime.combine(allocation.end.date(), end.time())
+
+            s = s.replace(tzinfo=allocation.start.tzinfo)
+            e = e.replace(tzinfo=allocation.end.tzinfo)
 
             if not allocation.overlaps(s, e):
                 continue
@@ -1173,12 +1178,12 @@ class Scheduler(object):
             # the spots are later checked again for actual availability, but
             # that is a heavier check, so it doesn't belong here.
             if minspots:
-                if allocation.reservation_quota_limit > 0:
-                    if allocation.reservation_quota_limit < minspots:
+                if allocation.quota_limit > 0:
+                    if allocation.quota_limit < minspots:
                         continue
 
             if available_only:
-                if not allocation.find_spot(allocation, s, e):
+                if not allocation.find_spot(s, e):
                     continue
 
             if minspots:
