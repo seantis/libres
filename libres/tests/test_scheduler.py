@@ -1622,3 +1622,34 @@ def test_remove_reservation_from_session(scheduler):
 
     assert scheduler.queries.reservations_by_session(sessions[0]).count() == 0
     assert scheduler.queries.reservations_by_session(sessions[1]).count() == 1
+
+
+def test_availability_by_day(scheduler):
+    dates = (datetime(2014, 11, 26, 13, 0), datetime(2014, 11, 26, 14))
+
+    allocation = scheduler.allocate(dates)[0]
+    scheduler.approve_reservations(
+        scheduler.reserve(u'test@example.com', dates)
+    )
+    scheduler.commit()
+
+    sc2 = scheduler.clone()
+    sc2.name = 'clone'
+
+    sc2.allocate(dates)
+    sc2.commit()
+
+    # we need the timezone for this
+    dates = (allocation.start, allocation.end)
+
+    resources = (sc2.resource, )
+    days = scheduler.queries.availability_by_day(*dates, resources=resources)
+    assert days[dates[0].date()][0] == 100.0
+
+    resources = (scheduler.resource, sc2.resource)
+    days = scheduler.queries.availability_by_day(*dates, resources=resources)
+    assert days[dates[0].date()][0] == 50.0
+
+    resources = (scheduler.resource, )
+    days = scheduler.queries.availability_by_day(*dates, resources=resources)
+    assert days[dates[0].date()][0] == 0.00
