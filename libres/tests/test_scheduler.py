@@ -1,10 +1,13 @@
 import pytest
 
+from copy import copy
 from datetime import datetime, timedelta
+from libres import registry
 from libres.db.models import Reservation, Allocation, ReservedSlot
 from libres.modules import calendar, errors, events
 from libres.modules import utils
 from mock import Mock
+from sqlalchemy.exc import StatementError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from uuid import uuid4 as new_uuid
 
@@ -1401,3 +1404,60 @@ def test_events(scheduler):
     assert reservations_denied.call_args[0][0] == scheduler.context.name
     assert reservations_denied.called
     assert reservations_denied.call_args[0][1][0].token == token
+
+
+def test_data_coding(scheduler):
+    """ Make sure that reservation data stored in the database is returned
+    without any alterations after encoding/decoding it to and from JSON.
+
+    """
+    data = {
+        'index': 1,
+        'name': 'record',
+        'date': datetime(2014, 1, 1, 14, 0),
+        'dates': [
+            datetime(2014, 1, 1, 14, 0),
+            datetime(2014, 1, 1, 14, 0),
+            datetime(2014, 1, 1, 14, 0),
+            {
+                'str': [
+                    datetime(2014, 1, 1, 14, 0),
+                ],
+                u'unicode': datetime(2014, 1, 1, 14, 0)
+            }
+        ],
+        'nothing': None
+    }
+    data['nested'] = list(map(copy, (data, data)))
+
+    start = datetime(2014, 1, 30, 15, 0)
+    end = datetime(2014, 1, 30, 19, 0)
+
+    # this won't work as json doesn't do datetimes by default
+    with pytest.raises(StatementError):
+        scheduler.allocate((start, end), data=data)
+
+    scheduler.rollback()
+
+    # luckily we can provide a better json implementation
+    import jsonpickle
+
+    scheduler.context.set_service('json_dumps', lambda: jsonpickle.encode)
+    scheduler.context.set_service('json_loads', lambda: jsonpickle.decode)
+
+    # TODO all scheduler methods should probably run on the context of
+    # the scheduler, so this should not be necessary
+    registry.switch_context(scheduler.context.name)
+
+    scheduler.allocate((start, end), data=data)
+    scheduler.commit()
+
+    assert scheduler.managed_allocations().first().data == data
+
+    scheduler.extinguish_managed_records()
+    scheduler.commit()
+
+    scheduler.allocate((start, end), data=None)
+    scheduler.commit()
+
+    assert scheduler.managed_allocations().first().data is None

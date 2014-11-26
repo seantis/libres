@@ -4,10 +4,9 @@ from sqlalchemy import types
 from sqlalchemy.orm import object_session, deferred
 from sqlalchemy.schema import Column
 from sqlalchemy.schema import Index
-from sqlalchemy.dialects.postgresql import JSON
 
 from libres.db.models import ORMBase
-from libres.db.models.types import GUID, UTCDateTime
+from libres.db.models.types import GUID, UTCDateTime, ContextAwareJSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
 from libres.modules import calendar
@@ -68,7 +67,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
 
     data = deferred(
         Column(
-            JSON(),
+            ContextAwareJSON(),
             nullable=True
         )
     )

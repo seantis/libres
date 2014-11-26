@@ -1,5 +1,6 @@
 def setup_registry():
 
+    import json
     import re
 
     from libres.context.registry import Registry
@@ -27,6 +28,8 @@ def setup_registry():
         registry.set_service('email_validator', email_validator_factory)
         registry.set_service('session_provider', session_provider, cache=True)
         registry.set_service('exposure', exposure_factory)
+        registry.set_service('json_dumps', lambda: json.dumps)
+        registry.set_service('json_loads', lambda: json.loads)
 
         set_default_settings(registry)
 

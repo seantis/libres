@@ -7,7 +7,6 @@ from sqlalchemy.schema import Index
 from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.orm import object_session
 from sqlalchemy.orm.util import has_identity
-from sqlalchemy.dialects.postgresql import JSON
 
 from libres.modules import calendar, utils
 from libres.modules.raster import (
@@ -19,7 +18,7 @@ from libres.modules.raster import (
 )
 
 from libres.db.models import ORMBase
-from libres.db.models.types import GUID, UTCDateTime
+from libres.db.models.types import GUID, UTCDateTime, ContextAwareJSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
 
@@ -83,7 +82,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     #: Custom data reserved for the user
     data = Column(
-        JSON(),
+        ContextAwareJSON(),
         nullable=True
     )
 

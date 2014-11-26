@@ -28,6 +28,15 @@ setup(
         'psycopg2',
         'SQLAlchemy>=0.9',
     ],
+    extras_require=dict(
+        test=[
+            'jsonpickle',
+            'mock',
+            'pytest',
+            'pytest-cov',
+            'testing.postgresql'
+        ],
+    ),
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
