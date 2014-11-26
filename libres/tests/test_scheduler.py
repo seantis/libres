@@ -1653,3 +1653,6 @@ def test_availability_by_day(scheduler):
     resources = (scheduler.resource, )
     days = scheduler.queries.availability_by_day(*dates, resources=resources)
     assert days[dates[0].date()][0] == 0.00
+
+    sc2.extinguish_managed_records()
+    sc2.commit()
