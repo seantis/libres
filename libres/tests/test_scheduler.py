@@ -1600,3 +1600,25 @@ def test_search_whole_day_regression(scheduler):
     )
 
     assert len(search_result) == 1
+
+
+def test_remove_reservation_from_session(scheduler):
+    dates = (datetime(2014, 11, 26, 13, 0), datetime(2014, 11, 26, 14))
+    scheduler.allocate(dates)
+
+    sessions = [new_uuid(), new_uuid()]
+    tokens = [
+        scheduler.reserve(u'test@example.com', dates, session_id=sessions[0]),
+        scheduler.reserve(u'test@example.com', dates, session_id=sessions[1])
+    ]
+
+    scheduler.commit()
+
+    assert scheduler.queries.reservations_by_session(sessions[0]).count() == 1
+    assert scheduler.queries.reservations_by_session(sessions[1]).count() == 1
+
+    scheduler.queries.remove_reservation_from_session(sessions[0], tokens[0])
+    scheduler.commit()
+
+    assert scheduler.queries.reservations_by_session(sessions[0]).count() == 0
+    assert scheduler.queries.reservations_by_session(sessions[1]).count() == 1

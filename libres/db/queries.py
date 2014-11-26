@@ -8,7 +8,7 @@ from sqlalchemy import func, null
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, or_
 
-from libres.modules import errors, events, utils
+from libres.modules import errors, events, calendar
 from libres.db.models import Allocation, Reservation, ReservedSlot
 from libres.context.accessor import ContextAccessor
 from libres.context.session import serialized
@@ -205,7 +205,7 @@ class Queries(object):
         query = self.session.query(Reservation)
         query = query.filter(Reservation.session_id == session_id)
 
-        query.update({"modified": utils.utcnow()})
+        query.update({"modified": calendar.utcnow()})
 
     def find_expired_reservation_sessions(self, expiration_date):
         """ Goes through all reservations and returns the session ids of the
@@ -218,7 +218,7 @@ class Queries(object):
         """
 
         expiration_date = expiration_date or (
-            utils.utcnow() - timedelta(minutes=15)
+            calendar.utcnow() - timedelta(minutes=15)
         )
 
         # first get the session ids which are expired
