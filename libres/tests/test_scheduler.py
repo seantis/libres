@@ -1461,3 +1461,20 @@ def test_data_coding(scheduler):
     scheduler.commit()
 
     assert scheduler.managed_allocations().first().data is None
+
+
+def test_no_reservations_to_confirm(scheduler):
+    start = datetime(2014, 3, 25, 14, 0)
+    end = datetime(2014, 3, 25, 16, 0)
+    dates = (start, end)
+
+    session_id = new_uuid()
+
+    scheduler.allocate(dates, approve_manually=False)
+    scheduler.reserve(u'test@example.org', dates, session_id=session_id)
+
+    # note the new session_id
+    with pytest.raises(errors.NoReservationsToConfirm):
+        scheduler.queries.confirm_reservations_for_session(
+            session_id=new_uuid()
+        )
