@@ -1576,3 +1576,28 @@ def test_search_allocation_groups(scheduler):
 
     assert len(scheduler.search_allocations(s1, e2, groups='yes')) == 2
     assert len(scheduler.search_allocations(s1, e2, groups='no')) == 0
+
+
+def test_search_whole_day_regression(scheduler):
+    # https://github.com/seantis/seantis.reservation/issues/162
+    s, e = datetime(2014, 8, 18, 0, 0), datetime(2014, 8, 18, 0, 0)
+
+    scheduler.allocate((s, e), whole_day=True, partly_available=True)
+    scheduler.approve_reservations(
+        scheduler.reserve(
+            u'test@example.org', (
+                datetime(2014, 8, 18, 10, 0), datetime(2014, 8, 18, 11, 0)
+            )
+        )
+    )
+    scheduler.commit()
+
+    # the error only manifests itself if the search is limited to a time
+    # before the first reserved slot
+    search_result = scheduler.search_allocations(
+        datetime(2014, 8, 18, 8, 0),
+        datetime(2014, 8, 18, 9, 0),
+        available_only=True
+    )
+
+    assert len(search_result) == 1
