@@ -26,6 +26,7 @@ setup(
         'arrow',
         'python-dateutil',
         'psycopg2',
+        'pytz',
         'SQLAlchemy>=0.9',
     ],
     extras_require=dict(

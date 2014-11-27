@@ -125,3 +125,17 @@ def align_range_to_day(start, end, timezone):
         align_date_to_day(start, timezone, 'down'),
         align_date_to_day(end, timezone, 'up')
     )
+
+
+def get_date_range(day, start_time, end_time):
+    """Returns the date-range of a date a start and an end time."""
+
+    start = datetime.combine(day.date(), start_time).replace(tzinfo=day.tzinfo)
+    end = datetime.combine(day.date(), end_time).replace(tzinfo=day.tzinfo)
+
+    # since the user can only one date with separate times it is assumed
+    # that an end before a start is meant for the following day
+    if end < start:
+        end += timedelta(days=1)
+
+    return start, end
