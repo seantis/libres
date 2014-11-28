@@ -138,3 +138,42 @@ def test_collision(scheduler):
 
     assert len(rollbacks) == 1
     assert len(updates) == 1
+
+
+def test_non_collision(scheduler):
+
+    scheduler.allocate(
+        (datetime(2014, 11, 27, 12), datetime(2014, 11, 27, 13))
+    )
+    scheduler.commit()
+
+    @serialized
+    def change_allocation(scheduler):
+        a = scheduler.session.query(Allocation).one()
+        a.group = new_uuid()
+
+    @serialized
+    def read_allocation(scheduler):
+        scheduler.session.query(Allocation).one()
+
+    t1 = ExceptionThread(
+        lambda: change_allocation(scheduler), scheduler.commit
+    )
+    t2 = ExceptionThread(
+        lambda: read_allocation(scheduler), scheduler.rollback
+    )
+
+    t1.start()
+    t2.start()
+
+    t1.join()
+    t2.join()
+
+    exceptions = (t1.exception, t2.exception)
+
+    is_rollback = lambda ex: ex and isinstance(
+        ex.orig, TransactionRollbackError
+    )
+
+    rollbacks = list(filter(is_rollback, exceptions))
+    assert len(rollbacks) == 0
