@@ -29,9 +29,6 @@ class Event(list):
         for f in self:
             f(*args, **kwargs)
 
-    def __repr__(self):
-        return "Event(%s)" % list.__repr__(self)
-
 
 on_allocations_added = Event()
 on_reservations_made = Event()
