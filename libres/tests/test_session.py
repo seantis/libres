@@ -68,6 +68,20 @@ def test_guard_execute(dsn):
     session.rollback()
 
 
+def test_dirty_protection(scheduler):
+
+    id = scheduler.allocate(
+        (datetime(2014, 11, 27, 12), datetime(2014, 11, 27, 13))
+    )[0].id
+
+    with pytest.raises(errors.DirtyReadOnlySession):
+        scheduler.allocation_by_id(id)
+
+    scheduler.commit()
+
+    scheduler.allocation_by_id(id)
+
+
 def test_sessionstore(dsn):
     t1 = SessionIds(dsn)
     t2 = SessionIds(dsn)
