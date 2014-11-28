@@ -1,3 +1,4 @@
+from collections import namedtuple
 from datetime import timedelta
 
 from sqlalchemy import types
@@ -10,6 +11,15 @@ from libres.db.models.types import GUID, UTCDateTime, ContextAwareJSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
 from libres.modules import calendar
+
+
+Timespan = namedtuple(
+    'Timespan', ('start', 'end')
+)
+
+BoundTimespan = namedtuple(
+    'BoundTimespan', ('start', 'end', 'token', 'id')
+)
 
 
 class Reservation(TimestampMixin, ORMBase, OtherModels):
@@ -120,19 +130,27 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         end = self.end + timedelta(microseconds=1)
         return calendar.to_timezone(end, timezone or self.timezone)
 
-    def timespans(self, start=None, end=None):
+    def timespans(self):
 
         if self.target_type == u'allocation':
             return [(self.start, self.end + timedelta(microseconds=1))]
         elif self.target_type == u'group':
             return [
-                (
+                Timespan(
                     a.display_start, a.display_end
                 )
                 for a in self._target_allocations()
             ]
         else:
             raise NotImplementedError
+
+    def bound_timespans(self):
+
+        return [
+            BoundTimespan(
+                t[0], t[1], self.token, self.id
+            ) for t in self.timespans
+        ]
 
     @property
     def title(self):
