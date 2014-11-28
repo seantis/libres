@@ -1142,12 +1142,12 @@ def test_allocations_by_multiple_reservations(scheduler):
     assert query.count() == 1
 
 
-def test_quota_changes(scheduler):
+def test_quota_changes_simple(scheduler):
     start = datetime(2011, 1, 1, 15, 0)
     end = datetime(2011, 1, 1, 16, 0)
     daterange = (start, end)
-
     master = scheduler.allocate(daterange, quota=5)[0]
+    assert master.quota_left == 5
 
     reservations = []
     for i in range(0, 5):
@@ -1162,6 +1162,7 @@ def test_quota_changes(scheduler):
 
     assert not master.is_available()
     assert len([m for m in mirrors if not m.is_available()]) == 4
+    assert master.quota_left == 0
 
     scheduler.remove_reservation(reservations[0])
     scheduler.commit()
@@ -1196,14 +1197,21 @@ def test_quota_changes(scheduler):
     for s in siblings:
         assert s.siblings() == siblings
 
+
+def test_quota_changes_advanced(scheduler):
     # let's do another round, adding 7 reservations and removing the three
     # in the middle, which should result in a reordering:
     # -> 1, 2, 3, 4, 5, 6, 7
     # -> 1, 2, -, -, 5, -, 7
     # => 1, 2, 3, 4, -, - ,-
 
-    scheduler.change_quota(master, 7)
+    start = datetime(2011, 1, 1, 15, 0)
+    end = datetime(2011, 1, 1, 16, 0)
+    daterange = (start, end)
 
+    master = scheduler.allocate(daterange, quota=7)[0]
+
+    scheduler.change_quota(master, 7)
     scheduler.reserve(u'test@example.org', daterange)
     r2 = scheduler.reserve(u'test@example.org', daterange)
     r3 = scheduler.reserve(u'test@example.org', daterange)
@@ -1212,11 +1220,12 @@ def test_quota_changes(scheduler):
     r6 = scheduler.reserve(u'test@example.org', daterange)
     r7 = scheduler.reserve(u'test@example.org', daterange)
 
-    scheduler.commit()
-
     for r in [r2, r3, r4, r5, r6, r7]:
         scheduler.approve_reservations(r)
-        scheduler.commit()
+
+    scheduler.commit()
+
+    master.quota_left == 0
 
     a2 = scheduler.allocations_by_reservation(r2).one().id
     a3 = scheduler.allocations_by_reservation(r3).one().id
@@ -1227,10 +1236,14 @@ def test_quota_changes(scheduler):
     scheduler.remove_reservation(r3)
     scheduler.remove_reservation(r4)
     scheduler.remove_reservation(r6)
+    scheduler.commit()
+
+    master.quota_left == 3
 
     scheduler.change_quota(master, 4)
-
     scheduler.commit()
+
+    master.quota_left == 0
 
     a2_ = scheduler.allocations_by_reservation(r2).one().id
     a5_ = scheduler.allocations_by_reservation(r5).one().id
