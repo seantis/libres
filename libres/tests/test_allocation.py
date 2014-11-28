@@ -86,6 +86,10 @@ def test_limit_timespan():
         allocation.display_start(), allocation.display_end()
     )
 
+    assert allocation.limit_timespan(time(7, 0), time(10, 0)) == (
+        allocation.display_start(), allocation.display_end()
+    )
+
     assert allocation.limit_timespan(time(8, 30), time(10, 0)) == (
         datetime(2014, 1, 1, 8, 30, tzinfo=utc),
         datetime(2014, 1, 1, 9, 0, tzinfo=utc)
