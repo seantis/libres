@@ -12,7 +12,7 @@ from libres.modules import raster
 from libres.modules import utils
 from libres.modules import events
 
-from libres.context.session import serialized
+from libres.context.session import serialized, Serializable
 from libres.context.accessor import ContextAccessor
 
 from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
@@ -22,7 +22,7 @@ from libres.db.queries import Queries
 missing = object()
 
 
-class Scheduler(object):
+class Scheduler(Serializable):
     """ The Scheduler is responsible for talking to the backend of the given
     context to create reservations. It is the main part of the API.
     """
@@ -73,19 +73,6 @@ class Scheduler(object):
             self.context.name, self.name, self.timezone, self.settings
         )
 
-    def close(self):
-        """ Closes all known sessions/binds. """
-        self.context.serial_session.close()
-        self.context.readonly_session.close()
-
-    @property
-    def session(self):
-        """ Returns the current session. This can be the read-only or the
-        serialized session, depending on where it is called from.
-
-        """
-        return self.context.session
-
     @property
     def resource(self):
         """ The resource that belongs to this scheduler. The resource is
@@ -109,17 +96,6 @@ class Scheduler(object):
             calendar.normalize_date(start, self.timezone),
             calendar.normalize_date(end, self.timezone)
         )
-
-    def begin(self):
-        return self.context.serial_session.begin(subtransactions=True)
-
-    def commit(self):
-        self.context.readonly_session.expire_all()
-        return self.context.serial_session.commit()
-
-    def rollback(self):
-        self.context.readonly_session.expire_all()
-        return self.context.serial_session.rollback()
 
     @serialized
     def setup_database(self):

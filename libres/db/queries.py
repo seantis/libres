@@ -11,10 +11,10 @@ from sqlalchemy.sql import and_, or_
 from libres.modules import errors, events, calendar
 from libres.db.models import Allocation, Reservation, ReservedSlot
 from libres.context.accessor import ContextAccessor
-from libres.context.session import serialized
+from libres.context.session import serialized, Serializable
 
 
-class Queries(object):
+class Queries(Serializable):
     """ Contains helper methods independent of the resource (as owned by
     :class:`.scheduler.Scheduler`)
 
@@ -26,10 +26,6 @@ class Queries(object):
 
     def __init__(self, context):
         self.context = ContextAccessor(context, autocreate=False)
-
-    @property
-    def session(self):
-        return self.context.session
 
     def all_allocations_in_range(self, start, end):
         return self.allocations_in_range(

@@ -82,6 +82,8 @@ import re
 import threading
 import functools
 
+from cached_property import cached_property
+
 from sqlalchemy.sql.dml import UpdateBase
 from sqlalchemy import create_engine
 from sqlalchemy.pool import SingletonThreadPool
@@ -305,17 +307,21 @@ def serialized(fn):
     """ Wrapper function which wraps any function with a serial session.
     All methods called by this wrapped function will uuse the serial session.
 
-    (Provided they are using seantis.reservation.Session and not some other
-    means of talking to the database).
+    To be able to do this, serialized has to have access to the session
+    provider. It is assumed that the first argument passed to the wrapped
+    function has a session_provider attribute.
+
+    The :class:`Serializable` class already provides that. Objects inheriting
+    from that class can therefore use `@serializable` for their methods
+    (because `self` is the first argument).
 
     """
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
-        assert hasattr(args[0], 'context')
-        provider = args[0].context.session_provider
+        session_provider = getattr(args[0], 'session_provider', None)
 
-        current = provider.sessionstore.current
-        serial = provider.use_serial()
+        current = session_provider.sessionstore.current
+        serial = session_provider.use_serial()
 
         try:
             result = fn(*args, **kwargs)
@@ -323,6 +329,51 @@ def serialized(fn):
             serial.expire_all()
             return result
         finally:
-            provider.sessionstore.current = current
+            session_provider.sessionstore.current = current
 
     return wrapper
+
+
+class Serializable(object):
+    """ Provides the link between context and session, as well as a few
+    methods to easily work with the session.
+
+    A class wanting to work with @serialized should inherit from this.
+
+    """
+
+    @cached_property
+    def session_provider(self):
+        return self.context.get_service('session_provider')
+
+    @property
+    def session(self):
+        """ Returns the current session. This can be the read-only or the
+        serialized session, depending on where it is called from.
+
+        """
+        return self.session_provider.session()
+
+    @property
+    def serial_session(self):
+        return self.session_provider.sessionstore.serial
+
+    @property
+    def readonly_session(self):
+        return self.session_provider.sessionstore.readonly
+
+    def close(self):
+        """ Closes all known sessions/binds. """
+        self.serial_session.close()
+        self.readonly_session.close()
+
+    def begin(self):
+        return self.serial_session.begin(subtransactions=True)
+
+    def commit(self):
+        self.readonly_session.expire_all()
+        return self.serial_session.commit()
+
+    def rollback(self):
+        self.readonly_session.expire_all()
+        return self.serial_session.rollback()

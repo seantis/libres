@@ -24,6 +24,7 @@ setup(
     platforms='any',
     install_requires=[
         'arrow',
+        'cached_property',
         'python-dateutil',
         'psycopg2',
         'pytz',
