@@ -440,8 +440,7 @@ def test_session_expiration(scheduler):
 
     created = calendar.utcnow()
 
-    # Do NOT use the serial session directly outside of tests!
-    res = scheduler.context.serial_session.query(Reservation)
+    res = scheduler.serial_session.query(Reservation)
     res = res.filter(Reservation.session_id == session_id)
     res.update({'created': created, 'modified': None})
 
@@ -457,8 +456,7 @@ def test_session_expiration(scheduler):
     )
     assert len(expired) == 1
 
-    # Do NOT use the serial session directly outside of tests!
-    res = scheduler.context.serial_session.query(Reservation)
+    res = scheduler.serial_session.query(Reservation)
     res = res.filter(Reservation.session_id == session_id)
     res.update({
         'created': created,

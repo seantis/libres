@@ -19,10 +19,10 @@ class SessionIds(Thread):
 
     def run(self):
         scheduler = Scheduler('tests', 'threading', 'UTC', settings={
-            'settings.dsn': self.dsn
+            'dsn': self.dsn
         })
-        self.readonly_id = id(scheduler.context.readonly_session)
-        self.serial_id = id(scheduler.context.serial_session)
+        self.readonly_id = id(scheduler.readonly_session)
+        self.serial_id = id(scheduler.serial_session)
 
 
 class ExceptionThread(Thread):

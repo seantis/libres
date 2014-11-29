@@ -61,7 +61,7 @@ class Scheduler(Serializable):
         self.settings = settings
 
         for key, value in settings.items():
-            self.context.set_config(key, value)
+            self.context.set_setting(key, value)
 
     def clone(self):
         """ Clones the scheduler. The result will be a new scheduler using the
@@ -81,7 +81,7 @@ class Scheduler(Serializable):
 
         """
         return new_namespace_uuid(
-            self.context.get_config('settings.uuid_namespace'),
+            self.context.get_setting('uuid_namespace'),
             '/'.join((self.name, self.context.name))
         )
 

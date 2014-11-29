@@ -12,7 +12,7 @@ def new_test_scheduler(dsn, context=None, name=None):
         name=name or uuid.uuid4().hex,
         timezone='Europe/Zurich',
         settings={
-            'settings.dsn': dsn
+            'dsn': dsn
         }
     )
 

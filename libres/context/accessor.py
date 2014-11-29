@@ -1,7 +1,7 @@
 from libres import registry
 
 
-class ContextAware(object):
+class ContextAccessor(object):
 
     def __init__(self, context, autocreate):
         self.context = context
@@ -13,40 +13,21 @@ class ContextAware(object):
     def name(self):
         return self.context
 
+    def get_setting(self, name):
+        with registry.context(self.name):
+            return registry.get('settings.{}'.format(name))
 
-class ContextAccessor(ContextAware):
-
-    def get_config(self, name):
-        with registry.context(self.context):
-            return registry.get(name)
-
-    def set_config(self, name, value):
-        with registry.context(self.context):
-            return registry.set(name, value)
+    def set_setting(self, name, value):
+        with registry.context(self.name):
+            return registry.set('settings.{}'.format(name), value)
 
     def get_service(self, name):
-        with registry.context(self.context):
+        with registry.context(self.name):
             return registry.get_service(name)
 
     def set_service(self, name, value):
-        with registry.context(self.context):
+        with registry.context(self.name):
             return registry.set_service(name, value)
-
-    @property
-    def session_provider(self):
-        return self.get_service('session_provider')
-
-    @property
-    def session(self):
-        return self.session_provider.session()
-
-    @property
-    def serial_session(self):
-        return self.session_provider.sessionstore.serial
-
-    @property
-    def readonly_session(self):
-        return self.session_provider.sessionstore.readonly
 
     def validate_email(self, email):
         return self.get_service('email_validator')(email)

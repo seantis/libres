@@ -15,14 +15,14 @@ def test_add_allocation(scheduler):
     allocation.group = new_uuid().hex
     allocation.mirror_of = scheduler.resource
 
-    scheduler.context.serial_session.add(allocation)
+    scheduler.serial_session.add(allocation)
     scheduler.commit()
 
     assert scheduler.session.query(Allocation).count() == 1
 
 
 def test_add_invalid_allocation(scheduler):
-    scheduler.context.serial_session.add(Allocation(raster=15))
+    scheduler.serial_session.add(Allocation(raster=15))
 
     with pytest.raises(IntegrityError):
         scheduler.commit()

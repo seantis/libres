@@ -114,7 +114,7 @@ if __name__ == '__main__':
     try:
         scheduler = libres.new_scheduler(
             'example.app', 'Test Scheduler', settings={
-                'settings.dsn': postgresql.url()
+                'dsn': postgresql.url()
             }
         )
         scheduler.setup_database()
