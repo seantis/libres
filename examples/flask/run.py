@@ -16,7 +16,6 @@ scheduler = None
 def events():
 
     timezone = request.args.get('timezone')
-
     start = arrow.get(request.args.get('start')).replace(tzinfo=timezone)
     end = arrow.get(request.args.get('end')).replace(tzinfo=timezone)
 
@@ -55,15 +54,19 @@ def events():
 def allocation_add():
     quota = request.args.get('quota')
     timezone = request.args.get('timezone')
-
-    start = arrow.get(request.args.get('start'))
-    end = arrow.get(request.args.get('end'))
+    start = arrow.get(request.args.get('start')).replace(tzinfo=timezone)
+    end = arrow.get(request.args.get('end')).replace(tzinfo=timezone)
 
     try:
-        scheduler.allocate(
-            (start, end), timezone=timezone, whole_day=True, quota=int(quota)
-        )
+        scheduler.allocate((start, end), whole_day=True, quota=int(quota))
         scheduler.commit()
+    except libres.modules.errors.OverlappingAllocationError:
+        return json.dumps(
+            {
+                'status': 'fail',
+                'message': 'This day is already fully allocated.'
+            }
+        )
     except:
         scheduler.rollback()
         raise
@@ -113,7 +116,8 @@ if __name__ == '__main__':
 
     try:
         scheduler = libres.new_scheduler(
-            'example.app', 'Test Scheduler', settings={
+            'example.app', 'Test Scheduler', timezone='Europe/Zurich',
+            settings={
                 'dsn': postgresql.url()
             }
         )
