@@ -1,7 +1,7 @@
 @import 'alabaster.css';
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: Georgia, serif !important;
+    font-family: Helvetica, Arial, sans-serif !important;
     color: #9f8d8d;
 }
 h1 {
@@ -11,12 +11,17 @@ h1 {
 
 body {
     font-family: Helvetica, Arial, sans-serif !important;
-    font-weight: 100;
     font-size: 15px;
+    font-weight: 300;
 }
 
 li {
     margin-bottom: 0.5em;
+}
+
+.highlight-python pre {
+    margin-left: -1em;
+    padding-left: 1em;
 }
 
 .toctree-l1 > ul {
@@ -44,13 +49,13 @@ li {
     visibility: hidden;
 }
 
-#module-libres\.context\.settings h3,
-.class dt,
-.method dt {
-    background-color: #fff0f0;
+.section > dl > dt,
+#module-libres\.context\.settings h3
+{
     border-left: 10px solid #fc5d62;
-    padding-left: 7px;
-    padding: 2px 7px 3px 7px;
+
+    padding: 5px 0 5px 1.1em;
+    margin-bottom: 0.8em
 }
 
 .class {
