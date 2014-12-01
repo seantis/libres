@@ -115,11 +115,10 @@ if __name__ == '__main__':
     postgresql = Postgresql()
 
     try:
+        context = libres.registry.register_context('flask-exmaple')
+        context.set_settings('dsn', postgresql.url())
         scheduler = libres.new_scheduler(
-            'example.app', 'Test Scheduler', timezone='Europe/Zurich',
-            settings={
-                'dsn': postgresql.url()
-            }
+            context, 'Test Scheduler', timezone='Europe/Zurich'
         )
         scheduler.setup_database()
         scheduler.commit()

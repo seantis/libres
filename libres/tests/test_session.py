@@ -1,3 +1,4 @@
+import libres
 import pytest
 
 from datetime import datetime
@@ -18,9 +19,9 @@ class SessionIds(Thread):
         self.dsn = dsn
 
     def run(self):
-        scheduler = Scheduler('tests', 'threading', 'UTC', settings={
-            'dsn': self.dsn
-        })
+        context = libres.registry.register_context(id(self))
+        context.set_setting('dsn', self.dsn)
+        scheduler = Scheduler(context, 'threading', 'UTC')
         self.readonly_id = id(scheduler.readonly_session)
         self.serial_id = id(scheduler.serial_session)
 

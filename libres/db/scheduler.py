@@ -1,22 +1,19 @@
 from datetime import datetime, timedelta
 
-from uuid import uuid4 as new_uuid
-from uuid import uuid5 as new_namespace_uuid
+from libres.context.session import serialized, Serializable
+from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
+from libres.db.queries import Queries
+from libres.modules import calendar
+from libres.modules import errors
+from libres.modules import events
+from libres.modules import raster
+from libres.modules import utils
 
 from sqlalchemy.orm import exc
 from sqlalchemy.sql import and_, not_
 
-from libres.modules import calendar
-from libres.modules import errors
-from libres.modules import raster
-from libres.modules import utils
-from libres.modules import events
-
-from libres.context.session import serialized, Serializable
-from libres.context.accessor import ContextAccessor
-
-from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
-from libres.db.queries import Queries
+from uuid import uuid4 as new_uuid
+from uuid import uuid5 as new_namespace_uuid
 
 
 missing = object()
@@ -27,18 +24,19 @@ class Scheduler(Serializable):
     context to create reservations. It is the main part of the API.
     """
 
-    def __init__(self, context, name, timezone, settings={}):
+    def __init__(self, context, name, timezone):
         """ Initializeds a new Scheduler instance.
 
         :context:
-            The name of the context this scheduler should operate on.
-            If the context does not yet exist, it will be created.
+            The :class:`libres.context.context.Context` this scheduler should
+            operate on. Acquire a context by using
+            :func:`libres.context.registry.Registry.register_context`.
 
         :name:
-            The name of the Scheduler. The context and name of the scheduler
-            are used to generate the resource uuid in the database. To
-            access the data you generated with a scheduler use the same context
-            and name together.
+            The name of the Scheduler. The context name and name of the
+            scheduler are used to generate the resource uuid in the database.
+            To access the data you generated with a scheduler use the same
+            context name and scheduler name together.
 
         :timezone:
             A single scheduler always operates on the same timezone. This is
@@ -53,15 +51,11 @@ class Scheduler(Serializable):
             migration exists).
         """
 
-        self.context = ContextAccessor(context, autocreate=True)
+        self.context = context
         self.queries = Queries(context)
 
         self.name = name
         self.timezone = timezone
-        self.settings = settings
-
-        for key, value in settings.items():
-            self.context.set_setting(key, value)
 
     def clone(self):
         """ Clones the scheduler. The result will be a new scheduler using the
@@ -69,9 +63,7 @@ class Scheduler(Serializable):
 
         """
 
-        return Scheduler(
-            self.context.name, self.name, self.timezone, self.settings
-        )
+        return Scheduler(self.context, self.name, self.timezone)
 
     @property
     def resource(self):
@@ -100,6 +92,14 @@ class Scheduler(Serializable):
     @serialized
     def setup_database(self):
         ORMBase.metadata.create_all(self.session.bind)
+
+    @property
+    def validate_email(self):
+        return self.context.get_service('email_validator')
+
+    @property
+    def is_allocation_exposed(self):
+        return self.context.get_service('exposure').is_allocation_exposed
 
     def managed_allocations(self):
         """ The allocations managed by this scheduler / resource. """
@@ -664,7 +664,7 @@ class Scheduler(Serializable):
 
         email = email.strip()
 
-        if not self.context.validate_email(email):
+        if not self.validate_email(email):
             raise errors.InvalidEmailAddress
 
         if group:
@@ -1125,7 +1125,7 @@ class Scheduler(Serializable):
 
         for allocation in query.all():
 
-            if not self.context.is_allocation_exposed(allocation):
+            if not self.is_allocation_exposed(allocation):
                 continue
 
             s = datetime.combine(allocation.start.date(), start.time())

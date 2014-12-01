@@ -10,10 +10,10 @@ def setup_registry():
 
     registry = Registry()
 
-    def session_provider():
-        return SessionProvider(registry.get('settings.dsn'))
+    def session_provider(context):
+        return SessionProvider(context.get_setting('dsn'))
 
-    def email_validator_factory():
+    def email_validator_factory(context):
         # A very simple and stupid email validator. It's way too simple, but
         # it can be extended to do more powerful checks.
         def is_valid_email(email):
@@ -21,18 +21,18 @@ def setup_registry():
 
         return is_valid_email
 
-    def exposure_factory():
+    def exposure_factory(context):
         return Exposure()
 
-    with registry.context(registry.master_context):
-        registry.set_service('email_validator', email_validator_factory)
-        registry.set_service('session_provider', session_provider, cache=True)
-        registry.set_service('exposure', exposure_factory)
-        registry.set_service('json_dumps', lambda: json.dumps)
-        registry.set_service('json_loads', lambda: json.loads)
+    master = registry.master_context
+    master.set_service('email_validator', email_validator_factory)
+    master.set_service('session_provider', session_provider, cache=True)
+    master.set_service('exposure', exposure_factory)
+    master.set_service('json_dumps', lambda ctx: json.dumps)
+    master.set_service('json_loads', lambda ctx: json.loads)
 
-        set_default_settings(registry)
+    set_default_settings(master)
 
-    registry.lock_context(registry.master_context)
+    master.lock()
 
     return registry

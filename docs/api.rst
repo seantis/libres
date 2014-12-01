@@ -1,26 +1,28 @@
 API Documentation
 =================
 
-Context Specific Modules
-------------------------
+Context / Registry
+------------------
 
-.. py:currentmodule:: libres.db.scheduler
-
-.. autoclass:: Scheduler
+.. autoclass:: libres.context.registry.Registry
     :members:
 
-.. py:currentmodule:: libres.db.queries
-
-.. autoclass:: Queries
+.. autoclass:: libres.context.context.Context
     :members:
 
+Database Access
+---------------
 
-Sqlalchemy Models
------------------
+.. autoclass:: libres.db.scheduler.Scheduler
+    :members:
 
-.. py:currentmodule:: libres.db.models
+.. autoclass:: libres.db.queries.Queries
+    :members:
 
-.. autoclass:: Allocation
+Models
+------
+
+.. autoclass:: libres.db.models.Allocation
     :members:
 
 

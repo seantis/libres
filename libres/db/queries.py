@@ -10,7 +10,6 @@ from sqlalchemy.sql import and_, or_
 
 from libres.modules import errors, events, calendar
 from libres.db.models import Allocation, Reservation, ReservedSlot
-from libres.context.accessor import ContextAccessor
 from libres.context.session import serialized, Serializable
 
 
@@ -25,12 +24,18 @@ class Queries(Serializable):
     """
 
     def __init__(self, context):
-        self.context = ContextAccessor(context, autocreate=False)
+        self.context = context
 
     def all_allocations_in_range(self, start, end):
         return self.allocations_in_range(
             self.session.query(Allocation), start, end
         )
+
+    @property
+    def is_allocation_exposed(self):
+        # XXX this is copied over from the Scheduler. A ContextServicesMixin
+        # could be responsible for this in a single class
+        return self.context.get_service('exposure').is_allocation_exposed
 
     @staticmethod
     def allocations_in_range(query, start, end):
@@ -87,8 +92,7 @@ class Queries(Serializable):
         query = query.filter(Allocation.mirror_of.in_(resources))
         query = query.options(joinedload(Allocation.reserved_slots))
 
-        is_exposed = self.context.is_allocation_exposed
-        allocations = (a for a in query if is_exposed(a))
+        allocations = (a for a in query if self.is_allocation_exposed(a))
 
         return self.availability_by_allocations(allocations)
 
@@ -109,14 +113,12 @@ class Queries(Serializable):
         group = groupby(query, key=lambda a: a._start.date())
         days = {}
 
-        is_exposed = self.context.is_allocation_exposed
-
         for day, allocations in group:
 
             exposed = []
             members = set()
 
-            for a in (a for a in allocations if is_exposed(a)):
+            for a in (a for a in allocations if self.is_allocation_exposed(a)):
                 members.add(a.mirror_of)
                 exposed.append(a)
 

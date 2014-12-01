@@ -12,12 +12,12 @@ class ContextAwareJSON(TypeDecorator):
 
     def process_bind_param(self, value, dialect):
         if value is not None:
-            value = registry.get_service('json_dumps')(value)
+            value = registry.current_context.get_service('json_dumps')(value)
 
         return value
 
     def process_result_value(self, value, dialect):
         if value is not None:
-            value = registry.get_service('json_loads')(value)
+            value = registry.current_context.get_service('json_loads')(value)
 
         return value

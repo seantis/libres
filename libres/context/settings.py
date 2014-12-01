@@ -26,9 +26,9 @@ _default['settings.uuid_namespace'] = (
 )
 
 
-def set_default_settings(registry):
+def set_default_settings(context):
     for name, (value, help) in _default.items():
-        registry.set(name, value)
+        context.set(name, value)
 
 doc = []
 

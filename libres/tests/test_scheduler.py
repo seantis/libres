@@ -1452,8 +1452,8 @@ def test_data_coding(scheduler):
     # luckily we can provide a better json implementation
     import jsonpickle
 
-    scheduler.context.set_service('json_dumps', lambda: jsonpickle.encode)
-    scheduler.context.set_service('json_loads', lambda: jsonpickle.decode)
+    scheduler.context.set_service('json_dumps', lambda ctx: jsonpickle.encode)
+    scheduler.context.set_service('json_loads', lambda ctx: jsonpickle.decode)
 
     # TODO all scheduler methods should probably run on the context of
     # the scheduler, so this should not be necessary
@@ -1528,10 +1528,10 @@ def test_search_allocations(scheduler):
         def is_allocation_exposed(self, allocation):
             return self.return_value
 
-    scheduler.context.set_service('exposure', lambda: MockExposure(False))
+    scheduler.context.set_service('exposure', lambda ctx: MockExposure(False))
     assert len(scheduler.search_allocations(*daterange)) == 0
 
-    scheduler.context.set_service('exposure', lambda: MockExposure(True))
+    scheduler.context.set_service('exposure', lambda ctx: MockExposure(True))
     assert len(scheduler.search_allocations(*daterange)) == 1
 
     # test available only

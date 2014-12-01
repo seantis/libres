@@ -1,20 +1,18 @@
 import pytest
-import uuid
 
+from libres import new_scheduler, registry
 from testing.postgresql import Postgresql
-
-from libres import new_scheduler
+from uuid import uuid4 as new_uuid
 
 
 def new_test_scheduler(dsn, context=None, name=None):
-    return new_scheduler(
-        context=context or uuid.uuid4().hex,
-        name=name or uuid.uuid4().hex,
-        timezone='Europe/Zurich',
-        settings={
-            'dsn': dsn
-        }
-    )
+    context = context or new_uuid().hex
+    name = name or new_uuid().hex
+
+    context = registry.register_context(context, replace=True)
+    context.set_setting('dsn', dsn)
+
+    return new_scheduler(context=context, name=name, timezone='Europe/Zurich')
 
 
 @pytest.yield_fixture(scope="function")
