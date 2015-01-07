@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
     try:
         context = libres.registry.register_context('flask-exmaple')
-        context.set_settings('dsn', postgresql.url())
+        context.set_setting('dsn', postgresql.url())
         scheduler = libres.new_scheduler(
             context, 'Test Scheduler', timezone='Europe/Zurich'
         )
