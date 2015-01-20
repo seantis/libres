@@ -13,7 +13,6 @@ from sqlalchemy.orm import exc
 from sqlalchemy.sql import and_, not_
 
 from uuid import uuid4 as new_uuid
-from uuid import uuid5 as new_namespace_uuid
 
 
 missing = object()
@@ -72,10 +71,7 @@ class Scheduler(Serializable):
         on the namespace uuid defined in :ref:`settings.uuid_namespace`
 
         """
-        return new_namespace_uuid(
-            self.context.get_setting('uuid_namespace'),
-            '/'.join((self.name, self.context.name))
-        )
+        return self.context.get_service('uuid_generator')(self.name)
 
     def prepare_date(self, date):
         return calendar.normalize_date(date, self.timezone)

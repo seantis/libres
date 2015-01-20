@@ -8,6 +8,8 @@ def setup_registry():
     from libres.context.settings import set_default_settings
     from libres.context.exposure import Exposure
 
+    from uuid import uuid5 as new_namespace_uuid
+
     registry = Registry()
 
     def session_provider(context):
@@ -24,10 +26,19 @@ def setup_registry():
     def exposure_factory(context):
         return Exposure()
 
+    def uuid_generator_factory(context):
+        def uuid_generator(name):
+            return new_namespace_uuid(
+                context.get_setting('uuid_namespace'),
+                '/'.join((context.name, name))
+            )
+        return uuid_generator
+
     master = registry.master_context
     master.set_service('email_validator', email_validator_factory)
     master.set_service('session_provider', session_provider, cache=True)
     master.set_service('exposure', exposure_factory)
+    master.set_service('uuid_generator', uuid_generator_factory)
     master.set_service('json_dumps', lambda ctx: json.dumps)
     master.set_service('json_loads', lambda ctx: json.loads)
 
