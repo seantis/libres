@@ -13,7 +13,7 @@ and requires Postgresql 9.2+.
   :target: https://travis-ci.org/seantis/libres
   :alt:    travis build status
 
-.. image:: https://coveralls.io/repos/seantis/libres/badge.png 
+.. image:: https://coveralls.io/repos/seantis/libres/badge.png
   :target: https://coveralls.io/r/seantis/libres
   :alt:    coveralls.io coverage
 
@@ -38,7 +38,7 @@ Open http://localhost:5000 and click around.
 
 Run the Tests
 -------------
-    
+
 Install tox and run it::
 
     pip install tox
@@ -54,6 +54,8 @@ Conventions
 Libres follows PEP8 as close as possible. To test for it run::
 
     tox -e pep8
+
+Libres uses `Semantic Versioning <http://semver.org/>`_
 
 Build the Docs
 --------------

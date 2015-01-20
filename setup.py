@@ -3,15 +3,19 @@ from setuptools import setup
 
 
 def get_long_description():
+
     for line in open('README.rst'):
         if '.. < package description' in line:
             break
         yield line
 
+    for line in open('HISTORY.rst'):
+        yield line
+
 
 setup(
     name='libres',
-    version='0.1',
+    version='0.0.1',
     url='http://github.com/seantis/libres/',
     license='BSD',
     author='Denis Krienbühl',
