@@ -28,6 +28,29 @@ def test_add_invalid_allocation(scheduler):
         scheduler.commit()
 
 
+def test_date_functions(scheduler):
+    allocation = Allocation(raster=60, resource=scheduler.resource)
+    allocation.start = datetime(2011, 1, 1, 12, 30, tzinfo=utc)
+    allocation.end = datetime(2011, 1, 1, 14, 00, tzinfo=utc)
+
+    assert allocation.start.hour == 12
+    assert allocation.start.minute == 0
+    assert allocation.end.hour == 13
+    assert allocation.end.minute == 59
+
+    start = datetime(2011, 1, 1, 11, 00)
+    end = datetime(2011, 1, 1, 12, 5)
+
+    assert allocation.overlaps(start, end)
+    assert not allocation.contains(start, end)
+
+    start = datetime(2011, 1, 1, 13, 00)
+    end = datetime(2011, 1, 1, 15, 00)
+
+    assert allocation.overlaps(start, end)
+    assert not allocation.contains(start, end)
+
+
 def test_whole_day():
     allocation = Allocation(
         raster=15, resource=new_uuid(), timezone='Europe/Zurich'
