@@ -318,7 +318,7 @@ def serialized(fn):
     """
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
-        session_provider = getattr(args[0], 'session_provider', None)
+        session_provider = args[0].session_provider
 
         current = session_provider.sessionstore.current
         serial = session_provider.use_serial()
