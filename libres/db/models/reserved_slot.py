@@ -5,7 +5,7 @@ from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import backref
 
-from libres.modules.raster import (
+from libres.modules.rasterizer import (
     rasterize_start,
     rasterize_end,
 )

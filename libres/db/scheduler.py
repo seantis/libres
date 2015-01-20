@@ -6,7 +6,7 @@ from libres.db.queries import Queries
 from libres.modules import calendar
 from libres.modules import errors
 from libres.modules import events
-from libres.modules import raster
+from libres.modules import rasterizer
 from libres.modules import utils
 
 from sqlalchemy.orm import exc
@@ -250,7 +250,7 @@ class Scheduler(Serializable):
         approve_manually=False,
         whole_day=False,
         data=None,
-        raster_value=raster.MIN_RASTER_VALUE
+        raster=rasterizer.MIN_RASTER
     ):
         """Allocates a spot in the calendar.
 
@@ -299,7 +299,7 @@ class Scheduler(Serializable):
 
         # Make sure that this span does not overlap another master
         for start, end in dates:
-            start, end = raster.rasterize_span(start, end, raster_value)
+            start, end = rasterizer.rasterize_span(start, end, raster)
 
             existing = self.allocations_in_range(start, end).first()
             if existing:
@@ -309,7 +309,7 @@ class Scheduler(Serializable):
         allocations = []
         for start, end in dates:
             allocation = Allocation()
-            allocation.raster = raster_value
+            allocation.raster = raster
             allocation.start = start
             allocation.end = end
             allocation.timezone = self.timezone
@@ -758,7 +758,7 @@ class Scheduler(Serializable):
                         reservation = Reservation()
                         reservation.token = token
                         reservation.start, reservation.end\
-                            = raster.rasterize_span(
+                            = rasterizer.rasterize_span(
                                 start, end, allocation.raster
                             )
                         reservation.timezone = allocation.timezone

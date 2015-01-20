@@ -68,7 +68,7 @@ def test_reserve(scheduler):
     # create an allocation (no need for a commit yet, we won't hit the db again
     # until we check the remaining slots below)
     allocations = scheduler.allocate(
-        (start, end), partly_available=True, raster_value=15
+        (start, end), partly_available=True, raster=15
     )
 
     assert len(allocations) == 1
@@ -824,14 +824,14 @@ def test_allocation_overlap(scheduler):
     start = datetime(2011, 1, 1, 15, 0)
     end = datetime(2011, 1, 1, 16, 0)
 
-    sc1.allocate((start, end), raster_value=15)
+    sc1.allocate((start, end), raster=15)
     sc1.commit()
 
-    sc2.allocate((start, end), raster_value=15)
+    sc2.allocate((start, end), raster=15)
     sc2.commit()
 
     with pytest.raises(errors.OverlappingAllocationError):
-        sc1.allocate((start, end), raster_value=15)
+        sc1.allocate((start, end), raster=15)
 
     # there's another way this could happen, which is illegal usage
     # of scheduler.allocate - we stop this befor it hits the database
@@ -943,7 +943,7 @@ def test_quotas(scheduler):
 
     # setup an allocation with ten spots
     allocations = scheduler.allocate(
-        (start, end), raster_value=15, quota=10, approve_manually=False
+        (start, end), raster=15, quota=10, approve_manually=False
     )
     allocation = allocations[0]
     scheduler.commit()
@@ -968,7 +968,7 @@ def test_quotas(scheduler):
 
     # setup an allocation with five spots
     allocations = other.allocate(
-        [(start, end)], raster_value=15, quota=5, partly_available=True,
+        [(start, end)], raster=15, quota=5, partly_available=True,
         approve_manually=False
     )
     allocation = allocations[0]
@@ -1261,7 +1261,7 @@ def test_availability(scheduler):
     end = datetime(2011, 1, 1, 16, 0)
 
     a = scheduler.allocate(
-        (start, end), raster_value=15, partly_available=True)[0]
+        (start, end), raster=15, partly_available=True)[0]
 
     scheduler.approve_reservations(
         scheduler.reserve(

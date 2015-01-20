@@ -9,12 +9,12 @@ from sqlalchemy.orm import object_session
 from sqlalchemy.orm.util import has_identity
 
 from libres.modules import calendar, utils
-from libres.modules.raster import (
+from libres.modules.rasterizer import (
     rasterize_start,
     rasterize_span,
     rasterize_end,
     iterate_span,
-    MIN_RASTER_VALUE
+    MIN_RASTER
 )
 
 from libres.db.models import ORMBase
@@ -121,7 +121,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         if self.raster is not None:
             self._start = rasterize_start(start, self.raster)
         else:
-            self._start = rasterize_start(start, MIN_RASTER_VALUE)
+            self._start = rasterize_start(start, MIN_RASTER)
 
     #: The start of this allocation. Must be timezone aware.
     #: This date is rastered by the allocation's raster.
@@ -134,7 +134,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         if self.raster is not None:
             self._end = rasterize_end(end, self.raster)
         else:
-            self._end = rasterize_end(end, MIN_RASTER_VALUE)
+            self._end = rasterize_end(end, MIN_RASTER)
 
     #: The end of this allocation. Must be timezone aware.
     #: This date is rastered by the allocation's raster.

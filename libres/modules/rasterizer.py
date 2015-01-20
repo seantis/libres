@@ -30,13 +30,13 @@ overlapping reservations on the database level.
 from datetime import timedelta
 
 # The raster values must divide an hour without any remaining minutes
-VALID_RASTER_VALUES = (5, 10, 15, 30, 60)
-MIN_RASTER_VALUE = min(VALID_RASTER_VALUES)
-MAX_RASTER_VALUE = max(VALID_RASTER_VALUES)
+VALID_RASTER = (5, 10, 15, 30, 60)
+MIN_RASTER = min(VALID_RASTER)
+MAX_RASTER = max(VALID_RASTER)
 
 
 def is_valid_raster(raster):
-    return raster in VALID_RASTER_VALUES
+    return raster in VALID_RASTER
 
 
 def rasterize_start(date, raster):
