@@ -221,8 +221,8 @@ class Scheduler(Serializable):
 
         for allocation in self.allocations_by_ids(ids).all():
 
-            s = start_time or allocation.display_start.time()
-            e = end_time or allocation.display_end.time()
+            s = start_time or allocation.display_start().time()
+            e = end_time or allocation.display_end().time()
 
             s, e = allocation.limit_timespan(s, e)
 
