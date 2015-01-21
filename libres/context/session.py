@@ -339,6 +339,8 @@ class Serializable(object):
     methods to easily work with the session.
 
     A class wanting to work with @serialized should inherit from this.
+    Such an inherited class should either provide self.context, returning
+    the libres context used, or self.session_provider like below.
 
     """
 
