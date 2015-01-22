@@ -44,6 +44,9 @@ class Context(object):
         self.locked = False
         self.thread_lock = threading.RLock()
 
+    def __repr__(self):
+        return "<Libres Context(name='{}')>".format(self.name)
+
     @contextmanager
     def as_current_context(self):
         with self.registry.context(self.name):
