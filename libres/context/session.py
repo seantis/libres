@@ -88,6 +88,7 @@ from sqlalchemy.pool import SingletonThreadPool
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy import event
 
+from libres.context.context import StoppableService
 from libres.modules import errors
 
 SERIALIZABLE = 'SERIALIZABLE'
@@ -176,7 +177,7 @@ class SessionStore(object):
         return session
 
 
-class SessionProvider(object):
+class SessionProvider(StoppableService):
     """Global session utility. It wraps two global sessions through which
     all database interaction (should) be flowing.
 
@@ -193,12 +194,37 @@ class SessionProvider(object):
     def _reset_sessions(self):
         """ Resets the session and threadstore. Useful for testing. """
 
+        self.stop_service()
+
         # Session information is stored independently for each thread.
         # SQLAlchemy does provide this in a way with scoped_session, but
         # it seems sane to be independent here
 
         with self._lock:
             self._threadstore = threading.local()
+
+    def stop_service(self):
+        """ Called by the libres context when the session provider is being
+        discarded.
+
+        This makes sure that replacing the session provider on the context
+        doesn't leave behind any idle connections.
+
+        """
+        if not hasattr(self._threadstore, 'sessions'):
+            return
+
+        engines = {}
+
+        for dsn, session in self._threadstore.sessions.items():
+            engines[dsn] = session.serial.bind
+
+            session.serial.close()
+            session.readonly.close()
+
+        for engine in engines.values():
+            engine.raw_connection().invalidate()
+            engine.dispose()
 
     @property
     def sessionstore(self):

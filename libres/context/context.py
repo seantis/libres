@@ -9,6 +9,19 @@ missing = object()
 required = object()
 
 
+class StoppableService(object):
+    """ Services inheriting from this class have their stop_service method
+    called when the service is discarded.
+
+    Note that this only happens when a service is replaced with a new one
+    and not when libres is stopped (i.e. this is *not* a deconstructor).
+
+    """
+
+    def stop_service(self):
+        pass
+
+
 class Context(object):
     """ Used throughout Libres, the context holds settings like the database
     connection string and services like the json dumps/loads functions that
@@ -76,6 +89,13 @@ class Context(object):
             raise errors.ContextIsLocked
 
         with self.thread_lock:
+
+            # If a value already exists it could be a stoppable service.
+            # Stoppable services are called before they are stop so they
+            # can clean up after themselves without having to wait for the GC.
+            if isinstance(self.values.get(key), StoppableService):
+                self.values[key].stop_service()
+
             self.values[key] = value
 
     def get_setting(self, name):
