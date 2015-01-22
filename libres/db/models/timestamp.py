@@ -1,6 +1,6 @@
-import arrow
-
-from sqlalchemy import types
+from datetime import datetime
+from libres.db.models.types import UTCDateTime
+from pytz import timezone
 from sqlalchemy.orm import deferred
 from sqlalchemy.schema import Column
 from sqlalchemy.ext.declarative import declared_attr
@@ -16,12 +16,16 @@ class TimestampMixin(object):
 
     """
 
+    @staticmethod
+    def timestamp():
+        return datetime.utcnow().replace(tzinfo=timezone('UTC'))
+
     @declared_attr
     def created(cls):
         return deferred(
             Column(
-                types.DateTime(timezone=True),
-                default=arrow.utcnow().datetime
+                UTCDateTime(timezone=False),
+                default=cls.timestamp
             )
         )
 
@@ -29,7 +33,7 @@ class TimestampMixin(object):
     def modified(cls):
         return deferred(
             Column(
-                types.DateTime(timezone=True),
-                onupdate=arrow.utcnow().datetime
+                UTCDateTime(timezone=False),
+                onupdate=cls.timestamp
             )
         )
