@@ -2,7 +2,6 @@ import pytest
 
 from copy import copy
 from datetime import datetime, timedelta
-from libres import registry
 from libres.db.models import Reservation, Allocation, ReservedSlot
 from libres.modules import calendar, errors, events
 from libres.modules import utils
@@ -1451,13 +1450,18 @@ def test_data_coding(scheduler):
 
     # luckily we can provide a better json implementation
     import jsonpickle
+    from libres.context.session import SessionProvider
 
-    scheduler.context.set_service('json_dumps', lambda ctx: jsonpickle.encode)
-    scheduler.context.set_service('json_loads', lambda ctx: jsonpickle.decode)
+    def session_provider(context):
+        return SessionProvider(context.get_setting('dsn'), engine_config=dict(
+            json_serializer=jsonpickle.encode,
+            json_deserializer=jsonpickle.decode
+        ))
 
-    # TODO all scheduler methods should probably run on the context of
-    # the scheduler, so this should not be necessary
-    registry.switch_context(scheduler.context.name)
+    # setting the service again will get rid of the existing cached value
+    scheduler.context.set_service(
+        'session_provider', session_provider, cache=True
+    )
 
     scheduler.allocate((start, end), data=data)
     scheduler.commit()

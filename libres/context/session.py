@@ -82,8 +82,6 @@ import re
 import threading
 import functools
 
-from cached_property import cached_property
-
 from sqlalchemy.sql.dml import UpdateBase
 from sqlalchemy import create_engine
 from sqlalchemy.pool import SingletonThreadPool
@@ -186,10 +184,8 @@ class SessionProvider(object):
     so it needs to be aware of different threads.
     """
 
-    _lock = threading.RLock()
-    _threadstore = threading.local()
-
     def __init__(self, dsn, engine_config={}, session_config={}):
+        self._threadstore = threading.local()
         self.dsn = dsn
         self.engine_config = engine_config
         self.session_config = session_config
@@ -210,19 +206,18 @@ class SessionProvider(object):
         sessions if they are not yet present.
 
         """
-        with self._lock:
-            if not hasattr(self._threadstore, 'sessions'):
-                self._threadstore.sessions = {}
+        if not hasattr(self._threadstore, 'sessions'):
+            self._threadstore.sessions = {}
 
-            if self.dsn not in self._threadstore.sessions:
-                self.assert_dsn(self.dsn)
-                self._threadstore.sessions[self.dsn] = SessionStore(
-                    self.dsn,
-                    self.engine_config,
-                    self.session_config
-                )
+        if self.dsn not in self._threadstore.sessions:
+            self.assert_dsn(self.dsn)
+            self._threadstore.sessions[self.dsn] = SessionStore(
+                self.dsn,
+                self.engine_config,
+                self.session_config
+            )
 
-            return self._threadstore.sessions[self.dsn]
+        return self._threadstore.sessions[self.dsn]
 
     @property
     def is_serial(self):
@@ -344,7 +339,7 @@ class Serializable(object):
 
     """
 
-    @cached_property
+    @property
     def session_provider(self):
         return self.context.get_service('session_provider')
 

@@ -18,7 +18,7 @@ from libres.modules.rasterizer import (
 )
 
 from libres.db.models import ORMBase
-from libres.db.models.types import GUID, UTCDateTime, ContextAwareJSON
+from libres.db.models.types import GUID, UTCDateTime, JSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
 
@@ -82,7 +82,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     #: Custom data reserved for the user
     data = Column(
-        ContextAwareJSON(),
+        JSON(),
         nullable=True
     )
 

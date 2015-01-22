@@ -1,5 +1,5 @@
 from .guid import GUID
 from .utcdatetime import UTCDateTime
-from .context_aware_json import ContextAwareJSON
+from .json_type import JSON
 
-__all__ = ['GUID', 'UTCDateTime', 'ContextAwareJSON']
+__all__ = ['GUID', 'UTCDateTime', 'JSON']

@@ -1,6 +1,5 @@
 def setup_registry():
 
-    import json
     import re
 
     from libres.context.registry import Registry
@@ -39,8 +38,6 @@ def setup_registry():
     master.set_service('session_provider', session_provider, cache=True)
     master.set_service('exposure', exposure_factory)
     master.set_service('uuid_generator', uuid_generator_factory)
-    master.set_service('json_dumps', lambda ctx: json.dumps)
-    master.set_service('json_loads', lambda ctx: json.loads)
 
     set_default_settings(master)
 
