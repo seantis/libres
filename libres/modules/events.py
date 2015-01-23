@@ -32,7 +32,7 @@ class Event(list):
 
 on_allocations_added = Event()
 on_reservations_made = Event()
-on_reservations_confirm = Event()
+on_reservations_confirmed = Event()
 on_reservations_approved = Event()
 on_reservations_removed = Event()
 on_reservations_denied = Event()
