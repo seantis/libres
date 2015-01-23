@@ -8,3 +8,9 @@ def test_string_equal_uuid():
     assert uuid == StringEqualUUID(uuid.hex)
     assert uuid.hex == StringEqualUUID(uuid.hex)
     assert str(uuid) == StringEqualUUID(uuid.hex)
+
+
+def test_hashable_uuid():
+    uuid = uuid4()
+
+    assert hash(StringEqualUUID(uuid.hex))

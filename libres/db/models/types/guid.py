@@ -25,6 +25,10 @@ class StringEqualUUID(uuid.UUID):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __hash__(self):
+        # this function is not inherited in python 2
+        return hash(self.int)
+
 
 class GUID(TypeDecorator):
     """Platform-independent GUID type.
