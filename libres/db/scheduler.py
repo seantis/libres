@@ -1006,6 +1006,7 @@ class Scheduler(Serializable):
 
             events.on_reservation_time_changed(
                 self.context.name,
+                new_reservation,
                 old_time=(old_start, old_end),
                 new_time=(
                     new_reservation.display_start(),
