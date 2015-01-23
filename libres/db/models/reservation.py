@@ -136,9 +136,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
             return [(self.start, self.end + timedelta(microseconds=1))]
         elif self.target_type == u'group':
             return [
-                Timespan(
-                    a.display_start(), a.display_end()
-                )
+                Timespan(a.start, a.end)
                 for a in self._target_allocations()
             ]
         else:
