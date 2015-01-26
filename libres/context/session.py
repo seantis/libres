@@ -317,8 +317,8 @@ class SessionProvider(StoppableService):
     def assert_dsn(self, dsn):
         major, minor = self.get_postgres_version(dsn)
 
-        assert (major >= 9 and minor >= 2) or (major >= 10), \
-            "PostgreSQL 9.2+ is required. Your version is {}.{}".format(
+        assert (major >= 9 and minor >= 1) or (major >= 10), \
+            "PostgreSQL 9.1+ is required. Your version is {}.{}".format(
                 major, minor)
 
         return dsn

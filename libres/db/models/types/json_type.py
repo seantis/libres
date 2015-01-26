@@ -10,6 +10,10 @@ class JSON(TypeDecorator):
 
     """
 
+    # Use TEXT for now to stay compatible with Postgres 9.1. In the future
+    # this will be replaced by JSON (or JSONB) though that requires that we
+    # require a later Postgres release. For now we stay backwards compatible
+    # with a version that's still widely used (9.1).
     impl = TEXT
 
     def process_bind_param(self, value, dialect):
