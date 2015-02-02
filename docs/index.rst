@@ -3,8 +3,8 @@ Introduction
 
 Python library to reserve stuff in a calendar.
 
-Not a replacement for Outlook or Google Calendar, but a system to manage
-reservations in the following usecases:
+Not a replacement for Outlook or Google Calendar, but a library to manage
+reservations in the following use cases:
 
 * Manage meeting rooms in a company. Users reserve the rooms themselves 
   without an authority confirming/denying their reservations.
@@ -18,6 +18,9 @@ reservations in the following usecases:
   done internally (maybe through an already existing software). A readonly
   calendar shows the state on the website.
 
+Libres as such does not provide any user interface for reservations. That is
+the job of other projects depending on Libres.
+
 History
 =======
 
@@ -28,7 +31,7 @@ different kinds of resources like the ones mentioned above.
 entities. It is used successfully by hundreds of users daily.
 
 We have been asked a number of times to implement the same system in other
-environments outside of Plone, which is why we chose to move it's core
+environments outside of Plone, which is why we chose to move its core
 features out into a library, usable by any kind of Python project.
 
 Because we didn't want to suffer the second system effect we kept a lot of
@@ -44,6 +47,14 @@ release just yet and we will be tweaking the API heavily.
 In the long run we obviously want the API to grow out of its historic roots
 and be come more usable for humans. But don't expect this to happen over night.
 
+A first release - with an *instable* API - is going to be the used by 
+`seantis.reservation`_ as a proof of concept. That means we are tearing out
+the guts of `seantis.reservation`_ and plugging the holes left behind into the
+Libres API. We will then ship that version.
+
+This will prove that everything works and that our separations and abstractions
+are sound.
+
 Content
 =======
 
@@ -52,7 +63,6 @@ Content
    
    concepts
    api
-
 
 License
 =======
