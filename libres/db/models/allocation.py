@@ -193,7 +193,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         A whole-day allocation is not really special. It's just an allocation
         which starts at 0:00 and ends at 24:00 (or 23:59:59'999). Relative
-        to it's timezone.
+        to its timezone.
 
         As such it can actually also span multiple days, only hours and minutes
         count.
