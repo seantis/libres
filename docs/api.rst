@@ -19,12 +19,17 @@ Database Access
 .. autoclass:: libres.db.queries.Queries
     :members:
 
+Events
+------
+
+.. automodule:: libres.modules.events
+    :members:
+
 Models
 ------
 
 .. autoclass:: libres.db.models.Allocation
     :members:
-
 
 Settings
 --------

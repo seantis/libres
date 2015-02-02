@@ -169,7 +169,9 @@ class Queries(Serializable):
         for reservation in reservations:
             reservation.session_id = None
 
-        events.on_reservations_confirmed(self.context.name, reservations)
+        events.on_reservations_confirmed(
+            self.context, reservations, session_id
+        )
 
     @serialized
     def remove_reservation_from_session(self, session_id, token):

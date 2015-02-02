@@ -286,7 +286,7 @@ def test_change_reservation(scheduler):
     scheduler.commit()
 
     assert reservation_changed.called
-    assert reservation_changed.call_args[0][0] == scheduler.context.name
+    assert reservation_changed.call_args[0][0].name == scheduler.context.name
     assert reservation_changed.call_args[1]['old_time'][0].hour == 8
     assert reservation_changed.call_args[1]['old_time'][1].hour == 9
     assert reservation_changed.call_args[1]['new_time'][0].hour == 8
@@ -1373,15 +1373,15 @@ def test_events(scheduler):
 
     scheduler.allocate(dates, approve_manually=True)
     assert allocations_added.called
-    assert allocations_added.call_args[0][0] == scheduler.context.name
+    assert allocations_added.call_args[0][0].name == scheduler.context.name
     assert len(allocations_added.call_args[0][1]) == 1
 
     # create reservations
 
     token = scheduler.reserve(u'test@example.org', dates)
     assert reservations_made.called
-    assert reservations_made.call_args[0][0] == scheduler.context.name
-    assert reservations_made.call_args[0][0] == scheduler.context.name
+    assert reservations_made.call_args[0][0].name == scheduler.context.name
+    assert reservations_made.call_args[0][0].name == scheduler.context.name
     assert reservations_made.call_args[0][1][0].token == token
 
     reservations_made.reset_mock()
@@ -1392,7 +1392,7 @@ def test_events(scheduler):
     assert reservations_approved.called
     assert not reservations_denied.called
     assert not reservations_made.called
-    assert reservations_approved.call_args[0][0] == scheduler.context.name
+    assert reservations_approved.call_args[0][0].name == scheduler.context.name
     assert reservations_approved.call_args[0][1][0].token == token
 
     reservations_approved.reset_mock()
@@ -1401,16 +1401,16 @@ def test_events(scheduler):
     # remove the reservation and deny the next one
     scheduler.remove_reservation(token)
     assert reservations_removed.called
-    assert reservations_removed.call_args[0][0] == scheduler.context.name
+    assert reservations_removed.call_args[0][0].name == scheduler.context.name
 
     token = scheduler.reserve(u'test@example.org', dates)
     assert reservations_made.called
-    assert reservations_made.call_args[0][0] == scheduler.context.name
+    assert reservations_made.call_args[0][0].name == scheduler.context.name
 
     scheduler.deny_reservation(token)
 
     assert not reservations_approved.called
-    assert reservations_denied.call_args[0][0] == scheduler.context.name
+    assert reservations_denied.call_args[0][0].name == scheduler.context.name
     assert reservations_denied.called
     assert reservations_denied.call_args[0][1][0].token == token
 

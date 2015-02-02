@@ -326,7 +326,7 @@ class Scheduler(Serializable):
 
         self.session.add_all(allocations)
 
-        events.on_allocations_added(self.context.name, allocations)
+        events.on_allocations_added(self.context, allocations)
 
         return allocations
 
@@ -781,7 +781,7 @@ class Scheduler(Serializable):
         for reservation in reservations:
             self.session.add(reservation)
 
-        events.on_reservations_made(self.context.name, reservations)
+        events.on_reservations_made(self.context, reservations)
 
         return token
 
@@ -847,7 +847,7 @@ class Scheduler(Serializable):
                 self._approve_reservation_record(reservation)
             )
 
-        events.on_reservations_approved(self.context.name, reservations)
+        events.on_reservations_approved(self.context, reservations)
 
         return slots_to_reserve
 
@@ -865,7 +865,7 @@ class Scheduler(Serializable):
 
         query.delete()
 
-        events.on_reservations_denied(self.context.name, reservations)
+        events.on_reservations_denied(self.context, reservations)
 
     @serialized
     def remove_reservation(self, token, id=None):
@@ -890,7 +890,7 @@ class Scheduler(Serializable):
         reservations = self.reservations_by_token(token, id)
         reservations.delete('fetch')
 
-        events.on_reservations_removed(self.context.name, reservations)
+        events.on_reservations_removed(self.context, reservations)
 
     @serialized
     def change_email(self, token, new_email):
@@ -1005,7 +1005,7 @@ class Scheduler(Serializable):
             self._approve_reservation_record(new_reservation)
 
             events.on_reservation_time_changed(
-                self.context.name,
+                self.context,
                 new_reservation,
                 old_time=(old_start, old_end),
                 new_time=(
