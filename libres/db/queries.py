@@ -10,10 +10,11 @@ from sqlalchemy.sql import and_, or_
 
 from libres.modules import errors, events, calendar
 from libres.db.models import Allocation, Reservation, ReservedSlot
+from libres.context.context import ContextServicesMixin
 from libres.context.session import serialized, Serializable
 
 
-class Queries(Serializable):
+class Queries(Serializable, ContextServicesMixin):
     """ Contains helper methods independent of the resource (as owned by
     :class:`.scheduler.Scheduler`)
 
@@ -30,12 +31,6 @@ class Queries(Serializable):
         return self.allocations_in_range(
             self.session.query(Allocation), start, end
         )
-
-    @property
-    def is_allocation_exposed(self):
-        # XXX this is copied over from the Scheduler. A ContextServicesMixin
-        # could be responsible for this in a single class
-        return self.context.get_service('exposure').is_allocation_exposed
 
     @staticmethod
     def allocations_in_range(query, start, end):

@@ -1523,7 +1523,7 @@ def test_search_allocations(scheduler):
     assert len(scheduler.search_allocations(*daterange, days=['su'])) == 1
     assert len(scheduler.search_allocations(*daterange, days=['mo'])) == 0
 
-    # make sure the exposure is taken into account
+    # make sure the exposure is taken into account..
     class MockExposure(object):
 
         def __init__(self, return_value):
@@ -1533,9 +1533,11 @@ def test_search_allocations(scheduler):
             return self.return_value
 
     scheduler.context.set_service('exposure', lambda ctx: MockExposure(False))
+    scheduler.clear_cache()
     assert len(scheduler.search_allocations(*daterange)) == 0
 
     scheduler.context.set_service('exposure', lambda ctx: MockExposure(True))
+    scheduler.clear_cache()
     assert len(scheduler.search_allocations(*daterange)) == 1
 
     # test available only

@@ -10,6 +10,12 @@ Context / Registry
 .. autoclass:: libres.context.context.Context
     :members:
 
+.. autoclass:: libres.context.context.ContextServicesMixin
+    :members:
+
+.. autoclass:: libres.context.context.StoppableService
+    :members:
+
 Database Access
 ---------------
 

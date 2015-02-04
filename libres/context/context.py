@@ -1,6 +1,7 @@
 import libres
 import threading
 
+from cached_property import cached_property
 from contextlib import contextmanager
 from libres.modules import errors
 
@@ -22,6 +23,40 @@ class StoppableService(object):
         pass
 
 
+class ContextServicesMixin(object):
+    """ Provides access methods to the context's services. Expects
+    the class that uses the mixin to provide self.context.
+
+    The results are cached for performance.
+
+    """
+
+    @cached_property
+    def is_allocation_exposed(self):
+        return self.context.get_service('exposure').is_allocation_exposed
+
+    @cached_property
+    def generate_uuid(self):
+        return self.context.get_service('uuid_generator')
+
+    @cached_property
+    def validate_email(self):
+        return self.context.get_service('email_validator')
+
+    def clear_cache(self):
+        """ Clears the cache of the mixin. """
+
+        properties = (
+            'is_allocation_exposed',
+            'generate_uuid',
+            'validate_email'
+        )
+
+        for p in properties:
+            if p in self.__dict__:
+                del self.__dict__[p]
+
+
 class Context(object):
     """ Used throughout Libres, the context holds settings like the database
     connection string and services like the json dumps/loads functions that
@@ -39,6 +74,12 @@ class Context(object):
     If the custom context can't provide a service or a setting, the
     master_context is used instead. In other words, the custom context
     inherits from the master context.
+
+    Note that contexts not meant to be changed often. Classes talking to the
+    database usually cache data form the context freely. That means basically
+    that after changing the context you should get a fresh
+    :class:`~libres.db.scheduler.Scheduler` instance or call
+    :meth:`~.ContextServicesMixin.clear_cache`.
 
     A context may be registered as follows::
 

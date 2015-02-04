@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from libres.context.context import ContextServicesMixin
 from libres.context.session import serialized, Serializable
 from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
 from libres.db.queries import Queries
@@ -19,7 +20,7 @@ from uuid import uuid4 as new_uuid
 missing = object()
 
 
-class Scheduler(Serializable):
+class Scheduler(Serializable, ContextServicesMixin):
     """ The Scheduler is responsible for talking to the backend of the given
     context to create reservations. It is the main part of the API.
     """
@@ -74,7 +75,7 @@ class Scheduler(Serializable):
         on the namespace uuid defined in :ref:`settings.uuid_namespace`
 
         """
-        return self.context.get_service('uuid_generator')(self.name)
+        return self.generate_uuid(self.name)
 
     def prepare_date(self, date):
         return calendar.normalize_date(date, self.timezone)
@@ -91,14 +92,6 @@ class Scheduler(Serializable):
     @serialized
     def setup_database(self):
         ORMBase.metadata.create_all(self.session.bind)
-
-    @property
-    def validate_email(self):
-        return self.context.get_service('email_validator')
-
-    @property
-    def is_allocation_exposed(self):
-        return self.context.get_service('exposure').is_allocation_exposed
 
     def managed_allocations(self):
         """ The allocations managed by this scheduler / resource. """
