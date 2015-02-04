@@ -4,6 +4,7 @@ from libres.context.session import serialized, Serializable
 from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
 from libres.db.queries import Queries
 from libres.modules import calendar
+from libres.modules import compat
 from libres.modules import errors
 from libres.modules import events
 from libres.modules import rasterizer
@@ -49,6 +50,8 @@ class Scheduler(Serializable):
             If it does, a migration has to be written (as of yet no such
             migration exists).
         """
+
+        assert isinstance(timezone, compat.string_types)
 
         self.context = context
         self.queries = Queries(context)
