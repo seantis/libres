@@ -1,9 +1,8 @@
-from datetime import datetime
 from libres.db.models.types import UTCDateTime
-from pytz import timezone
+from libres.modules import calendar
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.schema import Column
-from sqlalchemy.ext.declarative import declared_attr
 
 
 class TimestampMixin(object):
@@ -18,7 +17,7 @@ class TimestampMixin(object):
 
     @staticmethod
     def timestamp():
-        return datetime.utcnow().replace(tzinfo=timezone('UTC'))
+        return calendar.utcnow()
 
     @declared_attr
     def created(cls):

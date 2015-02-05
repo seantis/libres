@@ -78,15 +78,20 @@ class Scheduler(Serializable, ContextServicesMixin):
         return self.generate_uuid(self.name)
 
     def prepare_date(self, date):
-        return calendar.normalize_date(date, self.timezone)
+        return calendar.standardize_date(date, self.timezone)
 
     def prepare_dates(self, dates):
-        return calendar.normalize_dates(dates, self.timezone)
+        return [
+            (
+                calendar.standardize_date(s, self.timezone),
+                calendar.standardize_date(e, self.timezone)
+            ) for s, e in utils.pairs(dates)
+        ]
 
     def prepare_range(self, start, end):
         return (
-            calendar.normalize_date(start, self.timezone),
-            calendar.normalize_date(end, self.timezone)
+            calendar.standardize_date(start, self.timezone),
+            calendar.standardize_date(end, self.timezone)
         )
 
     @serialized
@@ -1124,8 +1129,8 @@ class Scheduler(Serializable, ContextServicesMixin):
             s = datetime.combine(allocation.start.date(), start.time())
             e = datetime.combine(allocation.end.date(), end.time())
 
-            s = s.replace(tzinfo=allocation.start.tzinfo)
-            e = e.replace(tzinfo=allocation.end.tzinfo)
+            s = calendar.replace_timezone(s, allocation.start.tzname())
+            e = calendar.replace_timezone(e, allocation.start.tzname())
 
             if not allocation.overlaps(s, e):
                 continue

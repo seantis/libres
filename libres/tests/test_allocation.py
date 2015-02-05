@@ -30,6 +30,7 @@ def test_add_invalid_allocation(scheduler):
 
 def test_date_functions(scheduler):
     allocation = Allocation(raster=60, resource=scheduler.resource)
+    allocation.timezone = 'UTC'
     allocation.start = datetime(2011, 1, 1, 12, 30, tzinfo=utc)
     allocation.end = datetime(2011, 1, 1, 14, 00, tzinfo=utc)
 

@@ -2,7 +2,7 @@ import pytest
 
 from datetime import datetime
 from libres.db.models import Allocation, ReservedSlot
-from pytz import utc
+from pytz import utc, timezone
 from sqlalchemy.exc import IntegrityError
 from uuid import uuid4 as new_uuid
 
@@ -36,3 +36,27 @@ def test_add_reserved_slot(scheduler):
 
     with pytest.raises(IntegrityError):
         scheduler.serial_session.flush()
+
+
+def test_reserved_slot_date_display(scheduler):
+    start = datetime(2015, 2, 5, 10, 0, tzinfo=utc)
+    end = datetime(2015, 2, 5, 12, 0, tzinfo=utc)
+
+    allocation = Allocation(raster=5)
+    allocation.start = start
+    allocation.end = end
+
+    slot = ReservedSlot()
+    slot.allocation = allocation
+    slot.start = start
+    slot.end = end
+
+    tz = timezone('Europe/Zurich')
+
+    assert slot.display_start(timezone='Europe/Zurich') == tz.localize(
+        datetime(2015, 2, 5, 11, 0)
+    )
+
+    # assert slot.display_end(timezone='Europe/Zurich') == datetime(
+    #     2015, 2, 5, 13, 0, tzinfo=timezone('Europe/Zurich')
+    # )

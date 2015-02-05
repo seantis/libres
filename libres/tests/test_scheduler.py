@@ -294,10 +294,10 @@ def test_change_reservation(scheduler):
 
     reservation = scheduler.reservations_by_token(token).one()
 
-    assert reservation.start == calendar.normalize_date(
+    assert reservation.start == calendar.standardize_date(
         datetime(2014, 8, 7, 8, 0), scheduler.timezone
     )
-    assert reservation.end == calendar.normalize_date(
+    assert reservation.end == calendar.standardize_date(
         datetime(2014, 8, 7, 10, 0) - timedelta(microseconds=1),
         scheduler.timezone
     )

@@ -1,41 +1,92 @@
-import arrow
+""" The calendar module provides methods that deal with dates and timezones.
+
+There are projects like `Arrow <https://github.com/crsmithdev/arrow>`_ or
+`Delorean <https://github.com/crsmithdev/arrow>`_ which provide ways to work
+with timezones without having to think about it too much.
+
+Libres doesn't use them because its author *wants* to think about these things,
+to ensure they are correct, and partly because of self-loathing.
+
+Adding another layer makes these things harder.
+
+That being said, further up the stacks - in the web application for example -
+it might very well make sense to use a datetime wrapper library.
+
+"""
+
+import pytz
 
 from datetime import datetime, timedelta
-from libres.modules import errors, utils
+from libres.modules import compat, errors
+
+mindatetime = pytz.utc.localize(datetime.min)
+maxdatetime = pytz.utc.localize(datetime.max)
 
 
-mindatetime = arrow.get(datetime.min).datetime
-maxdatetime = arrow.get(datetime.max).datetime
+def ensure_timezone(timezone):
+    """ Make sure the given timezone is a pytz timezone, not just a string. """
+
+    if isinstance(timezone, compat.string_types):
+        return pytz.timezone(timezone)
+
+    return timezone
 
 
-def normalize_dates(dates, timezone):
-    dates = list(utils.pairs(dates))
+def standardize_date(date, timezone):
+    """ Takes the given date and converts it to UTC.
 
-    # the dates are expected to be given local to the timezone, but
-    # they are converted to utc for storage
-    for ix, (start, end) in enumerate(dates):
-        dates[ix] = [normalize_date(d, timezone) for d in ((start, end))]
+    The given timezone is set on timezone-naive dates and converted to
+    on timezone-aware dates. That essentially means that you should pass
+    the timezone that you know the date to be, even if the date is in another
+    timezone (like UTC) or if the date does not have a timezone set.
 
-    return dates
+    """
 
+    assert timezone, "The timezone may *not* be empty!"
 
-def normalize_date(date, timezone):
     if date.tzinfo is None:
-        date = arrow.get(date).replace(tzinfo=timezone)
+        date = replace_timezone(date, timezone)
 
     return to_timezone(date, 'UTC')
 
 
+def replace_timezone(date, timezone):
+    """ Takes the given date and replaces the timezone with the given timezone.
+
+    No conversion is done in this method, it's simply a safe way to do the
+    following (which is problematic with timzones that have daylight saving
+    times)::
+
+        # don't do this:
+        date.replace(tzinfo=timezone('Europe/Zurich'))
+
+        # do this:
+        calendar.replace_timezone(date, 'Europe/Zurich')
+
+    """
+
+    timezone = ensure_timezone(timezone)
+
+    return timezone.normalize(timezone.localize(date.replace(tzinfo=None)))
+
+
 def to_timezone(date, timezone):
+    """ Takes the given date and converts it to the given timezone.
+
+    The given date must already be timezone aware for this to work.
+
+    """
 
     if not date.tzinfo:
         raise errors.NotTimezoneAware()
 
-    return arrow.get(date).to(timezone).datetime
+    timezone = ensure_timezone(timezone)
+    return timezone.normalize(date.astimezone(timezone))
 
 
 def utcnow():
-    return normalize_date(datetime.utcnow(), 'UTC')
+    """ Returns a timezone-aware datetime.utcnow(). """
+    return replace_timezone(datetime.utcnow(), 'UTC')
 
 
 def is_whole_day(start, end, timezone):
@@ -49,8 +100,11 @@ def is_whole_day(start, end, timezone):
 
     """
 
-    # remove the timezone information after converting, to still detect
-    # days during which sumemrtime is enabled as 24 hour days.
+    # without replacing the tzinfo, the total seconds count later will return
+    # the wrong number - it is correct, because the total seconds do not
+    # constitute a whole day, but we are not interested in the actual time
+    # but we need to know that the day starts at 0:00 and ends at 24:00,
+    # between which we need 24 hours (just looking at the time)
     start = to_timezone(start, timezone).replace(tzinfo=None)
     end = to_timezone(end, timezone).replace(tzinfo=None)
 
@@ -69,6 +123,7 @@ def is_whole_day(start, end, timezone):
 
 
 def overlaps(start, end, otherstart, otherend):
+    """ Returns True if the given dates overlap in any way. """
 
     if otherstart <= start and start <= otherend:
         return True
@@ -80,6 +135,10 @@ def overlaps(start, end, otherstart, otherend):
 
 
 def count_overlaps(dates, start, end):
+    """ Goes through the list of start/end tuples in 'dates' and returns the
+    number of times start/end overlaps with any of the dates.
+
+    """
     count = 0
 
     for otherstart, otherend in dates:
@@ -115,7 +174,7 @@ def align_date_to_day(date, timezone, direction):
     if direction == 'up':
         local = local + timedelta(days=1, microseconds=-1)
 
-    return to_timezone(local, date.tzinfo)
+    return to_timezone(local, date.tzname())
 
 
 def align_range_to_day(start, end, timezone):

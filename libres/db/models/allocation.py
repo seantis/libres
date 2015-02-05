@@ -181,9 +181,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def prepare_daterange(self, start, end):
         if start:
-            start = calendar.normalize_date(start, self.timezone)
+            start = calendar.standardize_date(start, self.timezone)
         if end:
-            end = calendar.normalize_date(end, self.timezone)
+            end = calendar.standardize_date(end, self.timezone)
 
         return start, end
 

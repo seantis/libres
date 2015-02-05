@@ -1,4 +1,3 @@
-import arrow
 import pytest
 
 from datetime import datetime
@@ -7,16 +6,19 @@ from libres.modules import calendar
 from libres.modules import errors
 
 
-def test_normalize_naive_date():
+def test_standardize_naive_date():
     naive_date = datetime(2014, 10, 1, 13, 30)
-    normalized = calendar.normalize_date(naive_date, 'Europe/Zurich')
+    normalized = calendar.standardize_date(naive_date, 'Europe/Zurich')
 
     assert normalized.tzname() == 'UTC'
+    assert normalized.replace(tzinfo=None) == datetime(2014, 10, 1, 11, 30)
 
 
-def test_normalize_aware_date():
-    aware_date = datetime(2014, 10, 1, 13, 30)
-    normalized = calendar.normalize_date(aware_date, 'Europe/Zurich')
+def test_standardize_aware_date():
+    aware_date = calendar.replace_timezone(
+        datetime(2014, 10, 1, 13, 30), 'Europe/Zurich')
+
+    normalized = calendar.standardize_date(aware_date, 'Europe/Zurich')
 
     assert normalized.tzname() == 'UTC'
     assert normalized.replace(tzinfo=None) == datetime(2014, 10, 1, 11, 30)
@@ -24,22 +26,26 @@ def test_normalize_aware_date():
 
 def test_is_whole_day_summertime():
 
-    start = datetime(2014, 10, 26, 0, 0, 0)
-    end = datetime(2014, 10, 26, 23, 59, 59)
+    start = calendar.standardize_date(
+        datetime(2014, 10, 26, 0, 0, 0), 'Europe/Zurich')
 
-    start, end = calendar.normalize_dates((start, end), 'Europe/Zurich')[0]
+    end = calendar.standardize_date(
+        datetime(2014, 10, 26, 23, 59, 59), 'Europe/Zurich')
 
     assert calendar.is_whole_day(start, end, 'Europe/Zurich')
+    assert not calendar.is_whole_day(start, end, 'Europe/Istanbul')
 
 
 def test_is_whole_day_wintertime():
 
-    start = datetime(2015, 3, 29, 0, 0, 0)
-    end = datetime(2015, 3, 29, 23, 59, 59)
+    start = calendar.standardize_date(
+        datetime(2015, 3, 29, 0, 0, 0), 'Europe/Zurich')
 
-    start, end = calendar.normalize_dates((start, end), 'Europe/Zurich')[0]
+    end = calendar.standardize_date(
+        datetime(2015, 3, 29, 23, 59, 59), 'Europe/Zurich')
 
     assert calendar.is_whole_day(start, end, 'Europe/Zurich')
+    assert not calendar.is_whole_day(start, end, 'Europe/Istanbul')
 
 
 def test_require_timezone_awareness():
@@ -81,28 +87,30 @@ def test_overlaps():
     for dates in overlaps:
         assert calendar.overlaps(*dates)
 
-        timezone_aware = [calendar.normalize_date(d, tz) for d in dates]
+        timezone_aware = [calendar.standardize_date(d, tz) for d in dates]
         assert calendar.overlaps(*timezone_aware)
 
     for dates in doesnt:
         assert not calendar.overlaps(*dates)
 
-        timezone_aware = [calendar.normalize_date(d, tz) for d in dates]
+        timezone_aware = [calendar.standardize_date(d, tz) for d in dates]
         assert not calendar.overlaps(*timezone_aware)
 
 
-def test_align_date_to_day():
+def test_align_date_to_day_down():
 
-    aligned = calendar.align_date_to_day(
-        arrow.get(2012, 1, 24, 10), 'Europe/Zurich', 'down'
-    )
-    assert aligned == arrow.get(2012, 1, 24, 0, tzinfo='Europe/Zurich')
-    assert aligned.tzname() == 'UTC'
+    unaligned = calendar.standardize_date(datetime(2012, 1, 24, 10), 'UTC')
+    aligned = calendar.align_date_to_day(unaligned, 'Europe/Zurich', 'down')
 
-    aligned = calendar.align_date_to_day(
-        arrow.get(2012, 1, 24, 10), 'Europe/Zurich', 'up'
-    )
-    assert aligned == arrow.get(
-        2012, 1, 24, 23, 59, 59, 999999, tzinfo='Europe/Zurich'
-    )
     assert aligned.tzname() == 'UTC'
+    assert aligned == calendar.standardize_date(
+        datetime(2012, 1, 24, 0), 'Europe/Zurich')
+
+
+def test_align_date_to_day_up():
+    unaligned = calendar.standardize_date(datetime(2012, 1, 24, 10), 'UTC')
+    aligned = calendar.align_date_to_day(unaligned, 'Europe/Zurich', 'up')
+
+    assert aligned.tzname() == 'UTC'
+    assert aligned == calendar.standardize_date(
+        datetime(2012, 1, 24, 23, 59, 59, 999999), 'Europe/Zurich')

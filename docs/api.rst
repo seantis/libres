@@ -41,3 +41,9 @@ Settings
 --------
 
 .. automodule:: libres.context.settings
+
+Other
+-----
+
+.. automodule:: libres.modules.calendar
+    :members:
