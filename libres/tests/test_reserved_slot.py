@@ -57,6 +57,6 @@ def test_reserved_slot_date_display(scheduler):
         datetime(2015, 2, 5, 11, 0)
     )
 
-    # assert slot.display_end(timezone='Europe/Zurich') == datetime(
-    #     2015, 2, 5, 13, 0, tzinfo=timezone('Europe/Zurich')
-    # )
+    assert slot.display_end(timezone='Europe/Zurich') == tz.localize(
+        datetime(2015, 2, 5, 13, 0)
+    )

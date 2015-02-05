@@ -1,3 +1,4 @@
+from datetime import timedelta
 from sqlalchemy import types
 from sqlalchemy.schema import Column
 from sqlalchemy.schema import Index
@@ -77,6 +78,8 @@ class ReservedSlot(TimestampMixin, ORMBase):
 
     def display_end(self, timezone=None):
         end = rasterize_end(self.end, self.allocation.raster)
+        end += timedelta(microseconds=1)
+
         return calendar.to_timezone(
             end, timezone or self.allocation.timezone
         )
