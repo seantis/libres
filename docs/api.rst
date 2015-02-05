@@ -37,6 +37,14 @@ Models
 .. autoclass:: libres.db.models.Allocation
     :members:
 
+.. autoclass:: libres.db.models.ReservedSlot
+    :members:
+
+.. autoclass:: libres.db.models.Reservation
+    :members:
+
+.. autoclass:: libres.db.models.reservation.Timespan
+
 Settings
 --------
 

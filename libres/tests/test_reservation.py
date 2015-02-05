@@ -1,0 +1,48 @@
+from datetime import datetime, timedelta
+from libres.db.models import Reservation
+from libres.modules.calendar import standardize_date
+
+
+def test_reservation_title():
+    assert Reservation(email='test@example.org').title == 'test@example.org'
+
+
+def test_reservation_timespans(scheduler):
+    start = datetime(2015, 2, 5, 15)
+    end = datetime(2015, 2, 5, 16)
+
+    scheduler.allocate(dates=(start, end))
+    token = scheduler.reserve('test@example.org', dates=(start, end))
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token)[0]
+
+    timespans = reservation.timespans()
+    assert len(timespans) == 1
+
+    assert timespans[0].start == reservation.start
+    assert timespans[0].end == reservation.end + timedelta(microseconds=1)
+
+
+def test_group_reservation_timespans(scheduler):
+    dates = [
+        (datetime(2015, 2, 5, 15), datetime(2015, 2, 5, 16)),
+        (datetime(2015, 2, 6, 15), datetime(2015, 2, 6, 16))
+    ]
+
+    group = scheduler.allocate(dates=dates, grouped=True)[0].group
+    token = scheduler.reserve('test@example.org', group=group)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token)[0]
+
+    timespans = reservation.timespans()
+    assert len(timespans) == 2
+
+    assert timespans[0].start == standardize_date(dates[0][0], 'Europe/Zurich')
+    assert timespans[0].end == standardize_date(dates[0][1], 'Europe/Zurich')\
+        - timedelta(microseconds=1)
+
+    assert timespans[1].start == standardize_date(dates[1][0], 'Europe/Zurich')
+    assert timespans[1].end == standardize_date(dates[1][1], 'Europe/Zurich')\
+        - timedelta(microseconds=1)

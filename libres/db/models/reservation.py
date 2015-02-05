@@ -17,10 +17,6 @@ Timespan = namedtuple(
     'Timespan', ('start', 'end')
 )
 
-BoundTimespan = namedtuple(
-    'BoundTimespan', ('start', 'end', 'token', 'id')
-)
-
 
 class Reservation(TimestampMixin, ORMBase, OtherModels):
     """Describes a pending or approved reservation.
@@ -119,6 +115,9 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         # master allocations only
         query = query.filter(Allocation.resource == Allocation.mirror_of)
 
+        # order by date
+        query = query.order_by(Allocation._start)
+
         return query
 
     def display_start(self, timezone=None):
@@ -131,24 +130,27 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         return calendar.to_timezone(end, timezone or self.timezone)
 
     def timespans(self):
+        """ Returns the timespans targeted by this reservation.
+
+        The result is a list of :class:`~libres.db.models.reservation.Timespan`
+        timespans. The start and end are the start and end dates of the
+        referenced allocations.
+
+        The timespans are ordered by start.
+
+        """
 
         if self.target_type == u'allocation':
-            return [(self.start, self.end + timedelta(microseconds=1))]
+            # we don't need to hit the database in this case
+            return [
+                Timespan(self.start, self.end + timedelta(microseconds=1))
+            ]
         elif self.target_type == u'group':
             return [
-                Timespan(a.start, a.end)
-                for a in self._target_allocations()
+                Timespan(a.start, a.end) for a in self._target_allocations()
             ]
         else:
             raise NotImplementedError
-
-    def bound_timespans(self):
-
-        return [
-            BoundTimespan(
-                t[0], t[1], self.token, self.id
-            ) for t in self.timespans
-        ]
 
     @property
     def title(self):
