@@ -378,9 +378,6 @@ class Serializable(object):
         self.serial_session.close()
         self.readonly_session.close()
 
-    def begin(self):
-        return self.serial_session.begin(subtransactions=True)
-
     def commit(self):
         self.readonly_session.expire_all()
         return self.serial_session.commit()

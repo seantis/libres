@@ -11,10 +11,7 @@ from sqlalchemy.orm.exc import MultipleResultsFound
 from uuid import uuid4 as new_uuid
 
 
-def test_transaction(scheduler):
-
-    # begin a transaction
-    scheduler.begin()
+def test_rollback(scheduler):
 
     # write something in the transaction
     scheduler.allocate(
