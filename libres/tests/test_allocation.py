@@ -32,16 +32,22 @@ def test_add_invalid_allocation(scheduler):
 def test_get_master(scheduler):
     dates = [
         (datetime(2015, 2, 6, 12), datetime(2015, 2, 6, 13)),
-        (datetime(2015, 2, 7, 12), datetime(2015, 2, 7, 13)),
-        (datetime(2015, 2, 8, 12), datetime(2015, 2, 8, 13))
+        (datetime(2015, 2, 7, 12), datetime(2015, 2, 7, 13))
     ]
 
     allocations = scheduler.allocate(dates[:1])
     assert allocations[0].get_master() is allocations[0]
 
-    allocations = scheduler.allocate(dates[1:3], grouped=True)
+    allocations = scheduler.allocate(dates[1:], quota=2)
     assert allocations[0].get_master() is allocations[0]
-    assert allocations[1].get_master() is allocations[1]
+
+    # the siblings must exist in the database for the query in get_master
+    siblings = allocations[0].siblings()
+    scheduler.serial_session.add(siblings[1])
+    scheduler.commit()
+
+    assert siblings[1].get_master() is allocations[0]
+    assert siblings[1].get_master().id == allocations[0].id
 
 
 def test_imaginary_siblings(scheduler):

@@ -486,7 +486,8 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             return self
         else:
             query = object_session(self).query(Allocation)
-            query = query.filter(self.resource == self.mirror_of)
+            query = query.filter(Allocation._start == self._start)
+            query = query.filter(Allocation.resource == self.mirror_of)
 
             return query.one()
 
