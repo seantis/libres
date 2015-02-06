@@ -191,18 +191,6 @@ class SessionProvider(StoppableService):
         self.engine_config = engine_config
         self.session_config = session_config
 
-    def _reset_sessions(self):
-        """ Resets the session and threadstore. Useful for testing. """
-
-        self.stop_service()
-
-        # Session information is stored independently for each thread.
-        # SQLAlchemy does provide this in a way with scoped_session, but
-        # it seems sane to be independent here
-
-        with self._lock:
-            self._threadstore = threading.local()
-
     def stop_service(self):
         """ Called by the libres context when the session provider is being
         discarded.

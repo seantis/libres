@@ -44,6 +44,22 @@ class ExceptionThread(Thread):
             self.exception = e
 
 
+def test_stop_unused_session(dsn):
+    provider = SessionProvider(dsn)
+    provider.stop_service()  # should not throw any exceptions
+
+
+def test_session_switch(dsn):
+    provider = SessionProvider(dsn)
+    assert provider.is_readonly
+
+    provider.use_serial()
+    assert provider.is_serial
+
+    provider.use_readonly()
+    assert provider.is_readonly
+
+
 def test_guard_flush(dsn):
     provider = SessionProvider(dsn)
     provider.use_readonly()
