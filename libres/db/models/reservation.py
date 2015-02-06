@@ -7,7 +7,7 @@ from sqlalchemy.schema import Column
 from sqlalchemy.schema import Index
 
 from libres.db.models import ORMBase
-from libres.db.models.types import GUID, UTCDateTime, JSON
+from libres.db.models.types import UUID, UTCDateTime, JSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
 from libres.modules import calendar
@@ -32,12 +32,12 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
     )
 
     token = Column(
-        GUID(),
+        UUID(),
         nullable=False,
     )
 
     target = Column(
-        GUID(),
+        UUID(),
         nullable=False,
     )
 
@@ -47,7 +47,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
     )
 
     resource = Column(
-        GUID(),
+        UUID(),
         nullable=False
     )
 
@@ -84,7 +84,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
     )
 
     session_id = Column(
-        GUID()
+        UUID()
     )
 
     quota = Column(

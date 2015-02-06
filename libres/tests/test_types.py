@@ -1,16 +1,16 @@
-from libres.db.models.types.guid import StringEqualUUID
+from libres.db.models.types.uuid_type import SoftUUID
 from uuid import uuid4
 
 
 def test_string_equal_uuid():
     uuid = uuid4()
 
-    assert uuid == StringEqualUUID(uuid.hex)
-    assert uuid.hex == StringEqualUUID(uuid.hex)
-    assert str(uuid) == StringEqualUUID(uuid.hex)
+    assert uuid == SoftUUID(uuid.hex)
+    assert uuid.hex == SoftUUID(uuid.hex)
+    assert str(uuid) == SoftUUID(uuid.hex)
 
 
 def test_hashable_uuid():
     uuid = uuid4()
 
-    assert hash(StringEqualUUID(uuid.hex))
+    assert hash(SoftUUID(uuid.hex))

@@ -18,7 +18,7 @@ from libres.modules.rasterizer import (
 )
 
 from libres.db.models import ORMBase
-from libres.db.models.types import GUID, UTCDateTime, JSON
+from libres.db.models.types import UUID, UTCDateTime, JSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
 
@@ -52,16 +52,16 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     #: the resource uuid of the allocation, may not be an actual resource
     #: see :class:`.models.Allocation` for more information
-    resource = Column(GUID(), nullable=False)
+    resource = Column(UUID(), nullable=False)
 
     #: resource of which this allocation is a mirror. If the mirror_of
     #: attribute equals the resource, this is a real resource
     #: see :class:`.models.Allocation` for more information
-    mirror_of = Column(GUID(), nullable=False)
+    mirror_of = Column(UUID(), nullable=False)
 
     #: Group uuid to which this allocation belongs to. Every allocation has a
     #: group but some allcations may be the only one in their group.
-    group = Column(GUID(), nullable=False)
+    group = Column(UUID(), nullable=False)
 
     #: Number of times this allocation may be reserved
     quota = Column(types.Integer(), default=1)

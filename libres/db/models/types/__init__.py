@@ -1,5 +1,5 @@
-from .guid import GUID
-from .utcdatetime import UTCDateTime
 from .json_type import JSON
+from .utcdatetime import UTCDateTime
+from .uuid_type import UUID
 
-__all__ = ['GUID', 'UTCDateTime', 'JSON']
+__all__ = ['UUID', 'UTCDateTime', 'JSON']

@@ -12,7 +12,7 @@ from libres.modules.rasterizer import (
 )
 
 from libres.db.models import ORMBase, Allocation
-from libres.db.models.types import GUID, UTCDateTime
+from libres.db.models.types import UUID, UTCDateTime
 from libres.db.models.timestamp import TimestampMixin
 from libres.modules import calendar
 
@@ -23,7 +23,7 @@ class ReservedSlot(TimestampMixin, ORMBase):
     __tablename__ = 'reserved_slots'
 
     resource = Column(
-        GUID(),
+        UUID(),
         primary_key=True,
         nullable=False,
         autoincrement=False
@@ -62,7 +62,7 @@ class ReservedSlot(TimestampMixin, ORMBase):
     )
 
     reservation_token = Column(
-        GUID(),
+        UUID(),
         nullable=False
     )
 
