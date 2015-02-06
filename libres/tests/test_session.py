@@ -1,5 +1,6 @@
 import libres
 import pytest
+import time
 
 from datetime import datetime
 from libres.context.session import SessionProvider, serialized
@@ -24,6 +25,12 @@ class SessionIds(Thread):
         scheduler = Scheduler(context, 'threading', 'UTC')
         self.readonly_id = id(scheduler.readonly_session)
         self.serial_id = id(scheduler.serial_session)
+
+        # make sure the thread runs long enough for test_collision to
+        # have both threads running at the same time, since the docs states:
+        # "Two objects with non-overlapping lifetimes may have the same
+        # id() value."
+        time.sleep(0.1)
 
 
 class ExceptionThread(Thread):
