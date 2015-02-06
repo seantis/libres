@@ -378,6 +378,10 @@ class Serializable(object):
         self.serial_session.close()
         self.readonly_session.close()
 
+    @property
+    def begin_nested(self):
+        return self.serial_session.begin_nested
+
     def commit(self):
         self.readonly_session.expire_all()
         return self.serial_session.commit()

@@ -1002,9 +1002,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         old_start = existing_reservation.display_start()
         old_end = existing_reservation.display_end()
 
-        self.session.begin_nested()
-
-        try:
+        with self.begin_nested():
             self.remove_reservation(token, id)
 
             new_token = self.reserve(**reservation_arguments)
@@ -1023,11 +1021,6 @@ class Scheduler(Serializable, ContextServicesMixin):
                     new_reservation.display_end()
                 ),
             )
-        except:
-            self.session.rollback()
-            raise
-        else:
-            self.session.commit()
 
         return True
 
