@@ -29,6 +29,36 @@ def test_add_invalid_allocation(scheduler):
         scheduler.commit()
 
 
+def test_get_master(scheduler):
+    dates = [
+        (datetime(2015, 2, 6, 12), datetime(2015, 2, 6, 13)),
+        (datetime(2015, 2, 7, 12), datetime(2015, 2, 7, 13)),
+        (datetime(2015, 2, 8, 12), datetime(2015, 2, 8, 13))
+    ]
+
+    allocations = scheduler.allocate(dates[:1])
+    assert allocations[0].get_master() is allocations[0]
+
+    allocations = scheduler.allocate(dates[1:3], grouped=True)
+    assert allocations[0].get_master() is allocations[0]
+    assert allocations[1].get_master() is allocations[1]
+
+
+def test_imaginary_siblings(scheduler):
+    dates = [(datetime(2015, 2, 6, 12), datetime(2015, 2, 6, 13))]
+    allocations = scheduler.allocate(dates=dates, quota=2)
+
+    assert len(allocations) == 1
+    assert len(allocations[0].siblings()) == 2
+    assert len(allocations[0].siblings(imaginary=False)) == 1
+
+    imaginary_allocation = allocations[0].siblings()[1]
+
+    with pytest.raises(AssertionError):
+        # we can't get a list of non-imaginary siblings from an imaginary one
+        imaginary_allocation.siblings(imaginary=False)
+
+
 def test_date_functions(scheduler):
     allocation = Allocation(raster=60, resource=scheduler.resource)
     allocation.timezone = 'UTC'

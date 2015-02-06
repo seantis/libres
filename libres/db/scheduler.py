@@ -272,6 +272,10 @@ class Scheduler(Serializable, ContextServicesMixin):
         allocation may be reserved. Quotas are enabled using a master-mirrors
         relationship.
 
+        Note that grouped allocations with only one date-pair are equal
+        to ungrouped-allocations. Allocations are only grouped if there are
+        multiple allocations.
+
         The master is the first allocation to be created. The mirrors copies of
         that allocation. See Scheduler.__doc__
 

@@ -500,11 +500,10 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         # this function should always have itself in the result
         if not imaginary and self.is_transient:
-            assert False, \
-                'the resulting list would not contain this allocation'
+            assert False, "the resulting list wouldn't contain this allocation"
 
         if self.quota == 1:
-            assert(self.is_master)
+            assert self.is_master
             return [self]
 
         query = object_session(self).query(Allocation)
