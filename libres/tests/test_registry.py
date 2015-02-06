@@ -45,6 +45,18 @@ def test_autocreate():
     assert r.get_context('yo') is ctx
 
 
+def test_assert_existence():
+    r = Registry()
+
+    with pytest.raises(errors.UnknownContext):
+        r.assert_exists('foo')
+
+    r.register_context('foo')
+
+    with pytest.raises(errors.ContextAlreadyExists):
+        r.assert_does_not_exist('foo')
+
+
 def test_replace():
     r = Registry()
 
