@@ -136,6 +136,16 @@ def test_separate_allocation(scheduler):
     allocations = scheduler.allocate(dates=dates, grouped=True)
     assert not any(a.is_separate for a in allocations)
 
+    # at last, try an allocation that is not in a group, but requires a query
+    # check to get that information
+
+    dates = [
+        (datetime(2015, 2, 8, 10), datetime(2015, 2, 8, 11))
+    ]
+
+    allocations = scheduler.allocate(dates=dates, partly_available=False)
+    assert allocations[0].is_separate
+
 
 def test_limit_timespan():
 
