@@ -1,4 +1,6 @@
 [run]
 branch = True
 source = libres
-omit = libres/tests/*
+omit = 
+    libres/tests/*
+    libres/modules/__init__.py

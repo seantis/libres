@@ -1,2 +1,1 @@
-# pragma: no cover
-# ^- remove if any code is added in this file
+# remove this file from .coveragerc if code is added below!
