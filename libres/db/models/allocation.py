@@ -275,7 +275,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         return True
 
-    def limit_timespan(self, start, end):
+    def limit_timespan(self, start, end, timezone=None):
         """ Takes the given timespan and moves the start/end date to
         the closest reservable slot. So if 10:00 - 11:00 is requested it will
 
@@ -289,23 +289,27 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         to form a datetime. (time in, datetime out -> maybe not the best idea)
 
         """
+        timezone = timezone or self.timezone
+
         if self.partly_available:
             assert isinstance(start, time)
             assert isinstance(end, time)
 
-            s, e = calendar.get_date_range(self.start, start, end)
+            s, e = calendar.get_date_range(
+                self.display_start(timezone), start, end
+            )
 
-            if self.display_end() < e:
+            if self.display_end(timezone) < e:
                 e = self.display_end()
 
-            if self.display_start() > s:
+            if self.display_start(timezone) > s:
                 s = self.display_start()
 
             s, e = rasterize_span(s, e, self.raster)
 
             return s, e + timedelta(microseconds=1)
         else:
-            return self.display_start(), self.display_end()
+            return self.display_start(timezone), self.display_end(timezone)
 
     @property
     def pending_reservations(self):

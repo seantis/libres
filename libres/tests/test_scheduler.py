@@ -1,7 +1,7 @@
 import pytest
 
 from copy import copy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from libres.db.models import Reservation, Allocation, ReservedSlot
 from libres.modules import calendar, errors, events
 from libres.modules import utils
@@ -934,6 +934,50 @@ def test_partly(scheduler):
         scheduler.reserve(u'info@example.org', (
             datetime(2011, 1, 1, 8, 0), datetime(2011, 1, 1, 9, 0)
         ))
+
+
+def test_allocation_by_ids(scheduler):
+    dates = [
+        (datetime(2015, 1, 1, 15, 0), datetime(2015, 1, 1, 16, 0)),
+        (datetime(2015, 1, 2, 15, 0), datetime(2015, 1, 2, 16, 0)),
+    ]
+
+    ids = [a.id for a in scheduler.allocate(dates)]
+    scheduler.commit()
+
+    assert scheduler.allocations_by_ids(ids).count() == 2
+
+
+def test_allocation_dates_by_ids(scheduler):
+    dates = [
+        (datetime(2015, 1, 1, 15, 0), datetime(2015, 1, 1, 16, 0)),
+        (datetime(2015, 1, 2, 15, 0), datetime(2015, 1, 2, 16, 0)),
+    ]
+
+    ids = [a.id for a in scheduler.allocate(dates, partly_available=True)]
+    scheduler.commit()
+
+    d = list(scheduler.allocation_dates_by_ids(ids))
+
+    standardize = lambda dt: calendar.standardize_date(dt, 'Europe/Zurich')
+    as_utc = lambda dt: calendar.to_timezone(dt, 'UTC')
+
+    assert as_utc(d[0][0]) == standardize(dates[0][0])
+    assert as_utc(d[0][1]) == standardize(dates[0][1]) - timedelta(
+        microseconds=1)
+    assert as_utc(d[1][0]) == standardize(dates[1][0])
+    assert as_utc(d[1][1]) == standardize(dates[1][1]) - timedelta(
+        microseconds=1)
+
+    d = list(scheduler.allocation_dates_by_ids(
+        ids, start_time=time(15, 0), end_time=time(15, 30)))
+
+    assert d[0][0] == standardize(dates[0][0])
+    assert d[0][1] == standardize(dates[0][1]) - timedelta(
+        microseconds=1, seconds=30 * 60)
+    assert d[1][0] == standardize(dates[1][0])
+    assert d[1][1] == standardize(dates[1][1]) - timedelta(
+        microseconds=1, seconds=30 * 60)
 
 
 def test_quotas(scheduler):
