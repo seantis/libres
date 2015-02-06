@@ -1,3 +1,5 @@
+import pytest
+
 from datetime import datetime, timedelta
 from libres.db.models import Reservation
 from libres.modules.calendar import standardize_date
@@ -5,6 +7,11 @@ from libres.modules.calendar import standardize_date
 
 def test_reservation_title():
     assert Reservation(email='test@example.org').title == 'test@example.org'
+
+
+def test_unknown_target_type():
+    with pytest.raises(NotImplementedError):
+        Reservation(target_type='foo').timespans()
 
 
 def test_reservation_timespans(scheduler):
