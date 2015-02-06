@@ -193,7 +193,7 @@ def test_change_reservation_assertions(scheduler):
         (datetime(2014, 8, 11, 11, 0), datetime(2014, 8, 11, 12, 0))
     )
 
-    scheduler.allocate(dates, partly_available=True, grouped=True)
+    scheduler.allocate(dates, grouped=True)
     token = scheduler.reserve(u'original@example.org', dates)
     scheduler.commit()
 

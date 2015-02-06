@@ -281,6 +281,11 @@ class Scheduler(Serializable, ContextServicesMixin):
         group = new_uuid()
         quota = quota or 1
 
+        # This is mostly for historic reasons - it's unclear if the current
+        # code could really handle it..
+        if partly_available and grouped:
+            raise errors.InvalidAllocationError
+
         # the whole day option results in the dates being aligned to
         # the beginning of the day / end of it -> not timezone aware!
         if whole_day:

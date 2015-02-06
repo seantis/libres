@@ -2,6 +2,7 @@ import pytest
 
 from datetime import datetime, time
 from libres.db.models import Allocation
+from libres.modules import errors
 from pytz import utc
 from sqlalchemy.exc import IntegrityError
 from uuid import uuid4 as new_uuid
@@ -78,6 +79,26 @@ def test_whole_day():
 
     with pytest.raises(AssertionError):
         allocation.whole_day
+
+
+def test_separate_allocation(scheduler):
+
+    # allocations which are partly available are never in a group
+    # (some code, for example allocation.is_separarate, depends on that)
+    assert Allocation(partly_available=True).is_separate
+
+    dates = [
+        (datetime(2015, 2, 6, 10), datetime(2015, 2, 6, 11)),
+        (datetime(2015, 2, 7, 10), datetime(2015, 2, 7, 11))
+    ]
+
+    # which is why this won't work
+    with pytest.raises(errors.InvalidAllocationError):
+        scheduler.allocate(dates=dates, grouped=True, partly_available=True)
+
+    # though this will
+    allocations = scheduler.allocate(dates=dates, grouped=True)
+    assert not any(a.is_separate for a in allocations)
 
 
 def test_limit_timespan():
