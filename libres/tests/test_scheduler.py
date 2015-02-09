@@ -59,6 +59,23 @@ def test_allocations_to_whole_day(scheduler):
     assert allocations[0].whole_day
 
 
+def test_move_allocation_over_existing(scheduler):
+    dates = [
+        (datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 11)),
+        (datetime(2015, 2, 9, 11), datetime(2015, 2, 9, 12)),
+    ]
+
+    allocations = scheduler.allocate(dates)
+    scheduler.commit()
+
+    with pytest.raises(errors.OverlappingAllocationError):
+        scheduler.move_allocation(
+            allocations[0].id,
+            new_start=datetime(2015, 2, 9, 10),
+            new_end=datetime(2015, 2, 9, 12)
+        )
+
+
 def test_move_allocation_with_existing_reservation(scheduler):
     dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 11))]
 
@@ -906,7 +923,7 @@ def test_allocation_overlap(scheduler):
         sc3.allocate(dates)
 
     dates = [
-        (datetime(2013, 1, 1, 12, 0), datetime(2013, 1, 1, 13, 0)),
+        (datetime(2013, 1, 1, 12, 0), datetime(2013, 1, 1, 13, 1)),
         (datetime(2013, 1, 1, 13, 0), datetime(2013, 1, 1, 14, 0))
     ]
 
@@ -915,11 +932,13 @@ def test_allocation_overlap(scheduler):
 
     dates = [
         (datetime(2013, 1, 1, 12, 0), datetime(2013, 1, 1, 13, 0)),
-        (datetime(2013, 1, 1, 13, 15), datetime(2013, 1, 1, 14, 0))
+        (datetime(2013, 1, 1, 13, 0), datetime(2013, 1, 1, 14, 0))
     ]
 
-    sc3.allocate(dates)
+    allocations = sc3.allocate(dates)
     sc3.commit()
+
+    assert allocations[0]._end < allocations[1]._start
 
     # only sc1 is cleaned up automatically
     sc2.extinguish_managed_records()

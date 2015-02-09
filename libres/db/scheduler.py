@@ -299,15 +299,18 @@ class Scheduler(Serializable, ContextServicesMixin):
                 )
 
         # Ensure that the list of dates contains no overlaps inside
-        for start, end in dates:
-            if calendar.count_overlaps(dates, start, end) > 1:
+        rasterized_dates = [
+            rasterizer.rasterize_span(s, e, raster) for s, e in dates
+        ]
+
+        for start, end in rasterized_dates:
+            if calendar.count_overlaps(rasterized_dates, start, end) > 1:
                 raise errors.InvalidAllocationError
 
         # Make sure that this span does not overlap another master
-        for start, end in dates:
-            start, end = rasterizer.rasterize_span(start, end, raster)
-
+        for start, end in rasterized_dates:
             existing = self.allocations_in_range(start, end).first()
+
             if existing:
                 raise errors.OverlappingAllocationError(start, end, existing)
 
