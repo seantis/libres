@@ -40,6 +40,52 @@ def test_manual_approval_required(scheduler):
     assert scheduler.manual_approval_required(aut + man)
 
 
+def test_allocations_to_whole_day(scheduler):
+
+    dates = (datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 11))
+    allocations = scheduler.allocate(dates)
+    scheduler.commit()
+
+    assert not allocations[0].whole_day
+
+    scheduler.move_allocation(
+        allocations[0].id,
+        new_start=dates[0],
+        new_end=dates[1],
+        whole_day=True
+    )
+    scheduler.commit()
+
+    assert allocations[0].whole_day
+
+
+def test_move_allocation_with_existing_reservation(scheduler):
+    dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 11))]
+
+    allocations = scheduler.allocate(dates)
+    token = scheduler.reserve('test@example.org', dates)
+    scheduler.commit()
+
+    # This allocation is not partly available, so any change is prohibited
+    # if a pending reservation exists.
+    with pytest.raises(errors.AffectedPendingReservationError):
+        scheduler.move_allocation(
+            allocations[0].id,
+            new_start=datetime(2015, 2, 9, 10),
+            new_end=datetime(2015, 2, 9, 12)
+        )
+
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    with pytest.raises(errors.AffectedReservationError):
+        scheduler.move_allocation(
+            allocations[0].id,
+            new_start=datetime(2015, 2, 9, 10),
+            new_end=datetime(2015, 2, 9, 12)
+        )
+
+
 def test_managed_allocations(scheduler):
 
     start = datetime(2014, 4, 4, 14, 0)
@@ -107,7 +153,9 @@ def test_reserve(scheduler):
 
     reserved_slots = scheduler.reserved_slots_by_reservation(token).all()
 
-    by_start = lambda s: s.start
+    def by_start(s):
+        return s.start
+
     assert list(sorted(slots, key=by_start)) \
         == list(sorted(reserved_slots, key=by_start))
 
@@ -971,8 +1019,11 @@ def test_allocation_dates_by_ids(scheduler):
 
     d = list(scheduler.allocation_dates_by_ids(ids))
 
-    standardize = lambda dt: calendar.standardize_date(dt, 'Europe/Zurich')
-    as_utc = lambda dt: calendar.to_timezone(dt, 'UTC')
+    def standardize(dt):
+        return calendar.standardize_date(dt, 'Europe/Zurich')
+
+    def as_utc(dt):
+        return calendar.to_timezone(dt, 'UTC')
 
     assert as_utc(d[0][0]) == standardize(dates[0][0])
     assert as_utc(d[0][1]) == standardize(dates[0][1]) - timedelta(

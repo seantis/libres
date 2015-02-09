@@ -532,7 +532,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         new_end = new_end or master.end
 
         if whole_day:
-            new_start, new_end = utils.align_range_to_day(
+            new_start, new_end = calendar.align_range_to_day(
                 new_start, new_end, self.timezone
             )
 
