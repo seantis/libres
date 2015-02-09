@@ -5,9 +5,11 @@ Libres is a reservations management library to reserve things like tables at
 a restaurant or tickets at an event. It works with Python 2.7 and Python 3.3+
 and requires Postgresql 9.1.
 
-.. < package description
+`Documentation <http://libres.readthedocs.org/en/latest/>`_ | `Source <http://github.com/seantis/libres/>`_ | `Bugs <http://github.com/seantis/libres/issues>`_
 
-**This is at an experimental stage and not yet suitable for production**
+**This library is at an experimental stage and not yet suitable for production**
+
+.. < package description
 
 .. image:: https://travis-ci.org/seantis/libres.svg?branch=master
   :target: https://travis-ci.org/seantis/libres
@@ -16,11 +18,6 @@ and requires Postgresql 9.1.
 .. image:: https://coveralls.io/repos/seantis/libres/badge.png
   :target: https://coveralls.io/r/seantis/libres
   :alt:    coveralls.io coverage
-
-Documentation
--------------
-
-http://libres.readthedocs.org/
 
 Run the Example
 ---------------

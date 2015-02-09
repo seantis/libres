@@ -21,7 +21,7 @@ setup(
     author='Denis Krienbühl',
     author_email='denis@href.ch',
     description='A library to reserve things',
-    long_description='\n'.join(get_long_description()),
+    long_description=''.join(get_long_description()),
     packages=['libres'],
     include_package_data=True,
     zip_safe=False,
