@@ -25,6 +25,21 @@ def test_rollback(scheduler):
     assert scheduler.managed_allocations().count() == 0
 
 
+def test_manual_approval_required(scheduler):
+    dates = [
+        (datetime(2014, 4, 4, 14, 0), datetime(2014, 4, 4, 15, 0)),
+        (datetime(2015, 4, 4, 14, 0), datetime(2015, 4, 4, 15, 0))
+    ]
+
+    aut = [a.id for a in scheduler.allocate(dates[:1], approve_manually=False)]
+    man = [a.id for a in scheduler.allocate(dates[1:], approve_manually=True)]
+    scheduler.commit()
+
+    assert not scheduler.manual_approval_required(aut)
+    assert scheduler.manual_approval_required(man)
+    assert scheduler.manual_approval_required(aut + man)
+
+
 def test_managed_allocations(scheduler):
 
     start = datetime(2014, 4, 4, 14, 0)
