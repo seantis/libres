@@ -145,6 +145,65 @@ def test_change_allocation_data(scheduler):
     assert allocation.data == {'bar': 'foo'}
 
 
+def test_change_reservation_data(scheduler):
+
+    dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12))]
+
+    allocation = scheduler.allocate(dates)[0]
+    token = scheduler.reserve(
+        email='test@example.org', dates=dates, data={'foo': 'bar'})
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_allocation(allocation.id).one()
+    assert reservation.data == {'foo': 'bar'}
+
+    scheduler.change_reservation_data(token, data={'bar': 'foo'})
+    scheduler.commit()
+
+    assert reservation.data == {'bar': 'foo'}
+
+
+def test_reserve_quota(scheduler):
+    dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12))]
+
+    scheduler.allocate(dates, quota=2, quota_limit=1)
+    scheduler.commit()
+
+    with pytest.raises(errors.InvalidQuota):
+        scheduler.reserve('test@example.org', dates=dates, quota=0)
+
+    with pytest.raises(errors.QuotaOverLimit):
+        scheduler.reserve('test@example.org', dates=dates, quota=2)
+
+    with pytest.raises(errors.AlreadyReservedError):
+        scheduler.reserve('test@example.org', dates=dates, quota=3)
+
+
+def test_reserve_impossible_quota(scheduler):
+
+    dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12))]
+
+    scheduler.allocate(dates, quota=2, approve_manually=True)
+    scheduler.commit()
+
+    with pytest.raises(errors.QuotaImpossible):
+        scheduler.reserve('test@example.org', dates=dates, quota=3)
+
+
+def test_remove_allocation_with_pending_reservation(scheduler):
+    dates = [
+        (datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12)),
+        (datetime(2015, 2, 10, 10), datetime(2015, 2, 10, 12)),
+    ]
+
+    id = scheduler.allocate(dates, grouped=True, approve_manually=True)[0].id
+    scheduler.reserve(email='test@example.org', dates=dates)
+    scheduler.commit()
+
+    with pytest.raises(errors.AffectedPendingReservationError):
+        scheduler.remove_allocation(id)
+
+
 def test_remove_grouped_allocation(scheduler):
     dates = [
         (datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12)),
