@@ -42,6 +42,10 @@ class ReservationTooLong(LibresError):
     pass
 
 
+class ReservationTooShort(LibresError):
+    pass
+
+
 class ReservationParametersInvalid(LibresError):
     pass
 

@@ -690,7 +690,7 @@ class Scheduler(Serializable, ContextServicesMixin):
                 raise errors.ReservationTooLong
 
             if start > end or (end - start).seconds < 5 * 60:
-                raise errors.ReservationParametersInvalid
+                raise errors.ReservationTooShort
 
             # can all allocations be reserved?
             for allocation in self.allocations_in_range(start, end):

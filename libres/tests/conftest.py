@@ -40,8 +40,8 @@ def scheduler(request, dsn):
     scheduler.rollback()
     scheduler.extinguish_managed_records()
     scheduler.commit()
-
     scheduler.close()
+    scheduler.session_provider.stop_service()
 
 
 @pytest.yield_fixture(scope="session")

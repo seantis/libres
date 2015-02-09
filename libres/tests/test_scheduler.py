@@ -103,6 +103,79 @@ def test_move_allocation_with_existing_reservation(scheduler):
         )
 
 
+def test_move_partly_available_allocation_with_existing_reservation(scheduler):
+    dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12))]
+
+    allocations = scheduler.allocate(dates, partly_available=True)
+    scheduler.reserve('test@example.org', dates)
+    scheduler.commit()
+
+    # partly available allocations cannot be shrunk smaller if a
+    # reservation covers that spot...
+    with pytest.raises(errors.AffectedPendingReservationError):
+        scheduler.move_allocation(
+            allocations[0].id,
+            new_start=datetime(2015, 2, 9, 10),
+            new_end=datetime(2015, 2, 9, 11)
+        )
+
+    # .. but the allocations may be grown
+    scheduler.move_allocation(
+        allocations[0].id,
+        new_start=datetime(2015, 2, 9, 10),
+        new_end=datetime(2015, 2, 9, 13)
+    )
+    scheduler.commit()
+
+
+def test_change_allocation_data(scheduler):
+    dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12))]
+
+    allocation = scheduler.allocate(dates, data={'foo': 'bar'})[0]
+    scheduler.commit()
+    assert allocation.data == {'foo': 'bar'}
+
+    # yes, this a very awkward way to change an allocation's data...
+    scheduler.move_allocation(
+        allocation.id, new_start=dates[0][0], new_end=dates[0][1], data={
+            'bar': 'foo'
+        },
+    )
+    scheduler.commit()
+    assert allocation.data == {'bar': 'foo'}
+
+
+def test_remove_grouped_allocation(scheduler):
+    dates = [
+        (datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12)),
+        (datetime(2015, 2, 10, 10), datetime(2015, 2, 10, 12)),
+    ]
+
+    group = scheduler.allocate(dates, grouped=True)[0].group
+    scheduler.commit()
+
+    assert scheduler.managed_allocations().count() == 2
+
+    scheduler.remove_allocation(groups=[group])
+    scheduler.commit()
+
+    assert scheduler.managed_allocations().count() == 0
+
+
+def test_reserve_invalid_email(scheduler):
+
+    with pytest.raises(errors.InvalidEmailAddress):
+        scheduler.reserve(group='foo', email='invalid-email')
+
+
+def test_reservation_too_short(scheduler):
+
+    with pytest.raises(errors.ReservationTooShort):
+        scheduler.reserve(email='test@example.org', dates=[
+            (datetime(2015, 2, 9, 10, 0), datetime(2015, 2, 9, 10, 1)),
+        ])
+
+
 def test_managed_allocations(scheduler):
 
     start = datetime(2014, 4, 4, 14, 0)
