@@ -1,6 +1,4 @@
-from sqlalchemy.ext import declarative
-ORMBase = declarative.declarative_base()
-
+from libres.db.models.base import ORMBase
 from libres.db.models.allocation import Allocation
 from libres.db.models.reserved_slot import ReservedSlot
 from libres.db.models.reservation import Reservation

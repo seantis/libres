@@ -1,17 +1,17 @@
 import logging
-log = logging.getLogger('libres')
 
 from datetime import timedelta
 from itertools import groupby
-
+from libres.context.context import ContextServicesMixin
+from libres.context.session import serialized, Serializable
+from libres.db.models import Allocation, Reservation, ReservedSlot
+from libres.modules import errors, events, calendar
 from sqlalchemy import func, null
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, or_
 
-from libres.modules import errors, events, calendar
-from libres.db.models import Allocation, Reservation, ReservedSlot
-from libres.context.context import ContextServicesMixin
-from libres.context.session import serialized, Serializable
+
+log = logging.getLogger('libres')
 
 
 class Queries(Serializable, ContextServicesMixin):

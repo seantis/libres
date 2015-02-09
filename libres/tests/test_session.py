@@ -152,10 +152,11 @@ def test_collision(scheduler):
 
     exceptions = (t1.exception, t2.exception)
 
-    is_rollback = lambda ex: ex and isinstance(
-        ex.orig, TransactionRollbackError
-    )
-    is_nothing = lambda ex: not is_rollback(ex)
+    def is_rollback(ex):
+        return ex and isinstance(ex.orig, TransactionRollbackError)
+
+    def is_nothing(ex):
+        return not is_rollback(ex)
 
     rollbacks = list(filter(is_rollback, exceptions))
     updates = list(filter(is_nothing, exceptions))
@@ -195,9 +196,8 @@ def test_non_collision(scheduler):
 
     exceptions = (t1.exception, t2.exception)
 
-    is_rollback = lambda ex: ex and isinstance(
-        ex.orig, TransactionRollbackError
-    )
+    def is_rollback(ex):
+        return ex and isinstance(ex.orig, TransactionRollbackError)
 
     rollbacks = list(filter(is_rollback, exceptions))
     assert len(rollbacks) == 0
