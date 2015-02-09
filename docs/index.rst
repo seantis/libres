@@ -62,7 +62,9 @@ Content
    :maxdepth: 2
    
    concepts
+   under_the_hood
    api
+   faq
 
 License
 =======

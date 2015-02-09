@@ -55,7 +55,7 @@ reservation conflicts with another reservation. They accomplish that by
 using the allocation together with the start time of the reservation as a
 primary key on the database.
 
-Reserved slots are unique inside an allocation, making sure that when two 
+Reserved slots are unique inside an allocation, making sure that when two
 reservations are made at the same time, only one will succeed.
 
 Reservations

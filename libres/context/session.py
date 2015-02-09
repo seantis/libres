@@ -1,83 +1,3 @@
-"""
-The session module provides the sqlalchemy session for all of
-seantis.reservation
-
-Read the following doc for the why and how:
-
-About transactions in seantis.reservation
-=========================================
-
-All sqlalchemy transactions are bound to the transactions of Zope. This is
-provided by zope.sqlalchemy which ensures that both sql and zope transaction
-always go hand in hand. Namely, when the zope transaction is commited, the
-sqlalchemy transaction is commited (or rolled back) at the same time.
-
-Transaction isolation
-=====================
-
-A feature of postgres (and indeed other databases) is the ability to use
-varying degrees of transaction isolation. Simply put, some transactions are
-less isolated than others.
-
-The better the isolation, the worse the performance.
-
-See the nice documentation on the topic in the postgres manual:
-http://www.postgresql.org/docs/current/static/transaction-iso.html
-
-Required Levels
-===============
-
-There are two levels we need for reservations. One is the Read Commited
-Isolation Level for fast database reads when browsing the calendar.
-
-The other is the Serializable Isolation Level for database writes. This level
-ensures that no two transactions are processed at the same time. Bad news for
-concurrency, but very good news for integrity.
-
-Implementation
-==============
-
-It would be nice to be able to use fast isolation when running uncritical
-codepaths and good isolation during critical paths. Unfortunately sqlalchemy
-(psycopg2 to be precise) does not offer any such way.
-
-This is why the session module exists.
-
-What it does is provide a global utility (think singleton). Which stores
-a read session and a write session for each thread. The read session uses
-read commited mode, the write session serializable mode.
-
-Usage
-=====
-
-A function which should, within it's scope, force all database requests to go
-through the isolated transaction, can do so by using the @serializable
-decorator or the serializable_call function. These two functions will switch
-the current thread to the serializable isolation session and back for whatever
-they wrap.
-
-Since all functions get their session from the global session utility this
-means that the transaction isolation can be globally switched.
-
-It also means that one must be careful when using this feature. Mixing of
-these two sessions may lead to one session not seeing what the other did.
-
-As long as the session is not mixed within a single request though, everything
-should be fine.
-
-Note that there are hooks in place which enforce correct usage. A read session
-cannot be used anymore once a serial session was used to change the database.
-
-Testing
-=======
-
-All testing is done in test_session.py using postgres. As only postgres 9.1+
-supports true serialized isolation it is a requirement to use this database.
-
-Other databases like Oracle support this as well, but for other databases to be
-supported they need to be tested first!
-
-"""
 import re
 import threading
 import functools
@@ -96,6 +16,7 @@ READ_COMMITTED = 'READ_COMMITTED'
 
 
 class SessionStore(object):
+    """ Holds the read-commited and serializable session. """
 
     def __init__(self, dsn, engine_config, session_config):
         self.readonly = self.create_session(

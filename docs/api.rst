@@ -4,16 +4,13 @@ API Documentation
 Context / Registry
 ------------------
 
-.. autoclass:: libres.context.registry.Registry
+.. automodule:: libres.context.registry
     :members:
 
-.. autoclass:: libres.context.context.Context
+.. automodule:: libres.context.context
     :members:
 
-.. autoclass:: libres.context.context.ContextServicesMixin
-    :members:
-
-.. autoclass:: libres.context.context.StoppableService
+.. automodule:: libres.context.session
     :members:
 
 Database Access
