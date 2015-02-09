@@ -9,8 +9,6 @@ and requires Postgresql 9.1.
 
 **This library is at an experimental stage and not yet suitable for production**
 
-.. < package description
-
 .. image:: https://travis-ci.org/seantis/libres.svg?branch=master
   :target: https://travis-ci.org/seantis/libres
   :alt:    travis build status
@@ -18,6 +16,12 @@ and requires Postgresql 9.1.
 .. image:: https://coveralls.io/repos/seantis/libres/badge.png
   :target: https://coveralls.io/r/seantis/libres
   :alt:    coveralls.io coverage
+
+.. image:: https://pypip.in/v/libres/badge.png
+    :target: https://pypi.python.org/pypi/libres
+    :alt: Latest PyPI release
+
+.. < package description
 
 Run the Example
 ---------------
