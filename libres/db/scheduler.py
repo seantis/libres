@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from libres.context.context import ContextServicesMixin
+from libres.context.core import ContextServicesMixin
 from libres.context.session import serialized, Serializable
 from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
 from libres.db.queries import Queries
@@ -29,7 +29,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         """ Initializeds a new Scheduler instance.
 
         :context:
-            The :class:`libres.context.context.Context` this scheduler should
+            The :class:`libres.context.core.Context` this scheduler should
             operate on. Acquire a context by using
             :func:`libres.context.registry.Registry.register_context`.
 

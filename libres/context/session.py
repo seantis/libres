@@ -8,7 +8,7 @@ from sqlalchemy.pool import SingletonThreadPool
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy import event
 
-from libres.context.context import StoppableService
+from libres.context.core import StoppableService
 from libres.modules import errors
 
 SERIALIZABLE = 'SERIALIZABLE'

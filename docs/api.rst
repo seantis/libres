@@ -7,7 +7,7 @@ Context / Registry
 .. automodule:: libres.context.registry
     :members:
 
-.. automodule:: libres.context.context
+.. automodule:: libres.context.core
     :members:
 
 .. automodule:: libres.context.session

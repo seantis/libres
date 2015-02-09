@@ -2,7 +2,7 @@ import logging
 
 from datetime import timedelta
 from itertools import groupby
-from libres.context.context import ContextServicesMixin
+from libres.context.core import ContextServicesMixin
 from libres.context.session import serialized, Serializable
 from libres.db.models import Allocation, Reservation, ReservedSlot
 from libres.modules import errors, events, calendar

@@ -36,7 +36,7 @@ on_allocations_added = Event()
 """ Called when an allocation is added, with the following arguments:
 
     :context:
-        The :class:`libres.context.context.Context` used when adding the
+        The :class:`libres.context.core.Context` used when adding the
         allocations.
 
     :allocations:
@@ -49,7 +49,7 @@ on_reservations_made = Event()
 """ Called when a reservation is made, with the following arguments:
 
     :context:
-        The :class:`libres.context.context.Context` used when adding the
+        The :class:`libres.context.core.Context` used when adding the
         reservation.
 
     :reservations:
@@ -65,7 +65,7 @@ on_reservations_confirmed = Event()
 the following arguments:
 
     :context:
-        The :class:`libres.context.context.Context` used when confirming the
+        The :class:`libres.context.core.Context` used when confirming the
         reservation.
 
     :reservations:
@@ -80,7 +80,7 @@ on_reservations_approved = Event()
 """ Called when a reservation is approved, with the following arguments:
 
     :context:
-        The :class:`libres.context.context.Context` used when approving the
+        The :class:`libres.context.core.Context` used when approving the
         reservation.
 
     :reservations:
@@ -93,7 +93,7 @@ on_reservations_denied = Event()
 """ Called when a reservation is denied, with the following arguments:
 
     :context:
-        The :class:`libres.context.context.Context` used when denying the
+        The :class:`libres.context.core.Context` used when denying the
         reservation.
 
     :reservations:
@@ -106,7 +106,7 @@ on_reservations_removed = Event()
 """ Called when a reservation is removed, with the following arguments:
 
     :context:
-        The :class:`libres.context.context.Context` used when removing the
+        The :class:`libres.context.core.Context` used when removing the
         reservation.
 
     :reservations:
@@ -119,7 +119,7 @@ on_reservation_time_changed = Event()
 """ Called when a reservation's time changes , with the following arguments:
 
     :context:
-        The :class:`libres.context.context.Context` used when changing the
+        The :class:`libres.context.core.Context` used when changing the
         reservation time.
 
     :reservation:
