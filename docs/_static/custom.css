@@ -80,3 +80,7 @@ li {
     color: #222;
     font-weight: bold;
 }
+
+.field-list p {
+    margin-bottom: 0.75em
+}

@@ -77,6 +77,15 @@ class Scheduler(Serializable, ContextServicesMixin):
         """
         return self.generate_uuid(self.name)
 
+    @serialized
+    def setup_database(self):
+        """ Creates the tables and indices required for libres. This needs
+        to be called once per database. Multiple invocations won't hurt but
+        they are unnecessary.
+
+        """
+        ORMBase.metadata.create_all(self.session.bind)
+
     def _prepare_dates(self, dates):
         return [
             (
@@ -90,10 +99,6 @@ class Scheduler(Serializable, ContextServicesMixin):
             calendar.standardize_date(start, self.timezone),
             calendar.standardize_date(end, self.timezone)
         )
-
-    @serialized
-    def setup_database(self):
-        ORMBase.metadata.create_all(self.session.bind)
 
     def managed_allocations(self):
         """ The allocations managed by this scheduler / resource. """
@@ -237,44 +242,125 @@ class Scheduler(Serializable, ContextServicesMixin):
     def allocate(
         self,
         dates,
+        partly_available=False,
+        raster=rasterizer.MIN_RASTER,
+        whole_day=False,
         quota=None,
         quota_limit=0,
-        partly_available=False,
         grouped=False,
-        approve_manually=False,
-        whole_day=False,
         data=None,
-        raster=rasterizer.MIN_RASTER
+        approve_manually=False,
     ):
-        """Allocates a spot in the calendar.
+        """ Allocates a spot in the calendar.
 
         An allocation defines a timerange which can be reserved. No
         reservations can exist outside of existing allocations. In fact any
         reserved slot will link to an allocation.
 
-        An allocation may be available as a whole (to reserve all or nothing).
-        It may also be partly available which means reservations can be made
-        for parts of the allocation.
+        :dates:
+            The datetimes to allocate. This can be a tuple with start datetime
+            and an end datetime object, or a list of tuples with start and end
+            datetime objects.
 
-        If an allocation is partly available a raster defines the granularity
-        with which a reservation can be made (e.g. a raster of 15min will
-        ensure that reservations are at least 15 minutes long and start either
-        at :00, :15, :30 or :45)
+            If the datetime objects are timezone naive they are assumed to be
+            of the same timezone as the scheduler itself.
 
-        The reason for the raster is mainly to ensure that different
-        reservations trying to reserve overlapping times need the same keys in
-        the reserved_slots table, ensuring integrity at the database level.
+        :partly_available:
+            If an allocation is partly available, parts of its daterange may be
+            reserved. So if the allocation lats from 01:00 to 03:00, a
+            reservation may be made from 01:00 to 02:00.
 
-        Allocations may have a quota, which determines how many times an
-        allocation may be reserved. Quotas are enabled using a master-mirrors
-        relationship.
+            if partly_available if False, it may only be reserved as a whole
+            (so from 01:00 to 03:00 in the aforementioned example).
 
-        Note that grouped allocations with only one date-pair are equal
-        to ungrouped-allocations. Allocations are only grouped if there are
-        multiple allocations.
+            If partly_available is True, a raster may be specified. See
+            ``raster``.
 
-        The master is the first allocation to be created. The mirrors copies of
-        that allocation. See Scheduler.__doc__
+        :raster:
+            If an allocation is partly available a raster defines the
+            granularity with which a reservation can be made.
+
+            For example: a raster of 15min will ensure that reservations are at
+            least 15 minutes long and start either at :00, :15, :30 or :45).
+
+            By default, we use a raster of 5, which means that reservations
+            may not be shorter than 5 minutes and will snap to 00:05, 00:10,
+            00:15 and so on.
+
+            For performance reasons it is not possible to create reservations
+            shorter than 5 minutes. If you need that, this library is not for
+            you.
+
+        :whole_day:
+            If true, the hours/minutes of the given dates are ignored and they
+            are made to span a whole day (relative to the scheduler's
+            timezone).
+
+        :quota:
+            The number of times this allocation may be 'over-reserved'. Say you
+            have a concert and you are selling 20 tickets. The concert is on
+            saturday night, so there's only one start and end date. But there
+            are 20 reservations/tickets that can be made on that allocation.
+
+            By default, an allocation has a quota of one and may therefore
+            only be reserved once.
+
+        :quota_limit:
+            The number of times a reservation may 'over-reserve' this
+            allocation. If you are selling tickets for a concert and set the
+            quota_limit to 2, then you are saying that each customer may only
+            acquire 2 tickets at once.
+
+            If the quota_limit is 0, there is no limit, which is the default.
+
+        :grouped:
+            Creates a grouped allocation. A grouped allocation is an allocation
+            spanning multiple date-ranges that may only be reserved as a whole.
+
+            An example for this is a college class which is scheduled to be
+            given every tuesday afternoon. A student may either reserve a
+            spot for the class as a whole (including all tuesday afternoons),
+            or not at all.
+
+            If the allocation has only one start and one end date, the grouped
+            parameter has no effect.
+
+            If allocate is called with multiple dates, without grouping, then
+            every created allocation is completely independent.
+
+            By default, allocations are not grouped.
+
+        :data:
+            A dictionary of your own chosing that will be attached to the
+            allocation. Use this for your own data. Note that the dictionary
+            needs to be json serializable.
+
+            If you want to provide your own json serializer/deserializer, you
+            can do that on the context::
+
+                def session_provider(context):
+                    return libres.context.session.SessionProvider(
+                        context.get_setting('dsn'),
+                        engine_config={
+                            'json_serializer': my_json_dumps,
+                            'json_deserializer': my_json_loads
+                        }
+                )
+
+                context.set_service('session_provider', session_provider)
+
+        :approve_manually:
+            If true, reservations must be approved before they generate
+            reserved slots. This allows for a kind fo waitinglist/queue
+            that forms around an allocation, giving an admin the possiblity
+            to pick the reservations he or she approves of.
+
+            If false, reservations trigger a reserved slots immediatly, which
+            results in a first-come-first-serve kind of thing.
+
+            Manual approval is a bit of an anachronism in Libres which **might
+            be removed in the future**. We strongly encourage you to not
+            use this feature and to just keep the default (which is False).
 
         """
         dates = self._prepare_dates(dates)
