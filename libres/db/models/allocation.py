@@ -179,7 +179,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         end = self.end + timedelta(microseconds=1)
         return calendar.to_timezone(end, timezone or self.timezone)
 
-    def prepare_daterange(self, start, end):
+    def _prepare_range(self, start, end):
         if start:
             start = calendar.standardize_date(start, self.timezone)
         if end:
@@ -209,7 +209,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def overlaps(self, start, end):
         """ Returns true if the allocation overlaps with the given dates. """
 
-        start, end = self.prepare_daterange(start, end)
+        start, end = self._prepare_range(start, end)
         start, end = rasterize_span(start, end, self.raster)
 
         return calendar.overlaps(start, end, self.start, self.end)
@@ -217,7 +217,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def contains(self, start, end):
         """ Returns true if the the allocation contains the given dates. """
 
-        start, end = self.prepare_daterange(start, end)
+        start, end = self._prepare_range(start, end)
         start, end = rasterize_span(start, end, self.raster)
 
         return self.start <= start and end <= self.end
@@ -238,7 +238,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         """
 
-        start, end = self.prepare_daterange(start, end)
+        start, end = self._prepare_range(start, end)
 
         start = start or self.start
         start = start < self.start and self.start or start

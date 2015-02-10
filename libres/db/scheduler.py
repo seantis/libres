@@ -77,10 +77,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         """
         return self.generate_uuid(self.name)
 
-    def prepare_date(self, date):
-        return calendar.standardize_date(date, self.timezone)
-
-    def prepare_dates(self, dates):
+    def _prepare_dates(self, dates):
         return [
             (
                 calendar.standardize_date(s, self.timezone),
@@ -88,7 +85,7 @@ class Scheduler(Serializable, ContextServicesMixin):
             ) for s, e in utils.pairs(dates)
         ]
 
-    def prepare_range(self, start, end):
+    def _prepare_range(self, start, end):
         return (
             calendar.standardize_date(start, self.timezone),
             calendar.standardize_date(end, self.timezone)
@@ -195,7 +192,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         return query
 
     def allocations_in_range(self, start, end, masters_only=True):
-        start, end = self.prepare_range(start, end)
+        start, end = self._prepare_range(start, end)
 
         query = self.managed_allocations()
         query = self.queries.allocations_in_range(query, start, end)
@@ -280,7 +277,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         that allocation. See Scheduler.__doc__
 
         """
-        dates = self.prepare_dates(dates)
+        dates = self._prepare_dates(dates)
 
         group = new_uuid()
         quota = quota or 1
@@ -499,7 +496,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         start = start if start else calendar.mindatetime
         end = end if end else calendar.maxdatetime
 
-        start, end = self.prepare_range(start, end)
+        start, end = self._prepare_range(start, end)
 
         return self.queries.availability_by_range(start, end, [self.resource])
 
@@ -512,8 +509,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         assert master_id
         assert any([new_start and new_end, group, new_quota])
 
-        new_start = self.prepare_date(new_start)
-        new_end = self.prepare_date(new_end)
+        new_start, new_end = self._prepare_range(new_start, new_end)
 
         # Find allocation
         master = self.allocation_by_id(master_id)
@@ -679,7 +675,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         if group:
             dates = self.allocation_dates_by_group(group)
 
-        dates = self.prepare_dates(dates)
+        dates = self._prepare_dates(dates)
 
         # First, the request is checked for saneness. If any requested
         # date cannot be reserved the request as a whole fails.
@@ -969,8 +965,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         # if the reservation has not been approved yet
         assert new_start and new_end
 
-        new_start = self.prepare_date(new_start)
-        new_end = self.prepare_date(new_end)
+        new_start, new_end = self._prepare_range(new_start, new_end)
 
         existing_reservation = self.reservations_by_token(token, id).one()
 
@@ -1098,7 +1093,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         assert start
         assert end
 
-        start, end = self.prepare_range(start, end)
+        start, end = self._prepare_range(start, end)
 
         assert whole_day in ('yes', 'no', 'any')
         assert groups in ('yes', 'no', 'any')
