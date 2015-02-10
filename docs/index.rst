@@ -70,7 +70,7 @@ License
 =======
 Libres is released under the `MIT license`_.
 
-Copyright (c) 2014 `Seantis GmbH`_.
+Copyright (c) 2015 `Seantis GmbH`_.
 
 Credits
 =======
