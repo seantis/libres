@@ -335,19 +335,7 @@ class Scheduler(Serializable, ContextServicesMixin):
             allocation. Use this for your own data. Note that the dictionary
             needs to be json serializable.
 
-            If you want to provide your own json serializer/deserializer, you
-            can do that on the context::
-
-                def session_provider(context):
-                    return libres.context.session.SessionProvider(
-                        context.get_setting('dsn'),
-                        engine_config={
-                            'json_serializer': my_json_dumps,
-                            'json_deserializer': my_json_loads
-                        }
-                )
-
-                context.set_service('session_provider', session_provider)
+            For more information see :ref:`custom-json`.
 
         :approve_manually:
             If true, reservations must be approved before they generate
@@ -734,11 +722,14 @@ class Scheduler(Serializable, ContextServicesMixin):
         session_id=None,
         quota=1
     ):
-        """ First step of the reservation.
+        """ Reserves one or many allocations. Returns a token that needs
+        to be passed to :meth:`approve_reservations` to complete the
+        reservation.
 
-        Seantis.reservation uses a two-step reservation process. The first
+        That is to say, Libres uses a two-step reservation process. The first
         step is reserving what is either an open spot or a place on the
-        waiting list.
+        waiting list (see ``approve_manually`` of
+        :meth:`~libres.db.scheduler.Scheduler.allocate`).
 
         The second step is to actually write out the reserved slots, which
         is done by approving an existing reservation.
@@ -748,6 +739,45 @@ class Scheduler(Serializable, ContextServicesMixin):
 
         This function returns a reservation token which can be used to
         approve the reservation in approve_reservation.
+
+        Usually you want to just short-circuit those two steps::
+
+            scheduler.approve_reservations(
+                scheduler.reserve(dates)
+            )
+
+        :email:
+            Each reservation *must* be associated with an email. That is, a
+            user.
+
+        :dates:
+            The dates to reserve. May either be a tuple of start/end datetimes
+            or a list of such tuples.
+
+        :group:
+            The allocation group to reserve. ``dates``and ``group`` are
+            mutually exclusive.
+
+        :data:
+            A dictionary of your own chosing that will be attached to the
+            reservation. Use this for your own data. Note that the dictionary
+            needs to be json serializable.
+
+            For more information see :ref:`custom-json`.
+
+        :session_id:
+            An uuid that connects the reservation to a browser session.
+
+            Together with
+            :meth:`libres.db.queries.Queries.confirm_reservations_for_session`
+            this can be used to create a reservation shopping card.
+
+            By default the session_id is None, meaning that no browser session
+            is associated with the reservation.
+
+        :quota:
+            The number of allocations that should be reserved at once. See
+            ``quota`` in :meth:`~libres.db.scheduler.Scheduler.allocate`.
 
         """
 
@@ -1122,7 +1152,7 @@ class Scheduler(Serializable, ContextServicesMixin):
         the given time (on each day) are included.
 
         For example, start=01.01.2012 12:00 end=31.01.2012 14:00 will include
-        all allocaitons in January 2012 which OVERLAP the given times. So an
+        all allocations in January 2012 which OVERLAP the given times. So an
         allocation starting at 11:00 and ending at 12:00 will be included!
 
         WARNING allocations not matching the start/end date may be included

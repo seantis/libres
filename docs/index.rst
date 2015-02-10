@@ -63,6 +63,7 @@ Content
    
    concepts
    under_the_hood
+   customizations
    api
    faq
 
