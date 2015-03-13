@@ -319,6 +319,10 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         mirrors.
 
         """
+        assert not self.is_transient, (
+            "Don't call if the allocation does not yet exist"
+        )
+
         Reservation = self.models.Reservation
         query = object_session(self).query(Reservation.id)
         query = query.filter(Reservation.target == self.group)

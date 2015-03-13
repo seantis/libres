@@ -221,6 +221,14 @@ def test_remove_grouped_allocation(scheduler):
     assert scheduler.managed_allocations().count() == 0
 
 
+def test_remove_allocation_with_quota_regression(scheduler):
+    dates = [(datetime(2015, 3, 13, 10), datetime(2015, 2, 13, 12))]
+    allocation = scheduler.allocate(dates, quota=10)[0]
+
+    scheduler.commit()
+    scheduler.remove_allocation(allocation.id)
+
+
 def test_reserve_invalid_email(scheduler):
 
     with pytest.raises(errors.InvalidEmailAddress):

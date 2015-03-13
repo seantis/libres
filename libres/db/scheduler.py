@@ -698,6 +698,10 @@ class Scheduler(Serializable, ContextServicesMixin):
                 someone trying to something funny with the POST parameters.
             """
 
+            if allocation.is_transient:
+                # the allocation doesn't exist yet, so we can't delete it
+                continue
+
             if len(allocation.reserved_slots) > 0:
                 raise errors.AffectedReservationError(
                     allocation.reserved_slots[0]
