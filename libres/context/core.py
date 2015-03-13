@@ -46,15 +46,8 @@ class ContextServicesMixin(object):
     def clear_cache(self):
         """ Clears the cache of the mixin. """
 
-        properties = (
-            'is_allocation_exposed',
-            'generate_uuid',
-            'validate_email'
-        )
-
-        for p in properties:
-            if p in self.__dict__:
-                del self.__dict__[p]
+        if '_cache' in self.__dict__:
+            del self.__dict__['_cache']
 
 
 class Context(object):
