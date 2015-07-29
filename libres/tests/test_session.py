@@ -1,30 +1,26 @@
 import libres
-import pytest
 import time
 
 from datetime import datetime
-from libres.context.session import SessionProvider, serialized
+from libres.context.session import SessionProvider
 from libres.db.models import Allocation
 from libres.db.scheduler import Scheduler
-from libres.modules import errors
 from psycopg2.extensions import TransactionRollbackError
 from threading import Thread
 from uuid import uuid4 as new_uuid
 
 
-class SessionIds(Thread):
+class SessionId(Thread):
     def __init__(self, dsn):
         Thread.__init__(self)
-        self.serial_id = None
-        self.readonly_id = None
+        self.session_id = None
         self.dsn = dsn
 
     def run(self):
         context = libres.registry.register_context(id(self))
         context.set_setting('dsn', self.dsn)
         scheduler = Scheduler(context, 'threading', 'UTC')
-        self.readonly_id = id(scheduler.readonly_session)
-        self.serial_id = id(scheduler.serial_session)
+        self.session_id = id(scheduler.session)
 
         # make sure the thread runs long enough for test_collision to
         # have both threads running at the same time, since the docs states:
@@ -56,60 +52,9 @@ def test_stop_unused_session(dsn):
     provider.stop_service()  # should not throw any exceptions
 
 
-def test_session_switch(dsn):
-    provider = SessionProvider(dsn)
-    assert provider.is_readonly
-
-    provider.use_serial()
-    assert provider.is_serial
-
-    provider.use_readonly()
-    assert provider.is_readonly
-
-
-def test_guard_flush(dsn):
-    provider = SessionProvider(dsn)
-    provider.use_readonly()
-
-    session = provider.session()
-    session.add(Allocation())
-
-    with pytest.raises(errors.ModifiedReadOnlySession):
-        session.flush()
-
-    session.rollback()
-
-
-def test_guard_execute(dsn):
-    provider = SessionProvider(dsn)
-    provider.use_readonly()
-
-    allocation = Allocation()
-    session = provider.session()
-
-    with pytest.raises(errors.ModifiedReadOnlySession):
-        session.execute(allocation.__table__.insert(), {"id": 7})
-
-    session.rollback()
-
-
-def test_dirty_protection(scheduler):
-
-    id = scheduler.allocate(
-        (datetime(2014, 11, 27, 12), datetime(2014, 11, 27, 13))
-    )[0].id
-
-    with pytest.raises(errors.DirtyReadOnlySession):
-        scheduler.allocation_by_id(id)
-
-    scheduler.commit()
-
-    scheduler.allocation_by_id(id)
-
-
 def test_sessionstore(dsn):
-    t1 = SessionIds(dsn)
-    t2 = SessionIds(dsn)
+    t1 = SessionId(dsn)
+    t2 = SessionId(dsn)
 
     t1.start()
     t2.start()
@@ -117,12 +62,9 @@ def test_sessionstore(dsn):
     t1.join()
     t2.join()
 
-    assert t1.readonly_id is not None
-    assert t1.serial_id is not None
-    assert t2.readonly_id is not None
-    assert t2.serial_id is not None
-    assert t1.readonly_id != t2.readonly_id
-    assert t1.serial_id != t2.serial_id
+    assert t1.session_id is not None
+    assert t2.session_id is not None
+    assert t1.session_id != t2.session_id
 
 
 def test_collision(scheduler):
@@ -132,7 +74,6 @@ def test_collision(scheduler):
     )
     scheduler.commit()
 
-    @serialized
     def change_allocation(scheduler):
         a = scheduler.session.query(Allocation).one()
         a.group = new_uuid()
@@ -172,12 +113,10 @@ def test_non_collision(scheduler):
     )
     scheduler.commit()
 
-    @serialized
     def change_allocation(scheduler):
         a = scheduler.session.query(Allocation).one()
         a.group = new_uuid()
 
-    @serialized
     def read_allocation(scheduler):
         scheduler.session.query(Allocation).one()
 

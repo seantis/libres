@@ -3,7 +3,6 @@ import logging
 from datetime import timedelta
 from itertools import groupby
 from libres.context.core import ContextServicesMixin
-from libres.context.session import serialized, Serializable
 from libres.db.models import Allocation, Reservation, ReservedSlot
 from libres.modules import errors, events, calendar
 from sqlalchemy import func, null
@@ -14,7 +13,7 @@ from sqlalchemy.sql import and_, or_
 log = logging.getLogger('libres')
 
 
-class Queries(Serializable, ContextServicesMixin):
+class Queries(ContextServicesMixin):
     """ Contains helper methods independent of the resource (as owned by
     :class:`.scheduler.Scheduler`)
 
@@ -142,7 +141,6 @@ class Queries(Serializable, ContextServicesMixin):
 
         return query
 
-    @serialized
     def confirm_reservations_for_session(self, session_id, token=None):
         """ Confirms all reservations of the given session id. Optionally
         confirms only the reservations with the given token. All if None.
@@ -168,7 +166,6 @@ class Queries(Serializable, ContextServicesMixin):
             self.context, reservations, session_id
         )
 
-    @serialized
     def remove_reservation_from_session(self, session_id, token):
         """ Removes the reservation with the given session_id and token. """
 
@@ -243,7 +240,6 @@ class Queries(Serializable, ContextServicesMixin):
 
         return expired_sessions
 
-    @serialized
     def remove_expired_reservation_sessions(self, expiration_date=None):
         """ Removes all reservations which have an expired session id.
         By default the expiration date is now - 15 minutes.

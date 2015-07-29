@@ -46,8 +46,43 @@ class ContextServicesMixin(object):
     def clear_cache(self):
         """ Clears the cache of the mixin. """
 
-        if '_cache' in self.__dict__:
-            del self.__dict__['_cache']
+        try:
+            del self.is_allocation_exposed
+        except AttributeError:
+            pass
+
+        try:
+            del self.generate_uuid
+        except AttributeError:
+            pass
+
+        try:
+            del self.validate_email
+        except AttributeError:
+            pass
+
+    @property
+    def session_provider(self):
+        return self.context.get_service('session_provider')
+
+    @property
+    def session(self):
+        """ Returns the current session. """
+        return self.session_provider.session()
+
+    def close(self):
+        """ Closes the current session. """
+        self.session.close()
+
+    @property
+    def begin_nested(self):
+        return self.session.begin_nested
+
+    def commit(self):
+        return self.session.commit()
+
+    def rollback(self):
+        return self.session.rollback()
 
 
 class Context(object):

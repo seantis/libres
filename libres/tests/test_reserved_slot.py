@@ -30,12 +30,12 @@ def test_add_reserved_slot(scheduler):
     another.allocation = allocation
     another.reservation = reservation
 
-    scheduler.serial_session.add(allocation)
-    scheduler.serial_session.add(slot)
-    scheduler.serial_session.add(another)
+    scheduler.session.add(allocation)
+    scheduler.session.add(slot)
+    scheduler.session.add(another)
 
     with pytest.raises(IntegrityError):
-        scheduler.serial_session.flush()
+        scheduler.session.flush()
 
 
 def test_reserved_slot_date_display(scheduler):

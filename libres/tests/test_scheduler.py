@@ -338,6 +338,7 @@ def test_reserve(scheduler):
 
     # remove the reservation
     scheduler.remove_reservation(token)
+    scheduler.session.refresh(allocation)
     assert len(allocation.free_slots()) == 2
 
 
@@ -656,7 +657,7 @@ def test_session_expiration(scheduler):
 
     created = calendar.utcnow()
 
-    res = scheduler.serial_session.query(Reservation)
+    res = scheduler.session.query(Reservation)
     res = res.filter(Reservation.session_id == session_id)
     res.update({'created': created, 'modified': None})
 
@@ -672,7 +673,7 @@ def test_session_expiration(scheduler):
     )
     assert len(expired) == 1
 
-    res = scheduler.serial_session.query(Reservation)
+    res = scheduler.session.query(Reservation)
     res = res.filter(Reservation.session_id == session_id)
     res.update({
         'created': created,

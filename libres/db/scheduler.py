@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 from libres.context.core import ContextServicesMixin
-from libres.context.session import serialized, Serializable
 from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
 from libres.db.queries import Queries
 from libres.modules import calendar
@@ -20,7 +19,7 @@ from uuid import uuid4 as new_uuid
 missing = object()
 
 
-class Scheduler(Serializable, ContextServicesMixin):
+class Scheduler(ContextServicesMixin):
     """ The Scheduler is responsible for talking to the backend of the given
     context to create reservations. It is the main part of the API.
     """
@@ -77,7 +76,6 @@ class Scheduler(Serializable, ContextServicesMixin):
         """
         return self.generate_uuid(self.name)
 
-    @serialized
     def setup_database(self):
         """ Creates the tables and indices required for libres. This needs
         to be called once per database. Multiple invocations won't hurt but
@@ -123,7 +121,6 @@ class Scheduler(Serializable, ContextServicesMixin):
 
         return query
 
-    @serialized
     def extinguish_managed_records(self):
         """ WARNING:
         Completely removes any trace of the records managed by this scheduler.
@@ -238,7 +235,6 @@ class Scheduler(Serializable, ContextServicesMixin):
 
         return query.first() and True or False
 
-    @serialized
     def allocate(
         self,
         dates,
@@ -409,12 +405,12 @@ class Scheduler(Serializable, ContextServicesMixin):
             allocations.append(allocation)
 
         self.session.add_all(allocations)
+        self.session.flush()
 
         events.on_allocations_added(self.context, allocations)
 
         return allocations
 
-    @serialized
     def change_quota(self, master, new_quota):
         """ Changes the quota of a master allocation.
 
@@ -574,7 +570,6 @@ class Scheduler(Serializable, ContextServicesMixin):
 
         return self.queries.availability_by_range(start, end, [self.resource])
 
-    @serialized
     def move_allocation(
             self, master_id, new_start=None, new_end=None,
             group=None, new_quota=None, approve_manually=None,
@@ -678,7 +673,6 @@ class Scheduler(Serializable, ContextServicesMixin):
             if data is not missing:
                 change.data = data
 
-    @serialized
     def remove_allocation(self, id=None, groups=None):
         if id:
             master = self.allocation_by_id(id)
@@ -716,7 +710,6 @@ class Scheduler(Serializable, ContextServicesMixin):
             if not allocation.is_transient:
                 self.session.delete(allocation)
 
-    @serialized
     def reserve(
         self,
         email,
@@ -914,7 +907,6 @@ class Scheduler(Serializable, ContextServicesMixin):
 
         return token
 
-    @serialized
     def _approve_reservation_record(self, reservation):
         # write out the slots
         slots_to_reserve = []
@@ -958,7 +950,6 @@ class Scheduler(Serializable, ContextServicesMixin):
 
         return slots_to_reserve
 
-    @serialized
     def approve_reservations(self, token):
         """ This function approves an existing reservation and writes the
         reserved slots accordingly.
@@ -980,7 +971,6 @@ class Scheduler(Serializable, ContextServicesMixin):
 
         return slots_to_reserve
 
-    @serialized
     def deny_reservation(self, token):
         """ Denies a pending reservation, removing it from the records and
         sending an email to the reservee.
@@ -996,7 +986,6 @@ class Scheduler(Serializable, ContextServicesMixin):
 
         events.on_reservations_denied(self.context, reservations)
 
-    @serialized
     def remove_reservation(self, token, id=None):
         """ Removes all reserved slots of the given reservation token.
 
@@ -1011,29 +1000,31 @@ class Scheduler(Serializable, ContextServicesMixin):
 
         """
 
-        slots = self.reserved_slots_by_reservation(token, id)
+        slots = self.reserved_slots_by_reservation(token, id).all()
 
         for slot in slots:
             self.session.delete(slot)
 
-        reservations = self.reservations_by_token(token, id)
-        reservations.delete('fetch')
+        reservations = self.reservations_by_token(token, id).all()
+
+        for reservation in reservations:
+            self.session.delete(reservation)
+
+        # some allocations still reference reserved_slots if not for this
+        self.session.expire_all()
 
         events.on_reservations_removed(self.context, reservations)
 
-    @serialized
     def change_email(self, token, new_email):
 
         for reservation in self.reservations_by_token(token).all():
             reservation.email = new_email
 
-    @serialized
     def change_reservation_data(self, token, data):
 
         for reservation in self.reservations_by_token(token).all():
             reservation.data = data
 
-    @serialized
     def change_reservation_time_candidates(self, tokens=None):
         """ Returns the reservations that fullfill the restrictions
         imposed by change_reservation_time.
@@ -1056,7 +1047,6 @@ class Scheduler(Serializable, ContextServicesMixin):
 
         return query
 
-    @serialized
     def change_reservation_time(self, token, id, new_start, new_end):
         """ Allows to change the timespan of a reservation under certain
         conditions:

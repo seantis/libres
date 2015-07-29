@@ -27,7 +27,7 @@ setup(
     zip_safe=False,
     platforms='any',
     install_requires=[
-        'cached_property >= 1.0.0',
+        'cached_property >= 1.2.0',
         'python-dateutil',
         'psycopg2',
         'pytz',
