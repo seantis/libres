@@ -11,11 +11,13 @@ SERIALIZABLE = 'SERIALIZABLE'
 
 
 class SessionProvider(StoppableService):
-    """Global session utility. It wraps two global sessions through which
-    all database interaction (should) be flowing.
+    """Global session utility. It provides a SERIALIZABLE session to libres.
+    If you want to override this provider, be sure to set the isolation_level
+    to SERIALIZABLE as well.
 
-    As a global utility this object is present only once per Zope instance,
-    so it needs to be aware of different threads.
+    If you don't do that, libres might run into errors as it assumes and tests
+    against SERIALIZABLE connections!
+
     """
 
     def __init__(self, dsn, engine_config={}, session_config={}):
