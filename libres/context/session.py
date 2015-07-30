@@ -36,7 +36,7 @@ class SessionProvider(StoppableService):
 
     def stop_service(self):
         """ Called by the libres context when the session provider is being
-        discarded.
+        discarded (only in testing).
 
         This makes sure that replacing the session provider on the context
         doesn't leave behind any idle connections.
