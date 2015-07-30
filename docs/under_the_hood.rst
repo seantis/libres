@@ -34,3 +34,7 @@ encounter one this error::
 
 A `TransactionRollbackError` occurs if the transaction you sent was denied
 because another serial transaction was let through instead.
+
+We haven't had the need to do this, but if you *really* needed to scale libres,
+you could possibly have two processes running. One process that only uses
+read only transactions, one process that uses serialization.
