@@ -1,7 +1,7 @@
 Changelog
 ---------
 
-0.1.1 (unreleased)
+0.1.1 (2015-8-19)
 ~~~~~~~~~~~~~~~~~
 
 - It was possible to add or move an allocation to an invalid state (end before
