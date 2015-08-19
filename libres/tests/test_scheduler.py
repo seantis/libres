@@ -222,11 +222,30 @@ def test_remove_grouped_allocation(scheduler):
 
 
 def test_remove_allocation_with_quota_regression(scheduler):
-    dates = [(datetime(2015, 3, 13, 10), datetime(2015, 2, 13, 12))]
+    dates = [(datetime(2015, 2, 13, 10), datetime(2015, 2, 13, 12))]
     allocation = scheduler.allocate(dates, quota=10)[0]
 
     scheduler.commit()
     scheduler.remove_allocation(allocation.id)
+
+
+def test_invalid_new_allocation(scheduler):
+    dates = [(datetime(2015, 2, 14, 10), datetime(2015, 2, 13, 12))]
+
+    with pytest.raises(errors.InvalidAllocationError):
+        scheduler.allocate(dates, quota=10)[0]
+
+
+def test_invalid_move_allocation(scheduler):
+    dates = [(datetime(2015, 2, 13, 10), datetime(2015, 2, 13, 12))]
+    allocation = scheduler.allocate(dates, quota=10)[0]
+
+    with pytest.raises(errors.InvalidAllocationError):
+        scheduler.move_allocation(
+            allocation.id,
+            new_start=allocation.end,
+            new_end=allocation.start
+        )
 
 
 def test_reserve_invalid_email(scheduler):

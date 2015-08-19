@@ -4,7 +4,9 @@ Changelog
 0.1.1 (unreleased)
 ~~~~~~~~~~~~~~~~~
 
-Nothing yet.
+- It was possible to add or move an allocation to an invalid state (end before
+  start date). This is now caught correctly.
+  [href]
 
 0.1.0 (2015-7-30)
 ~~~~~~~~~~~~~~~~~

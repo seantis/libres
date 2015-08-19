@@ -373,6 +373,8 @@ class Scheduler(ContextServicesMixin):
         for start, end in rasterized_dates:
             if calendar.count_overlaps(rasterized_dates, start, end) > 1:
                 raise errors.InvalidAllocationError
+            if end < start:
+                raise errors.InvalidAllocationError
 
         # Make sure that this span does not overlap another master
         for start, end in rasterized_dates:
@@ -603,6 +605,9 @@ class Scheduler(ContextServicesMixin):
             new_start, new_end = calendar.align_range_to_day(
                 new_start, new_end, self.timezone
             )
+
+        if new_end < new_start:
+            raise errors.InvalidAllocationError
 
         new = Allocation(
             start=new_start,
