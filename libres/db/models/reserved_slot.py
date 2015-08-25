@@ -1,3 +1,5 @@
+import sedate
+
 from datetime import timedelta
 from sqlalchemy import types
 from sqlalchemy.schema import Column
@@ -14,7 +16,6 @@ from libres.modules.rasterizer import (
 from libres.db.models import ORMBase, Allocation
 from libres.db.models.types import UUID, UTCDateTime
 from libres.db.models.timestamp import TimestampMixin
-from libres.modules import calendar
 
 
 class ReservedSlot(TimestampMixin, ORMBase):
@@ -72,7 +73,7 @@ class ReservedSlot(TimestampMixin, ORMBase):
 
     def display_start(self, timezone=None):
         start = rasterize_start(self.start, self.allocation.raster)
-        return calendar.to_timezone(
+        return sedate.to_timezone(
             start, timezone or self.allocation.timezone
         )
 
@@ -80,7 +81,7 @@ class ReservedSlot(TimestampMixin, ORMBase):
         end = rasterize_end(self.end, self.allocation.raster)
         end += timedelta(microseconds=1)
 
-        return calendar.to_timezone(
+        return sedate.to_timezone(
             end, timezone or self.allocation.timezone
         )
 

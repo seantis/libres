@@ -1,5 +1,6 @@
+import sedate
+
 from libres.db.models.types import UTCDateTime
-from libres.modules import calendar
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.schema import Column
@@ -17,7 +18,7 @@ class TimestampMixin(object):
 
     @staticmethod
     def timestamp():
-        return calendar.utcnow()
+        return sedate.utcnow()
 
     @declared_attr
     def created(cls):

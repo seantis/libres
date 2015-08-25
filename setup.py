@@ -31,6 +31,7 @@ setup(
         'python-dateutil',
         'psycopg2',
         'pytz',
+        'sedate',
         'SQLAlchemy>=0.9',
     ],
     extras_require=dict(

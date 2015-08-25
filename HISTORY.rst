@@ -4,6 +4,9 @@ Changelog
 0.1.2 (unreleased)
 ~~~~~~~~~~~~~~~~~
 
+- Replaces libres.modules.calendar with sedate.
+  [href]
+
 - Naive start/end dates on the allocation are now automatically converted into
   the correct timezone when they are set.
   [href]

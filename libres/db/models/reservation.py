@@ -1,3 +1,5 @@
+import sedate
+
 from collections import namedtuple
 from datetime import timedelta
 
@@ -10,7 +12,6 @@ from libres.db.models import ORMBase
 from libres.db.models.types import UUID, UTCDateTime, JSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
-from libres.modules import calendar
 
 
 Timespan = namedtuple(
@@ -122,12 +123,12 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
 
     def display_start(self, timezone=None):
         """Does nothing but to form a nice pair to display_end."""
-        return calendar.to_timezone(self.start, timezone or self.timezone)
+        return sedate.to_timezone(self.start, timezone or self.timezone)
 
     def display_end(self, timezone=None):
         """Returns the end plus one microsecond (nicer display)."""
         end = self.end + timedelta(microseconds=1)
-        return calendar.to_timezone(end, timezone or self.timezone)
+        return sedate.to_timezone(end, timezone or self.timezone)
 
     def timespans(self):
         """ Returns the timespans targeted by this reservation.

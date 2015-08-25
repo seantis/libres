@@ -1,3 +1,5 @@
+import sedate
+
 from datetime import timedelta, time
 from itertools import groupby
 
@@ -8,7 +10,7 @@ from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.orm import object_session
 from sqlalchemy.orm.util import has_identity
 
-from libres.modules import calendar, utils
+from libres.modules import utils
 from libres.modules.rasterizer import (
     rasterize_start,
     rasterize_span,
@@ -120,7 +122,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def set_start(self, start):
         if not start.tzinfo:
             assert self.timezone
-            start = calendar.replace_timezone(start, self.timezone)
+            start = sedate.replace_timezone(start, self.timezone)
 
         if self.raster is not None:
             self._start = rasterize_start(start, self.raster)
@@ -137,7 +139,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def set_end(self, end):
         if not end.tzinfo:
             assert self.timezone
-            end = calendar.replace_timezone(end, self.timezone)
+            end = sedate.replace_timezone(end, self.timezone)
 
         if self.raster is not None:
             self._end = rasterize_end(end, self.raster)
@@ -177,7 +179,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def display_start(self, timezone=None):
         """Returns the start in either the timezone given or the timezone
         on the allocation."""
-        return calendar.to_timezone(self.start, timezone or self.timezone)
+        return sedate.to_timezone(self.start, timezone or self.timezone)
 
     def display_end(self, timezone=None):
         """Returns the end plus one microsecond in either the timezone given
@@ -185,13 +187,13 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         """
         end = self.end + timedelta(microseconds=1)
-        return calendar.to_timezone(end, timezone or self.timezone)
+        return sedate.to_timezone(end, timezone or self.timezone)
 
     def _prepare_range(self, start, end):
         if start:
-            start = calendar.standardize_date(start, self.timezone)
+            start = sedate.standardize_date(start, self.timezone)
         if end:
-            end = calendar.standardize_date(end, self.timezone)
+            end = sedate.standardize_date(end, self.timezone)
 
         return start, end
 
@@ -212,7 +214,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         s, e = self.display_start(), self.display_end()
         assert s != e  # this can never be, except when caused by cosmic rays
 
-        return calendar.is_whole_day(s, e, self.timezone)
+        return sedate.is_whole_day(s, e, self.timezone)
 
     def overlaps(self, start, end):
         """ Returns true if the allocation overlaps with the given dates. """
@@ -220,7 +222,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         start, end = self._prepare_range(start, end)
         start, end = rasterize_span(start, end, self.raster)
 
-        return calendar.overlaps(start, end, self.start, self.end)
+        return sedate.overlaps(start, end, self.start, self.end)
 
     def contains(self, start, end):
         """ Returns true if the the allocation contains the given dates. """
@@ -303,7 +305,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             assert isinstance(start, time)
             assert isinstance(end, time)
 
-            s, e = calendar.get_date_range(
+            s, e = sedate.get_date_range(
                 self.display_start(timezone), start, end
             )
 

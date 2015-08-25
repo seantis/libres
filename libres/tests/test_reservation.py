@@ -2,7 +2,7 @@ import pytest
 
 from datetime import datetime, timedelta
 from libres.db.models import Reservation
-from libres.modules.calendar import standardize_date
+from sedate import standardize_date
 
 
 def test_reservation_title():

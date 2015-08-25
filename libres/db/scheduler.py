@@ -1,9 +1,10 @@
+import sedate
+
 from datetime import datetime, timedelta
 
 from libres.context.core import ContextServicesMixin
 from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
 from libres.db.queries import Queries
-from libres.modules import calendar
 from libres.modules import compat
 from libres.modules import errors
 from libres.modules import events
@@ -87,15 +88,15 @@ class Scheduler(ContextServicesMixin):
     def _prepare_dates(self, dates):
         return [
             (
-                calendar.standardize_date(s, self.timezone),
-                calendar.standardize_date(e, self.timezone)
+                sedate.standardize_date(s, self.timezone),
+                sedate.standardize_date(e, self.timezone)
             ) for s, e in utils.pairs(dates)
         ]
 
     def _prepare_range(self, start, end):
         return (
-            calendar.standardize_date(start, self.timezone),
-            calendar.standardize_date(end, self.timezone)
+            sedate.standardize_date(start, self.timezone),
+            sedate.standardize_date(end, self.timezone)
         )
 
     def managed_allocations(self):
@@ -247,7 +248,7 @@ class Scheduler(ContextServicesMixin):
         data=None,
         approve_manually=False,
     ):
-        """ Allocates a spot in the calendar.
+        """ Allocates a spot in the sedate.
 
         An allocation defines a timerange which can be reserved. No
         reservations can exist outside of existing allocations. In fact any
@@ -361,7 +362,7 @@ class Scheduler(ContextServicesMixin):
         # the beginning of the day / end of it -> not timezone aware!
         if whole_day:
             for ix, (start, end) in enumerate(dates):
-                dates[ix] = calendar.align_range_to_day(
+                dates[ix] = sedate.align_range_to_day(
                     start, end, self.timezone
                 )
 
@@ -371,7 +372,7 @@ class Scheduler(ContextServicesMixin):
         ]
 
         for start, end in rasterized_dates:
-            if calendar.count_overlaps(rasterized_dates, start, end) > 1:
+            if sedate.count_overlaps(rasterized_dates, start, end) > 1:
                 raise errors.InvalidAllocationError
             if end < start:
                 raise errors.InvalidAllocationError
@@ -565,8 +566,8 @@ class Scheduler(ContextServicesMixin):
     def availability(self, start=None, end=None):
         """Goes through all allocations and sums up the availability."""
 
-        start = start if start else calendar.mindatetime
-        end = end if end else calendar.maxdatetime
+        start = start if start else sedate.mindatetime
+        end = end if end else sedate.maxdatetime
 
         start, end = self._prepare_range(start, end)
 
@@ -602,7 +603,7 @@ class Scheduler(ContextServicesMixin):
         new_end = new_end or master.end
 
         if whole_day:
-            new_start, new_end = calendar.align_range_to_day(
+            new_start, new_end = sedate.align_range_to_day(
                 new_start, new_end, self.timezone
             )
 
@@ -1244,8 +1245,8 @@ class Scheduler(ContextServicesMixin):
             s = datetime.combine(allocation.start.date(), start.time())
             e = datetime.combine(allocation.end.date(), end.time())
 
-            s = calendar.replace_timezone(s, allocation.start.tzname())
-            e = calendar.replace_timezone(e, allocation.start.tzname())
+            s = sedate.replace_timezone(s, allocation.start.tzname())
+            e = sedate.replace_timezone(e, allocation.start.tzname())
 
             if not allocation.overlaps(s, e):
                 continue

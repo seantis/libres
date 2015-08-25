@@ -1,10 +1,11 @@
 import logging
+import sedate
 
 from datetime import timedelta
 from itertools import groupby
 from libres.context.core import ContextServicesMixin
 from libres.db.models import Allocation, Reservation, ReservedSlot
-from libres.modules import errors, events, calendar
+from libres.modules import errors, events
 from sqlalchemy import func, null
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, or_
@@ -197,7 +198,7 @@ class Queries(ContextServicesMixin):
         query = self.session.query(Reservation)
         query = query.filter(Reservation.session_id == session_id)
 
-        query.update({"modified": calendar.utcnow()})
+        query.update({"modified": sedate.utcnow()})
 
     def find_expired_reservation_sessions(self, expiration_date):
         """ Goes through all reservations and returns the session ids of the
@@ -210,7 +211,7 @@ class Queries(ContextServicesMixin):
         """
 
         expiration_date = expiration_date or (
-            calendar.utcnow() - timedelta(minutes=15)
+            sedate.utcnow() - timedelta(minutes=15)
         )
 
         # first get the session ids which are expired

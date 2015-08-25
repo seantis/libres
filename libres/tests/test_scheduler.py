@@ -1,9 +1,10 @@
 import pytest
+import sedate
 
 from copy import copy
 from datetime import datetime, timedelta, time
 from libres.db.models import Reservation, Allocation, ReservedSlot
-from libres.modules import calendar, errors, events
+from libres.modules import errors, events
 from libres.modules import utils
 from mock import Mock
 from sqlalchemy.exc import StatementError
@@ -531,10 +532,10 @@ def test_change_reservation(scheduler):
 
     reservation = scheduler.reservations_by_token(token).one()
 
-    assert reservation.start == calendar.standardize_date(
+    assert reservation.start == sedate.standardize_date(
         datetime(2014, 8, 7, 8, 0), scheduler.timezone
     )
-    assert reservation.end == calendar.standardize_date(
+    assert reservation.end == sedate.standardize_date(
         datetime(2014, 8, 7, 10, 0) - timedelta(microseconds=1),
         scheduler.timezone
     )
@@ -674,7 +675,7 @@ def test_session_expiration(scheduler):
     scheduler.reserve(u'test@example.com', (start, end), session_id=session_id)
     scheduler.commit()
 
-    created = calendar.utcnow()
+    created = sedate.utcnow()
 
     res = scheduler.session.query(Reservation)
     res = res.filter(Reservation.session_id == session_id)
@@ -735,7 +736,7 @@ def test_session_removal_is_complete(scheduler):
     assert scheduler.session.query(ReservedSlot).count() == 1
 
     scheduler.queries.remove_expired_reservation_sessions(
-        expiration_date=calendar.utcnow() + timedelta(seconds=15 * 60)
+        expiration_date=sedate.utcnow() + timedelta(seconds=15 * 60)
     )
     scheduler.commit()
 
@@ -1199,10 +1200,10 @@ def test_allocation_dates_by_ids(scheduler):
     d = list(scheduler.allocation_dates_by_ids(ids))
 
     def standardize(dt):
-        return calendar.standardize_date(dt, 'Europe/Zurich')
+        return sedate.standardize_date(dt, 'Europe/Zurich')
 
     def as_utc(dt):
-        return calendar.to_timezone(dt, 'UTC')
+        return sedate.to_timezone(dt, 'UTC')
 
     assert as_utc(d[0][0]) == standardize(dates[0][0])
     assert as_utc(d[0][1]) == standardize(dates[0][1]) - timedelta(
@@ -1784,7 +1785,7 @@ def test_search_allocations(scheduler):
     start = datetime(2014, 8, 3, 13, 0)
     end = datetime(2014, 8, 3, 15, 0)
     daterange = (start, end)
-    maxrange = (calendar.mindatetime, calendar.maxdatetime)
+    maxrange = (sedate.mindatetime, sedate.maxdatetime)
 
     # test empty
     assert len(scheduler.search_allocations(*daterange)) == 0

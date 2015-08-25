@@ -1,4 +1,5 @@
-from libres.modules import calendar
+import sedate
+
 from sqlalchemy import types
 
 
@@ -17,8 +18,8 @@ class UTCDateTime(types.TypeDecorator):
 
     def process_bind_param(self, value, engine):
         if value is not None:
-            return calendar.to_timezone(value, 'UTC').replace(tzinfo=None)
+            return sedate.to_timezone(value, 'UTC').replace(tzinfo=None)
 
     def process_result_value(self, value, engine):
         if value is not None:
-            return calendar.replace_timezone(value, 'UTC')
+            return sedate.replace_timezone(value, 'UTC')
