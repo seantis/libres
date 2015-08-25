@@ -118,6 +118,10 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         return self._start
 
     def set_start(self, start):
+        if not start.tzinfo:
+            assert self.timezone
+            start = calendar.replace_timezone(start, self.timezone)
+
         if self.raster is not None:
             self._start = rasterize_start(start, self.raster)
         else:
@@ -131,6 +135,10 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         return self._end
 
     def set_end(self, end):
+        if not end.tzinfo:
+            assert self.timezone
+            end = calendar.replace_timezone(end, self.timezone)
+
         if self.raster is not None:
             self._end = rasterize_end(end, self.raster)
         else:

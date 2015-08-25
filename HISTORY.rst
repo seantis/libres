@@ -4,7 +4,9 @@ Changelog
 0.1.2 (unreleased)
 ~~~~~~~~~~~~~~~~~
 
-Nothing yet.
+- Naive start/end dates on the allocation are now automatically converted into
+  the correct timezone when they are set.
+  [href]
 
 0.1.1 (2015-8-19)
 ~~~~~~~~~~~~~~~~~
