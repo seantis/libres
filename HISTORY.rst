@@ -1,8 +1,8 @@
 Changelog
 ---------
 
-0.1.2 (unreleased)
-~~~~~~~~~~~~~~~~~
+0.1.2 (2015-08-25)
+~~~~~~~~~~~~~~~~~~
 
 - Replaces libres.modules.calendar with sedate.
   [href]
@@ -11,15 +11,15 @@ Changelog
   the correct timezone when they are set.
   [href]
 
-0.1.1 (2015-8-19)
-~~~~~~~~~~~~~~~~~
+0.1.1 (2015-08-19)
+~~~~~~~~~~~~~~~~~~
 
 - It was possible to add or move an allocation to an invalid state (end before
   start date). This is now caught correctly.
   [href]
 
-0.1.0 (2015-7-30)
-~~~~~~~~~~~~~~~~~
+0.1.0 (2015-07-30)
+~~~~~~~~~~~~~~~~~~
 
 - BREAKING CHANGE: This release switches to a single SERIALIZED connections.
   
