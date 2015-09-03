@@ -1,7 +1,7 @@
 Changelog
 ---------
 
-0.1.3 (unreleased)
+0.1.3 (2015-09-03)
 ~~~~~~~~~~~~~~~~~~
 
 - Adds a method to remove unused allocations.
