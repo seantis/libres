@@ -11,6 +11,7 @@ from libres.modules import events
 from libres.modules import rasterizer
 from libres.modules import utils
 
+from sqlalchemy import func
 from sqlalchemy.orm import exc
 from sqlalchemy.sql import and_, not_
 
@@ -715,6 +716,56 @@ class Scheduler(ContextServicesMixin):
         for allocation in allocations:
             if not allocation.is_transient:
                 self.session.delete(allocation)
+
+    def remove_unused_allocations(self, start, end):
+        """ Removes all allocations without reservations between start and
+        end and returns the number of allocations that were deleted.
+
+        Groups which are partially inside the daterange are not included.
+
+        """
+
+        start, end = self._prepare_range(
+            sedate.as_datetime(start),
+            sedate.as_datetime(end)
+        )
+
+        # all the slots
+        slots = self.managed_reserved_slots()
+        slots = slots.with_entities(ReservedSlot.allocation_id)
+
+        # all the reservations
+        reservations = self.managed_reservations()
+        reservations = reservations.with_entities(Reservation.target)
+
+        # all the groups which are fully inside the required scope
+        groups = self.managed_allocations().with_entities(Allocation.group)
+        groups = groups.group_by(Allocation.group)
+        groups = groups.having(
+            and_(
+                start <= func.min(Allocation._start),
+                func.max(Allocation._end) <= end
+            )
+        )
+
+        # all allocations
+        candidates = self.managed_allocations()
+        candidates = candidates.filter(start <= Allocation._start)
+        candidates = candidates.filter(Allocation._end <= end)
+
+        # .. without the ones with slots
+        candidates = candidates.filter(
+            not_(Allocation.id.in_(slots.subquery())))
+
+        # .. without the ones with reservations
+        candidates = candidates.filter(
+            not_(Allocation.group.in_(reservations.subquery())))
+
+        # .. including only the groups fully inside the required scope
+        allocations = candidates.filter(
+            Allocation.group.in_(groups.subquery()))
+
+        return allocations.delete('fetch')
 
     def reserve(
         self,

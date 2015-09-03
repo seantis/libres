@@ -4,7 +4,8 @@ Changelog
 0.1.3 (unreleased)
 ~~~~~~~~~~~~~~~~~~
 
-Nothing yet.
+- Adds a method to remove unused allocations.
+  [href]
 
 0.1.2 (2015-08-25)
 ~~~~~~~~~~~~~~~~~~

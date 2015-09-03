@@ -2,7 +2,7 @@ import pytest
 import sedate
 
 from copy import copy
-from datetime import datetime, timedelta, time
+from datetime import date, datetime, timedelta, time
 from libres.db.models import Reservation, Allocation, ReservedSlot
 from libres.modules import errors, events
 from libres.modules import utils
@@ -1960,3 +1960,70 @@ def test_availability_by_day(scheduler):
 
     sc2.extinguish_managed_records()
     sc2.commit()
+
+
+def test_remove_unused_allocations(scheduler):
+
+    # create one allocation with a pending reservation
+    daterange = (datetime(2013, 12, 3, 13, 0), datetime(2013, 12, 3, 15, 0))
+    scheduler.allocate(daterange)
+    scheduler.reserve(u'test@example.org', daterange)
+    scheduler.commit()
+
+    # create one allocation with a finished reservation
+    daterange = (datetime(2014, 12, 3, 13, 0), datetime(2014, 12, 3, 15, 0))
+    scheduler.allocate(daterange)
+    scheduler.approve_reservations(
+        scheduler.reserve(u'test@example.org', daterange)
+    )
+    scheduler.commit()
+
+    # create a group of allocations with a pending reservation
+    daterange = [
+        (datetime(2015, 12, 3, 13, 0), datetime(2015, 12, 3, 15, 0)),
+        (datetime(2015, 12, 4, 13, 0), datetime(2015, 12, 4, 15, 0))
+    ]
+    scheduler.allocate(daterange, grouped=True)
+    scheduler.reserve(u'test@example.org', daterange)
+    scheduler.commit()
+
+    # create one unused allocation
+    daterange = (datetime(2016, 12, 3, 13, 0), datetime(2016, 12, 3, 15, 0))
+    scheduler.allocate(daterange)
+    scheduler.commit()
+
+    # create two unused allocations in a group
+    daterange = [
+        (datetime(2017, 12, 3, 13, 0), datetime(2017, 12, 3, 15, 0)),
+        (datetime(2017, 12, 4, 13, 0), datetime(2017, 12, 4, 15, 0))
+    ]
+    scheduler.allocate(daterange)
+    scheduler.commit()
+
+    # only the unused allocation should be removed
+    assert scheduler.managed_allocations().count() == 7
+    deleted = scheduler.remove_unused_allocations(
+        date(2013, 1, 1), date(2016, 12, 31))
+
+    assert deleted == 1
+    assert scheduler.managed_allocations().count() == 6
+
+    # if a grouped allocation is touched, the whole group must be inside
+    # the date scope for it to be deleted
+    deleted = scheduler.remove_unused_allocations(
+        date(2017, 12, 3), date(2017, 12, 3))
+
+    assert deleted == 0
+    assert scheduler.managed_allocations().count() == 6
+
+    deleted = scheduler.remove_unused_allocations(
+        date(2017, 12, 4), date(2017, 12, 4))
+
+    assert deleted == 0
+    assert scheduler.managed_allocations().count() == 6
+
+    deleted = scheduler.remove_unused_allocations(
+        date(2000, 1, 1), date(2020, 1, 1))
+
+    assert deleted == 2
+    assert scheduler.managed_allocations().count() == 4
