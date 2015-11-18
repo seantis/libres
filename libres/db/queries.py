@@ -226,6 +226,10 @@ class Queries(ContextServicesMixin):
         # != null() because != None is not allowed by PEP8
         query = query.filter(Reservation.session_id != null())
 
+        # there should never be approved reservations with session ids. If for
+        # some reason this occurs anyway, be sure to exclude them from this.
+        query = query.filter(Reservation.status == 'pending')
+
         # the idea is to remove all reservations belonging to sessions whose
         # latest update is expired - either delete the whole session or let
         # all of it be

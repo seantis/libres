@@ -3,7 +3,7 @@ import sedate
 
 from copy import copy
 from datetime import date, datetime, timedelta, time
-from libres.db.models import Reservation, Allocation, ReservedSlot
+from libres.db.models import Reservation, Allocation
 from libres.modules import errors, events
 from libres.modules import utils
 from mock import Mock
@@ -713,27 +713,16 @@ def test_session_expiration(scheduler):
     assert len(expired) == 1
 
 
-def test_session_removal_is_complete(scheduler):
+def test_session_removal(scheduler):
     start, end = datetime(2013, 9, 27, 9, 0), datetime(2013, 9, 27, 10)
     scheduler.allocate(dates=(start, end))
     session_id = new_uuid()
 
-    token = scheduler.reserve(
-        u'test@example.org', (start, end), session_id=session_id
-    )
-
+    scheduler.reserve(u'test@example.org', (start, end), session_id=session_id)
     scheduler.commit()
 
     assert scheduler.session.query(Reservation).count() == 1
     assert scheduler.session.query(Allocation).count() == 1
-    assert scheduler.session.query(ReservedSlot).count() == 0
-
-    scheduler.approve_reservations(token)
-    scheduler.commit()
-
-    assert scheduler.session.query(Reservation).count() == 1
-    assert scheduler.session.query(Allocation).count() == 1
-    assert scheduler.session.query(ReservedSlot).count() == 1
 
     scheduler.queries.remove_expired_reservation_sessions(
         expiration_date=sedate.utcnow() + timedelta(seconds=15 * 60)
@@ -742,7 +731,6 @@ def test_session_removal_is_complete(scheduler):
 
     assert scheduler.session.query(Reservation).count() == 0
     assert scheduler.session.query(Allocation).count() == 1
-    assert scheduler.session.query(ReservedSlot).count() == 0
 
 
 def test_invalid_reservation(scheduler):

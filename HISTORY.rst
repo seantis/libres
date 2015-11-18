@@ -4,7 +4,8 @@ Changelog
 0.1.4 (unreleased)
 ~~~~~~~~~~~~~~~~~~
 
-Nothing yet.
+- Ensures that approved reservations cannot be somehow removed during cleanup.
+  [href]
 
 0.1.3 (2015-09-03)
 ~~~~~~~~~~~~~~~~~~
