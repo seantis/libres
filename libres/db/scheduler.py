@@ -877,6 +877,9 @@ class Scheduler(ContextServicesMixin):
                     if free < quota:
                         raise errors.AlreadyReservedError
 
+                if not allocation.contains(start, end):
+                    raise errors.TimerangeTooLong()
+
                 if allocation.quota_limit > 0:
                     if allocation.quota_limit < quota:
                         raise errors.QuotaOverLimit
