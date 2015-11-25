@@ -11,3 +11,13 @@ script:
     - tox -e $TOXENV
 after_success:
     - if [ "$TOXENV" = 'py34' ]; then coveralls; fi
+
+deploy:
+    provider: pypi
+    distributions: "sdist bdist_wheel"
+    user: seantis
+    password:
+        secure: "BKWCxvfr5PDd2pLsbRVkyLu8/bV2EzsYqISfFQZml84NCpXmPMah2NAjeIS5OXIJmKxHDzvzgfHGAWFT/H/COE1UbnEjp9oGhN3BNThjH7anaMHSr27T4beDntnbsO+boWAdUORzy1QU/DDvqhhXTXybhywENYRuTXIMB7D4PSc="
+    on:
+        tags: true
+        condition: $TOXENV = py34

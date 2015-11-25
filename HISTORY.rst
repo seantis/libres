@@ -1,8 +1,8 @@
 Changelog
 ---------
 
-0.1.4 (unreleased)
-~~~~~~~~~~~~~~~~~~
+Unreleased
+~~~~~~~~~~
 
 - Adds the ability to change unapproved reservations.
   [href]
