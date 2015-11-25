@@ -4,6 +4,9 @@ Changelog
 0.1.4 (unreleased)
 ~~~~~~~~~~~~~~~~~~
 
+- Adds the ability to change unapproved reservations.
+  [href]
+
 - Adds an extra check for start/end time. If the requested start/end time lies
   outside any possible allocation, an error is raised.
   [href]

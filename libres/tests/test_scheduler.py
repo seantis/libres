@@ -403,29 +403,9 @@ def test_change_reservation_assertions(scheduler):
     scheduler.commit()
 
     reservation = scheduler.reservations_by_token(token).one()
-
-    # will fail with an assertion because the reservation was not approved
-    with pytest.raises(AssertionError) as assertion:
-        scheduler.change_reservation_time(token, reservation.id, *dates)
-    assert "must be approved" in str(assertion.value)
-
-    assert scheduler.change_reservation_time_candidates().count() == 0
-    assert not reservation_changed.called
-
     scheduler.approve_reservations(token)
     scheduler.commit()
 
-    # fail with an assertion as the allocation is not partly available
-    with pytest.raises(AssertionError) as assertion:
-        scheduler.change_reservation_time(
-            token, reservation.id, datetime.now(), datetime.now()
-        )
-    assert "must be partly available" in str(assertion.value)
-
-    assert scheduler.change_reservation_time_candidates().count() == 0
-    assert not reservation_changed.called
-
-    # let's try it again with a group allocation (which should also fail)
     dates = (
         (datetime(2014, 8, 10, 11, 0), datetime(2014, 8, 10, 12, 0)),
         (datetime(2014, 8, 11, 11, 0), datetime(2014, 8, 11, 12, 0))
@@ -473,6 +453,38 @@ def test_change_reservation_assertions(scheduler):
             token, reservation.id,
             datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 1)
         )
+
+
+def test_change_unapproved_reservation_quota(scheduler):
+    dates = (datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 10, 0))
+    scheduler.allocate(dates, quota=2)
+
+    token = scheduler.reserve(
+        u'original@example.org', dates, session_id=new_uuid().hex
+    )
+
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+    assert not scheduler.change_reservation(
+        token=token,
+        id=reservation.id,
+        new_start=reservation.start,
+        new_end=reservation.end,
+        quota=1
+    )
+
+    assert scheduler.change_reservation(
+        token=token,
+        id=reservation.id,
+        new_start=reservation.start,
+        new_end=reservation.end,
+        quota=2
+    )
+
+    new = scheduler.reservations_by_token(reservation.token).first()
+    assert new.quota == 2
+    assert new.session_id and new.session_id == reservation.session_id
 
 
 def test_change_reservation(scheduler):

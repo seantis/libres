@@ -1112,20 +1112,19 @@ class Scheduler(ContextServicesMixin):
         return query
 
     def change_reservation_time(self, token, id, new_start, new_end):
+        """ Kept for backwards compatibility, use :meth:`change_reservation`
+        instead.
+
+        """
+        return self.change_reservation(token, id, new_start, new_end)
+
+    def change_reservation(self, token, id, new_start, new_end, quota=None):
         """ Allows to change the timespan of a reservation under certain
         conditions:
 
         - The new timespan must be reservable inside the existing allocation.
           (So you cannot use this method to reserve another allocation)
         - The referenced allocation must not be in a group.
-        - The referenced allocation must be partly available.
-        - The referenced reservation must be approved
-
-        There is really only one usecase that this function works for:
-
-        The user wants to change the timespan of a reservation in a meeting
-        room kind of setup where you have lots of partly-available
-        allocations.
 
         Returns True if a change was made.
 
@@ -1140,26 +1139,21 @@ class Scheduler(ContextServicesMixin):
         assert new_start and new_end
 
         new_start, new_end = self._prepare_range(new_start, new_end)
-
         existing_reservation = self.reservations_by_token(token, id).one()
 
-        assert existing_reservation.status == 'approved', """
-            Reservation must be approved.
-        """
-
         # if there's nothing to change, do not change
-        if existing_reservation.start == new_start:
-            if existing_reservation.end == new_end:
-                return False
-            if existing_reservation.end == new_end - timedelta(microseconds=1):
-                return False
+        if quota is None or existing_reservation.quota == quota:
+            if existing_reservation.start == new_start:
+                ends = (new_end, new_end - timedelta(microseconds=1))
+
+                if existing_reservation.end in ends:
+                    return False
 
         # will return raise a MultipleResultsFound exception if this is a group
-        allocation = self.allocations_by_reservation(token, id).one()
-
-        assert allocation.partly_available, """
-            Allocation must be partly available.
-        """
+        if existing_reservation.status == 'approved':
+            allocation = self.allocations_by_reservation(token, id).one()
+        else:
+            allocation = existing_reservation._target_allocations().first()
 
         if not allocation.contains(new_start, new_end):
             raise errors.TimerangeTooLong()
@@ -1168,7 +1162,7 @@ class Scheduler(ContextServicesMixin):
             email=existing_reservation.email,
             dates=(new_start, new_end),
             data=existing_reservation.data,
-            quota=existing_reservation.quota
+            quota=quota or existing_reservation.quota
         )
 
         old_start = existing_reservation.display_start()
@@ -1181,8 +1175,10 @@ class Scheduler(ContextServicesMixin):
             new_reservation = self.reservations_by_token(new_token).one()
             new_reservation.id = id
             new_reservation.token = token
+            new_reservation.session_id = existing_reservation.session_id
 
-            self._approve_reservation_record(new_reservation)
+            if existing_reservation.status == 'approved':
+                self._approve_reservation_record(new_reservation)
 
             events.on_reservation_time_changed(
                 self.context,
@@ -1194,7 +1190,7 @@ class Scheduler(ContextServicesMixin):
                 ),
             )
 
-        return True
+        return new_reservation
 
     def search_allocations(
         self, start, end,
