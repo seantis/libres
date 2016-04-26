@@ -1,8 +1,9 @@
 Changelog
 ---------
 
-Unreleased
-~~~~~~~~~~
+- Adds the ability to have a single token shared across multiple reservations
+  in a single session.
+  [href]
 
 0.1.4 (2015-11-25)
 ~~~~~~~~~~~~~~~~~~~

@@ -774,7 +774,8 @@ class Scheduler(ContextServicesMixin):
         group=None,
         data=None,
         session_id=None,
-        quota=1
+        quota=1,
+        single_token_per_session=False
     ):
         """ Reserves one or many allocations. Returns a token that needs
         to be passed to :meth:`approve_reservations` to complete the
@@ -832,6 +833,25 @@ class Scheduler(ContextServicesMixin):
         :quota:
             The number of allocations that should be reserved at once. See
             ``quota`` in :meth:`~libres.db.scheduler.Scheduler.allocate`.
+
+        :single_token_per_session:
+            If True, all reservations of the same session shared the same
+            token, though that token will differ from the session id itself.
+
+            This only applies if the reserve function is called multiple times
+            with the same session id. In this case, subsequent reserve calls
+            will re-use whatever token they can find in the table.
+
+            If there's no existing reservations, a new token will be created.
+            That also applies if a reservation is created, deleted and then
+            another is created. Because the last reserve call won't find any
+            reservations it will create a new token.
+
+            So the shared token is always the last token returned by the
+            reserve function.
+
+            Note that this only works reliably if you set this parameter to
+            true for *all* your reserve calls that use a session.
 
         """
 
@@ -891,7 +911,12 @@ class Scheduler(ContextServicesMixin):
                     raise errors.InvalidQuota
 
         # ok, we're good to go
-        token = new_uuid()
+        if single_token_per_session and session_id:
+            existing = self.queries.reservations_by_session(session_id).first()
+            token = existing and existing.token or new_uuid()
+        else:
+            token = new_uuid()
+
         reservations = []
 
         # groups are reserved by group-identifier - so all members of a group

@@ -362,6 +362,51 @@ def test_reserve(scheduler):
     assert len(allocation.free_slots()) == 2
 
 
+def test_reserve_single_token_per_session(scheduler):
+
+    session_id = new_uuid()
+
+    start = datetime(2011, 1, 1, 15)
+    end = datetime(2011, 1, 1, 16)
+
+    scheduler.allocate((start, end), quota=3)
+
+    token1 = scheduler.reserve(
+        email=u'test@example.org',
+        dates=(start, end),
+        session_id=session_id,
+        single_token_per_session=True
+    )
+
+    token2 = scheduler.reserve(
+        email=u'test@example.org',
+        dates=(start, end),
+        session_id=session_id,
+        single_token_per_session=True
+    )
+
+    assert token1 == token2
+
+    scheduler.remove_reservation(token1)
+
+    token3 = scheduler.reserve(
+        email=u'test@example.org',
+        dates=(start, end),
+        session_id=session_id,
+        single_token_per_session=True
+    )
+
+    token4 = scheduler.reserve(
+        email=u'test@example.org',
+        dates=(start, end),
+        session_id=session_id,
+        single_token_per_session=True
+    )
+
+    assert token1 != token3
+    assert token3 == token4
+
+
 def test_change_email(scheduler):
     # reserve multiple allocations
     dates = (
