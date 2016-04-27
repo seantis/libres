@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.2.1 (2016-04-27)
+~~~~~~~~~~~~~~~~~~~
+
 - Reservations added to the same session may not be duplicated anymore.
   [href]
 
