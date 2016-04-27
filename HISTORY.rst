@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+- Errors raised during reservation now have a 'reservation' attribute.
+  [href]
+
 0.2.0 (2016-04-26)
 ~~~~~~~~~~~~~~~~~~~
 

@@ -1051,10 +1051,13 @@ class Scheduler(ContextServicesMixin):
             assert reservation.session_id is None, """
                 Reservations must be confirmed before they can be approved.
             """
-
-            slots_to_reserve.extend(
-                self._approve_reservation_record(reservation)
-            )
+            try:
+                slots_to_reserve.extend(
+                    self._approve_reservation_record(reservation)
+                )
+            except errors.LibresError as e:
+                e.reservation = reservation
+                raise e
 
         events.on_reservations_approved(self.context, reservations)
 
