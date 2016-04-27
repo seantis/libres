@@ -366,21 +366,24 @@ def test_reserve_single_token_per_session(scheduler):
 
     session_id = new_uuid()
 
-    start = datetime(2011, 1, 1, 15)
-    end = datetime(2011, 1, 1, 16)
-
-    scheduler.allocate((start, end), quota=3)
+    a1, a2 = scheduler.allocate(
+        dates=(
+            datetime(2011, 1, 1, 15), datetime(2011, 1, 1, 16),
+            datetime(2011, 1, 2, 15), datetime(2011, 1, 2, 16)
+        ),
+        quota=1
+    )
 
     token1 = scheduler.reserve(
         email=u'test@example.org',
-        dates=(start, end),
+        dates=(a1.start, a1.end),
         session_id=session_id,
         single_token_per_session=True
     )
 
     token2 = scheduler.reserve(
         email=u'test@example.org',
-        dates=(start, end),
+        dates=(a2.start, a2.end),
         session_id=session_id,
         single_token_per_session=True
     )
@@ -391,14 +394,14 @@ def test_reserve_single_token_per_session(scheduler):
 
     token3 = scheduler.reserve(
         email=u'test@example.org',
-        dates=(start, end),
+        dates=(a1.start, a1.end),
         session_id=session_id,
         single_token_per_session=True
     )
 
     token4 = scheduler.reserve(
         email=u'test@example.org',
-        dates=(start, end),
+        dates=(a2.start, a2.end),
         session_id=session_id,
         single_token_per_session=True
     )

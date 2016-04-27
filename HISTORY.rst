@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+- Reservations added to the same session may not be duplicated anymore.
+  [href]
+
 - Errors raised during reservation now have a 'reservation' attribute.
   [href]
 

@@ -2,7 +2,9 @@ import pytest
 
 from datetime import datetime, timedelta
 from libres.db.models import Reservation
+from libres.modules.errors import OverlappingReservationError
 from sedate import standardize_date
+from uuid import uuid4
 
 
 def test_reservation_title():
@@ -53,3 +55,36 @@ def test_group_reservation_timespans(scheduler):
     assert timespans[1].start == standardize_date(dates[1][0], 'Europe/Zurich')
     assert timespans[1].end == standardize_date(dates[1][1], 'Europe/Zurich')\
         - timedelta(microseconds=1)
+
+
+def test_overlapping_reservations(scheduler):
+    start = datetime(2015, 2, 5, 15)
+    end = datetime(2015, 2, 5, 16)
+
+    scheduler.allocate(dates=(start, end))
+
+    # overlapping reservations are only prohibited on a per-session base
+    scheduler.reserve(
+        email='test@example.org',
+        dates=(start, end),
+        session_id=uuid4()
+    )
+    scheduler.reserve(
+        email='test@example.org',
+        dates=(start, end),
+        session_id=uuid4()
+    )
+
+    session_id = uuid4()
+    scheduler.reserve(
+        email='test@example.org',
+        dates=(start, end),
+        session_id=session_id
+    )
+
+    with pytest.raises(OverlappingReservationError):
+        scheduler.reserve(
+            email='test@example.org',
+            dates=(start, end),
+            session_id=session_id
+        )

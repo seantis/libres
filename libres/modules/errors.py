@@ -90,6 +90,10 @@ class OverlappingAllocationError(LibresError):
         self.existing = existing
 
 
+class OverlappingReservationError(LibresError):
+    pass
+
+
 class AffectedReservationError(LibresError):
 
     def __init__(self, existing):

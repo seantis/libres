@@ -985,6 +985,19 @@ class Scheduler(ContextServicesMixin):
         if not reservations:
             raise errors.InvalidReservationError
 
+        # have a very simple overlap check for reservations, it's not important
+        # that this catches *all* possible problems - that's being handled
+        # by the reservation slots - but it should stop us from adding the same
+        # reservation twice on a single session
+        if session_id:
+            found = self.queries.reservations_by_session(session_id)
+            found = found.with_entities(Reservation.target, Reservation.start)
+            found = set(found.all())
+
+            for reservation in reservations:
+                if (reservation.target, reservation.start) in found:
+                    raise errors.OverlappingReservationError
+
         for reservation in reservations:
             self.session.add(reservation)
 
