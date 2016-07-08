@@ -88,3 +88,6 @@ class ReservedSlot(TimestampMixin, ORMBase):
     def __eq__(self, other):
         return self.start == other.start and \
             str(self.resource) == str(other.resource)
+
+    def __hash__(self):
+        return id(self)
