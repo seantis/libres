@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.2.2 (2016-07-08)
+~~~~~~~~~~~~~~~~~~~
+
 - Ensures that all models are hashable to avoid problems with certain
   SQLAlchemy extensions/plugins.
   [href]
