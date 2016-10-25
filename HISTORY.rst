@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.2.3 (2016-10-25)
+~~~~~~~~~~~~~~~~~~~
+
 - Small performance improvements when dealing with many allocations.
   [href]
 
