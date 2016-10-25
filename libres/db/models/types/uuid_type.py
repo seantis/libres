@@ -43,4 +43,7 @@ class UUID(TypeDecorator):
 
     def process_result_value(self, value, dialect):
         if value is not None:
-            return SoftUUID(value)
+            # Postgres always returns the uuid in the same format, so we
+            # can turn it into an int immediately, avoiding some checks
+            # and extra code run by UUID
+            return SoftUUID(int=int(value.replace('-', ''), 16))

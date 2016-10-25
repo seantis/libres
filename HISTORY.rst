@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+- Small performance improvements when dealing with many allocations.
+  [href]
+
 0.2.2 (2016-07-08)
 ~~~~~~~~~~~~~~~~~~~
 

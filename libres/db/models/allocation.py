@@ -23,6 +23,7 @@ from libres.db.models import ORMBase
 from libres.db.models.types import UUID, UTCDateTime, JSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
+from sqlalchemy.ext.hybrid import hybrid_property
 
 
 class Allocation(TimestampMixin, ORMBase, OtherModels):
@@ -273,6 +274,19 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         else:
             yield self.start, self.end
 
+    def count_slots(self, start=None, end=None):
+        """ Returns the number of slots which exist with this timespan.
+        Reserved or free.
+
+        """
+        if not self.partly_available:
+            return 1
+
+        start, end = self.align_dates(start, end)
+        seconds = (end + timedelta(microseconds=1) - start).total_seconds()
+
+        return seconds // (self.raster * 60)
+
     def is_available(self, start=None, end=None):
         """ Returns true if the given daterange is completely available. """
 
@@ -280,8 +294,8 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             start, end = self.start, self.end
 
         assert self.overlaps(start, end)
+        reserved = {slot.start for slot in self.reserved_slots}
 
-        reserved = [slot.start for slot in self.reserved_slots]
         for start, end in self.all_slots(start, end):
             if start in reserved:
                 return False
@@ -351,20 +365,16 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def availability(self):
         """Returns the availability in percent."""
 
-        if self.partly_available:
-            total = sum(1 for s in self.all_slots())
-        else:
-            total = 1
+        total = self.count_slots()
+        used = len(self.reserved_slots)
 
-        count = len(self.reserved_slots)
-
-        if total == count:
+        if total == used:
             return 0.0
 
-        if count == 0:
+        if used == 0:
             return 100.0
 
-        return 100.0 - (float(count) / float(total) * 100.0)
+        return 100.0 - (float(used) / float(total) * 100.0)
 
     @property
     def in_group(self):
@@ -456,26 +466,27 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         if (len(self.reserved_slots) == 0):
             return [(100.0, False)]
 
-        reserved = [r.start for r in self.reserved_slots]
+        reserved = {r.start for r in self.reserved_slots}
 
         # Get the percentage one slot represents
-        slots = list(self.all_slots())
+        slots = tuple(s[0] for s in self.all_slots())
         step = 100.0 / float(len(slots))
 
         # Create an entry for each slot with either True or False
-        pieces = [s[0] in reserved for s in slots]
+        pieces = tuple(s in reserved for s in slots)
 
         # Group by the true/false values in the pieces and sum up the
         # percentage
         partitions = []
+        total = 0
+
         for flag, group in groupby(pieces, key=lambda p: p):
-            percentage = len(list(group)) * step
+            percentage = sum(1 for item in group) * step
             partitions.append([percentage, flag])
+            total += percentage
 
         # Make sure to get rid of floating point rounding errors
-        total = sum([p[0] for p in partitions])
         diff = 100.0 - total
-
         partitions[-1:][0][0] -= diff
 
         return partitions
@@ -496,7 +507,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         return object_session(self) is None and not has_identity(self)
 
-    @property
+    @hybrid_property
     def is_master(self):
         """True if the allocation is a master allocation."""
 
