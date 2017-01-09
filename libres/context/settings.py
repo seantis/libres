@@ -30,7 +30,9 @@ def set_default_settings(context):
     for name, (value, help) in _default.items():
         context.set(name, value)
 
+
 doc = []
+
 
 for name, (value, help) in _default.items():
     reference = '.. _{name}:\n'.format(name=name)
