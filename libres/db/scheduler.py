@@ -866,13 +866,14 @@ class Scheduler(ContextServicesMixin):
             dates = self.allocation_dates_by_group(group)
 
         dates = self._prepare_dates(dates)
+        timezone = self.timezone
 
         # First, the request is checked for saneness. If any requested
         # date cannot be reserved the request as a whole fails.
         for start, end in dates:
 
             # are the parameters valid?
-            if abs((end - start).days) >= 1:
+            if not utils.is_valid_reservation_length(start, end, timezone):
                 raise errors.ReservationTooLong
 
             if start > end or (end - start).seconds < 5 * 60:

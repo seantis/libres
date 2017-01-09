@@ -1,3 +1,4 @@
+import sedate
 import sys
 
 from collections import Iterable
@@ -36,3 +37,18 @@ def pairs(l):
     """
     l = list(flatten(l))
     return zip(*[l[x::2] for x in (0, 1)])
+
+
+def is_valid_reservation_length(start, end, timezone):
+    start = sedate.standardize_date(start, timezone)
+    end = sedate.standardize_date(end, timezone)
+
+    hours = (end - start).total_seconds() // 3600
+
+    if hours < 24:
+        return True
+
+    if sedate.is_whole_day(start, end, timezone) and hours <= 25:
+        return True
+
+    return False
