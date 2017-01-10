@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.2.4 (2017-01-10)
+~~~~~~~~~~~~~~~~~~~
+
 - Fixes reservation length check not working on DST days.
   [href]
 
