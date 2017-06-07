@@ -1,6 +1,10 @@
 Changelog
 ---------
 
+- Approved reservations may have session ids again, this restores backwards
+  compatibiility with seantis.reservation.
+  [href]
+
 0.3.0 (2017-06-07)
 ~~~~~~~~~~~~~~~~~~~
 

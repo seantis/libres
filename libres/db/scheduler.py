@@ -1062,9 +1062,6 @@ class Scheduler(ContextServicesMixin):
         reservations = self.reservations_by_token(token).all()
 
         for reservation in reservations:
-            assert reservation.session_id is None, """
-                Reservations must be confirmed before they can be approved.
-            """
             try:
                 slots_to_reserve.extend(
                     self._approve_reservation_record(reservation)
