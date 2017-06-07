@@ -114,7 +114,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def copy(self):
         """ Creates a new copy of this allocation. """
-        allocation = Allocation()
+        allocation = self.__class__()
         allocation.resource = self.resource
         allocation.mirror_of = self.mirror_of
         allocation.group = self.group

@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+- Adds the ability to define the allocation/reservation class used by the
+  scheduler.
+
 0.3.1 (2017-06-07)
 ~~~~~~~~~~~~~~~~~~~
 

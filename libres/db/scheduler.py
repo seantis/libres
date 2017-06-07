@@ -26,7 +26,8 @@ class Scheduler(ContextServicesMixin):
     context to create reservations. It is the main part of the API.
     """
 
-    def __init__(self, context, name, timezone):
+    def __init__(self, context, name, timezone,
+                 allocation_cls=Allocation, reservation_cls=Reservation):
         """ Initializeds a new Scheduler instance.
 
         :context:
@@ -60,6 +61,9 @@ class Scheduler(ContextServicesMixin):
 
         self.name = name
         self.timezone = timezone
+
+        self.allocation_cls = allocation_cls
+        self.reservation_cls = reservation_cls
 
     def clone(self):
         """ Clones the scheduler. The result will be a new scheduler using the
@@ -388,7 +392,7 @@ class Scheduler(ContextServicesMixin):
         # Write the master allocations
         allocations = []
         for start, end in dates:
-            allocation = Allocation()
+            allocation = self.allocation_cls()
             allocation.raster = raster
             allocation.start = start
             allocation.end = end
@@ -611,7 +615,7 @@ class Scheduler(ContextServicesMixin):
         if new_end < new_start:
             raise errors.InvalidAllocationError
 
-        new = Allocation(
+        new = self.allocation_cls(
             start=new_start,
             end=new_end,
             raster=master.raster,
@@ -925,7 +929,7 @@ class Scheduler(ContextServicesMixin):
         # implicitly by the allocation
         def new_reservations_by_group(group):
             if group:
-                reservation = Reservation()
+                reservation = self.reservation_cls()
                 reservation.token = token
                 reservation.target = group
                 reservation.status = u'pending'
@@ -959,7 +963,7 @@ class Scheduler(ContextServicesMixin):
                         for r in new_reservations_by_group(allocation.group):
                             yield r
                     else:
-                        reservation = Reservation()
+                        reservation = self.reservation_cls()
                         reservation.token = token
                         reservation.start, reservation.end\
                             = rasterizer.rasterize_span(
