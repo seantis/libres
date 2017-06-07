@@ -57,6 +57,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     #: see :class:`.models.Allocation` for more information
     resource = Column(UUID(), nullable=False)
 
+    #: the polymorphic type of the allocation
+    type = Column(types.Text(), nullable=True)
+
     #: resource of which this allocation is a mirror. If the mirror_of
     #: attribute equals the resource, this is a real resource
     #: see :class:`.models.Allocation` for more information
@@ -97,6 +100,11 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         Index('mirror_resource_ix', 'mirror_of', 'resource'),
         UniqueConstraint('resource', '_start', name='resource_start_ix')
     )
+
+    __mapper_args__ = {
+        'polymorphic_identity': None,
+        'polymorphic_on': type
+    }
 
     def __eq__(self, other):
         return self.resource == other.resource and self._start == other._start

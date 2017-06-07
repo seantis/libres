@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+- Enables polymorphy on reservations and allocations.
+  [href]
+
 0.2.4 (2017-01-10)
 ~~~~~~~~~~~~~~~~~~~
 

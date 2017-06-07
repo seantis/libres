@@ -47,6 +47,11 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         nullable=False
     )
 
+    type = Column(
+        types.Text(),
+        nullable=True
+    )
+
     resource = Column(
         UUID(),
         nullable=False
@@ -96,6 +101,11 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
     __table_args__ = (
         Index('target_status_ix', 'status', 'target', 'id'),
     )
+
+    __mapper_args__ = {
+        'polymorphic_identity': None,
+        'polymorphic_on': type
+    }
 
     def _target_allocations(self):
         """ Returns the allocations this reservation is targeting. This should
