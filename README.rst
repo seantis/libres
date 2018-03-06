@@ -17,7 +17,7 @@ and requires Postgresql 9.1.
   :target: https://coveralls.io/r/seantis/libres
   :alt:    coveralls.io coverage
 
-.. image:: https://pypip.in/v/libres/badge.png
+.. image:: https://img.shields.io/pypi/v/libres.svg
     :target: https://pypi.python.org/pypi/libres
     :alt: Latest PyPI release
 
