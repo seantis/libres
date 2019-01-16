@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+- Adds the ability to skip overlapping allocations.
+  [href]
+
 0.4.0 (2017-06-16)
 ~~~~~~~~~~~~~~~~~~~
 

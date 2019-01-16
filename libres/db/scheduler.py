@@ -252,6 +252,7 @@ class Scheduler(ContextServicesMixin):
         grouped=False,
         data=None,
         approve_manually=False,
+        skip_overlapping=False,
     ):
         """ Allocates a spot in the sedate.
 
@@ -352,6 +353,12 @@ class Scheduler(ContextServicesMixin):
             be removed in the future**. We strongly encourage you to not
             use this feature and to just keep the default (which is False).
 
+        :skip_overlapping:
+            If true, dates which overlap existing allocations are skipped
+            instead of causing an exception.
+
+            Only works if not grouped.
+
         """
         dates = self._prepare_dates(dates)
 
@@ -361,6 +368,10 @@ class Scheduler(ContextServicesMixin):
         # This is mostly for historic reasons - it's unclear if the current
         # code could really handle it..
         if partly_available and grouped:
+            raise errors.InvalidAllocationError
+
+        # Groups are all or nothing affairs
+        if skip_overlapping and grouped:
             raise errors.InvalidAllocationError
 
         # the whole day option results in the dates being aligned to
@@ -383,15 +394,23 @@ class Scheduler(ContextServicesMixin):
                 raise errors.InvalidAllocationError
 
         # Make sure that this span does not overlap another master
+        skipped = set()
+
         for start, end in rasterized_dates:
             existing = self.allocations_in_range(start, end).first()
 
-            if existing:
+            if existing and not skip_overlapping:
                 raise errors.OverlappingAllocationError(start, end, existing)
+            elif existing and skip_overlapping:
+                skipped.add((start, end))
 
         # Write the master allocations
         allocations = []
         for start, end in dates:
+
+            if (start, end) in skipped:
+                continue
+
             allocation = self.allocation_cls()
             allocation.raster = raster
             allocation.start = start
