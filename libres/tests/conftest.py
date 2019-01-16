@@ -24,12 +24,12 @@ def scheduler(request, dsn):
         del getattr(events, event)[:]
 
     if 'scheduler_context' in request.funcargnames:
-        context = request.getfuncargvalue('scheduler_context')
+        context = request.getfixturevalue('scheduler_context')
     else:
         context = None
 
     if 'scheduler_name' in request.funcargnames:
-        name = request.getfuncargvalue('scheduler_context')
+        name = request.getfixturevalue('scheduler_context')
     else:
         name = None
 
