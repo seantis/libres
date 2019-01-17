@@ -67,7 +67,7 @@ def allocation_add():
                 'message': 'This day is already fully allocated.'
             }
         )
-    except:
+    except Exception:
         scheduler.rollback()
         raise
 
@@ -96,7 +96,7 @@ def allocation_reserve():
                 'message': 'The given allocation is allready fully reserved.'
             }
         )
-    except:
+    except Exception:
         scheduler.rollback()
         raise
 

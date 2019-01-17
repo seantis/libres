@@ -35,8 +35,8 @@ def pairs(l):
     http://opensourcehacker.com/2011/02/23/
     tuplifying-a-list-or-pairs-in-python/
     """
-    l = list(flatten(l))
-    return zip(*[l[x::2] for x in (0, 1)])
+    flat = list(flatten(l))
+    return zip(*[flat[x::2] for x in (0, 1)])
 
 
 def is_valid_reservation_length(start, end, timezone):
