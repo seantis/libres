@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.5.1 (2019-01-23)
+~~~~~~~~~~~~~~~~~~~
+
 - Fixes overlapping allocations not being skipped in all cases.
   [href]
 
