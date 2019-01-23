@@ -408,7 +408,7 @@ class Scheduler(ContextServicesMixin):
         allocations = []
         for start, end in dates:
 
-            if (start, end) in skipped:
+            if rasterizer.rasterize_span(start, end, raster) in skipped:
                 continue
 
             allocation = self.allocation_cls()
