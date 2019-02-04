@@ -48,26 +48,30 @@ class SessionProvider(StoppableService):
         self.engine.dispose()
 
     def get_postgres_version(self, dsn):
-        """ Returns the postgres version in a tuple with the first value being
-        the major version, the second being the minor version.
+        """ Returns the postgres version as a tuple (string, integer).
 
         Uses it's own connection to be independent from any session.
 
         """
         assert 'postgres' in dsn, "Not a postgres database"
 
-        engine = create_engine(dsn)
-        version = engine.execute('select version()').fetchone()[0]
-        engine.dispose()
+        query = """
+            SELECT current_setting('server_version'),
+                   current_setting('server_version_num')
+        """
 
-        version = re.findall('PostgreSQL (.*?) on', version)[0]
-        return [int(fragment) for fragment in version.split('.')][:2]
+        engine = create_engine(dsn)
+
+        try:
+            version, number = engine.execute(query).first()
+            return version, int(number)
+        finally:
+            engine.dispose()
 
     def assert_valid_postgres_version(self, dsn):
-        major, minor = self.get_postgres_version(dsn)
+        v, n = self.get_postgres_version(dsn)
 
-        assert (major >= 9 and minor >= 1) or (major >= 10), \
-            "PostgreSQL 9.1+ is required. Your version is {}.{}".format(
-                major, minor)
+        if n < 90100:
+            raise RuntimeError("PostgreSQL 9.1+ is requied, got {}".format(v))
 
         return dsn

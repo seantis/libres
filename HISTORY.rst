@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+- Changes PostgreSQL version check to be distribution-independent.
+  [href]
+
 0.5.1 (2019-01-23)
 ~~~~~~~~~~~~~~~~~~~
 
