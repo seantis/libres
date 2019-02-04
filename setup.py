@@ -40,7 +40,11 @@ setup(
             'mock',
             'pytest',
             'pytest-cov',
-            'testing.postgresql'
+            'testing.postgresql',
+
+            # required by testing.postgresql, doesn't support Python 2.7 in
+            # versions after 1.12.4
+            'pg8000<=1.12.4'
         ],
     ),
     classifiers=[
