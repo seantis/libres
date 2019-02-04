@@ -1,5 +1,3 @@
-import re
-
 from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.orm import scoped_session, sessionmaker
