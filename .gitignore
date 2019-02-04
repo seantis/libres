@@ -8,3 +8,4 @@ dist
 test.dsn
 example.dsn
 .cache
+venv
