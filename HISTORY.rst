@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.5.2 (2019-11-11)
+~~~~~~~~~~~~~~~~~~~
+
 - Adds Python 3.8 compatibility.
   [href]
 
