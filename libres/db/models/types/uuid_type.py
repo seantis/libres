@@ -18,7 +18,7 @@ class SoftUUID(uuid.UUID):
             return self.hex == other.replace('-', '').strip()
 
         if isinstance(other, uuid.UUID):
-            return self.__dict__ == other.__dict__
+            return self.int == other.int
 
         return False
 

@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+- Adds Python 3.8 compatibility.
+  [href]
+
 - Changes PostgreSQL version check to be distribution-independent.
   [href]
 
