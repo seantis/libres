@@ -29,7 +29,7 @@ setup(
     install_requires=[
         'cached_property >= 1.2.0',
         'python-dateutil',
-        'psycopg2',
+        'psycopg2-binary',
         'pytz',
         'sedate',
         'SQLAlchemy>=0.9',
