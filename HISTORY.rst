@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+---------
+
+- Fix collections deprecation warnings and fix tests
+  [dadadamotha]
+
 0.5.2 (2019-11-11)
 ~~~~~~~~~~~~~~~~~~~
 
