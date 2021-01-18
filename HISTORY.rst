@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.5.3 (2021-01-18)
+~~~~~~~~~~~~~~~~~~~
+
 - Fix collections deprecation warnings and fix tests
   [dadadamotha]
 
