@@ -16,7 +16,7 @@ def new_test_scheduler(dsn, context=None, name=None):
     return new_scheduler(context=context, name=name, timezone='Europe/Zurich')
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def scheduler(request, dsn):
 
     # clear the events before each test
@@ -45,7 +45,7 @@ def scheduler(request, dsn):
     scheduler.session_provider.stop_service()
 
 
-@pytest.yield_fixture(scope="session")
+@pytest.fixture(scope="session")
 def dsn():
     postgres = Postgresql()
 
