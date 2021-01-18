@@ -1,4 +1,5 @@
 import pytest
+from _pytest.fixtures import FixtureLookupError
 
 from libres import new_scheduler, registry
 from testing.postgresql import Postgresql
@@ -23,14 +24,14 @@ def scheduler(request, dsn):
     for event in (e for e in dir(events) if e.startswith('on_')):
         del getattr(events, event)[:]
 
-    if 'scheduler_context' in request.funcargnames:
+    try:
         context = request.getfixturevalue('scheduler_context')
-    else:
+    except FixtureLookupError:
         context = None
 
-    if 'scheduler_name' in request.funcargnames:
+    try:
         name = request.getfixturevalue('scheduler_context')
-    else:
+    except FixtureLookupError:
         name = None
 
     scheduler = new_test_scheduler(dsn, context, name)
