@@ -1,7 +1,10 @@
 import sedate
 import sys
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 
-from collections import Iterable
 from uuid import uuid5 as new_uuid_mirror
 
 
