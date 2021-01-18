@@ -1,8 +1,6 @@
 Changelog
 ---------
 
----------
-
 - Fix collections deprecation warnings and fix tests
   [dadadamotha]
 
