@@ -70,6 +70,6 @@ class SessionProvider(StoppableService):
         v, n = self.get_postgres_version(dsn)
 
         if n < 90100:
-            raise RuntimeError("PostgreSQL 9.1+ is requied, got {}".format(v))
+            raise RuntimeError("PostgreSQL 9.1+ is required, got {}".format(v))
 
         return dsn
