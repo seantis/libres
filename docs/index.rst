@@ -41,7 +41,7 @@ quite a bit easier. On the plus side this means that the code is battle tested.
 Goals
 =====
 
-**This project is currently in an alpha stadium**. We don't have a plan for the
+**This project is currently in an beta stadium**. We don't have a plan for the
 release just yet and we will be tweaking the API heavily.
 
 In the long run we obviously want the API to grow out of its historic roots
