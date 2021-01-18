@@ -13,13 +13,13 @@ def generate_uuids(uuid, quota):
     return [new_uuid_mirror(uuid, str(n)) for n in range(1, quota)]
 
 
-def flatten(l):
+def flatten(listlike):
     """Generator for flattening irregularly nested lists. 'Borrowed' from here:
 
     http://stackoverflow.com/questions/2158395/
     flatten-an-irregular-list-of-lists-in-python
     """
-    for el in l:
+    for el in listlike:
         if isinstance(el, Iterable) and not isinstance(el, basestring):
             for sub in flatten(el):
                 yield sub
@@ -27,7 +27,7 @@ def flatten(l):
             yield el
 
 
-def pairs(l):
+def pairs(listlike):
     """Takes any list and returns pairs:
     ((a,b),(c,d)) => ((a,b),(c,d))
     (a,b,c,d) => ((a,b),(c,d))
@@ -35,7 +35,7 @@ def pairs(l):
     http://opensourcehacker.com/2011/02/23/
     tuplifying-a-list-or-pairs-in-python/
     """
-    flat = list(flatten(l))
+    flat = list(flatten(listlike))
     return zip(*[flat[x::2] for x in (0, 1)])
 
 
