@@ -183,9 +183,7 @@ class Scheduler(ContextServicesMixin):
 
         allocations = self.managed_allocations()
         allocations = allocations.with_entities(Allocation.id)
-        allocations = allocations.filter(Allocation.group.in_(
-            groups.subquery()
-        ))
+        allocations = allocations.filter(Allocation.group.in_(groups))
 
         query = self.managed_allocations()
         query = query.join(ReservedSlot)
@@ -193,9 +191,7 @@ class Scheduler(ContextServicesMixin):
             ReservedSlot.reservation_token == token
         )
         query = query.filter(
-            ReservedSlot.allocation_id.in_(
-                allocations.subquery()
-            )
+            ReservedSlot.allocation_id.in_(allocations)
         )
         return query
 
@@ -777,16 +773,15 @@ class Scheduler(ContextServicesMixin):
         candidates = candidates.filter(Allocation._end <= end)
 
         # .. without the ones with slots
-        candidates = candidates.filter(
-            not_(Allocation.id.in_(slots.subquery())))
+        candidates = candidates.filter(not_(Allocation.id.in_(slots)))
 
         # .. without the ones with reservations
         candidates = candidates.filter(
-            not_(Allocation.group.in_(reservations.subquery())))
+            not_(Allocation.group.in_(reservations))
+        )
 
         # .. including only the groups fully inside the required scope
-        allocations = candidates.filter(
-            Allocation.group.in_(groups.subquery()))
+        allocations = candidates.filter(Allocation.group.in_(groups))
 
         return allocations.delete('fetch')
 
@@ -1166,7 +1161,7 @@ class Scheduler(ContextServicesMixin):
         groups = self.managed_allocations().with_entities(Allocation.group)
         groups = groups.filter(Allocation.partly_available == True)
 
-        query = query.filter(Reservation.target.in_(groups.subquery()))
+        query = query.filter(Reservation.target.in_(groups))
 
         if tokens:
             query = query.filter(Reservation.token.in_(tokens))
@@ -1491,18 +1486,14 @@ class Scheduler(ContextServicesMixin):
         else:
             ids = self.allocations_by_reservation(token, id)
             ids = ids.with_entities(Allocation.id)
-            return query.filter(
-                ReservedSlot.allocation_id.in_(ids.subquery())
-            )
+            return query.filter(ReservedSlot.allocation_id.in_(ids))
 
     def reservations_by_group(self, group):
         tokens = self.managed_reservations().with_entities(Reservation.token)
         tokens = tokens.filter(Reservation.target == group)
 
         return self.managed_reservations().filter(
-            Reservation.token.in_(
-                tokens.subquery()
-            )
+            Reservation.token.in_(tokens)
         )
 
     def reservations_by_allocation(self, allocation_id):
