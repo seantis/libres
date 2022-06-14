@@ -9,17 +9,17 @@ and requires Postgresql 9.1+.
 
 **This library is at an experimental stage and not yet suitable for production**
 
-.. image:: https://travis-ci.org/seantis/libres.svg?branch=master
-  :target: https://travis-ci.org/seantis/libres
-  :alt:    travis build status
+.. image:: https://github.com/seantis/libres/actions/workflows/python-tox.yaml/badge.svg
+  :target: https://github.com/seantis/libres/actions
+  :alt:    Tests
 
-.. image:: https://coveralls.io/repos/seantis/libres/badge.png
-  :target: https://coveralls.io/r/seantis/libres
-  :alt:    coveralls.io coverage
+.. image:: https://codecov.io/gh/seantis/libres/branch/master/graph/badge.svg?token=2WZfY5HwdE
+  :target: https://codecov.io/gh/seantis/libres
+  :alt:    Coverage
 
 .. image:: https://img.shields.io/pypi/v/libres.svg
-    :target: https://pypi.python.org/pypi/libres
-    :alt: Latest PyPI release
+  :target: https://pypi.python.org/pypi/libres
+  :alt:    Release
 
 .. < package description
 
