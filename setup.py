@@ -39,7 +39,7 @@ setup(
             'jsonpickle',
             'mock',
             'pytest',
-            'pytest-cov',
+            'pytest-codecov',
             'testing.postgresql',
 
             # required by testing.postgresql, doesn't support Python 2.7 in
