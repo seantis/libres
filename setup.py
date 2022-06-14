@@ -36,15 +36,12 @@ setup(
     ],
     extras_require=dict(
         test=[
+            'GitPython',
             'jsonpickle',
             'mock',
             'pytest',
             'pytest-codecov',
             'testing.postgresql',
-
-            # required by testing.postgresql, doesn't support Python 2.7 in
-            # versions after 1.12.4
-            'pg8000<=1.12.4'
         ],
     ),
     classifiers=[
