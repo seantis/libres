@@ -1,6 +1,6 @@
 .DS_Store
 .tox
-.coverage
+.coverage*
 *.pyc
 *.egg-info
 build
