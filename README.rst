@@ -80,5 +80,6 @@ Making a new Release
 Make sure all changes are in the HISTORY.rst, then bump the version::
 
     bumpversion major|minor|patch
+    git push && git push --tags
 
 After this, create a new release on Github.
