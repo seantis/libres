@@ -1,10 +1,16 @@
 Changelog
 ---------
 
+- Switches from Travis to GitHub Workflows.
+  [msom]
+
+- Resolves SQLAlchemy 1.4 warnings.
+  [msom]
+
 0.5.3 (2021-01-18)
 ~~~~~~~~~~~~~~~~~~~
 
-- Fix collections deprecation warnings and fix tests
+- Fix collections deprecation warnings and fix tests.
   [dadadamotha]
 
 0.5.2 (2019-11-11)
@@ -122,7 +128,7 @@ Changelog
 ~~~~~~~~~~~~~~~~~~
 
 - BREAKING CHANGE: This release switches to a single SERIALIZED connections.
-  
+
   Previously it used a READ COMMITED and a SERIALIZED connection in parallel,
   switching to the READ COMMITED connection for readonly queries and using
   the SERIALIZED connection for write queries.
@@ -137,7 +143,7 @@ Changelog
 0.0.2 (2015-03-16)
 ~~~~~~~~~~~~~~~~~~
 
-- Fix being unable to delete an allocation with a quota > 1. 
+- Fix being unable to delete an allocation with a quota > 1.
   See issue #8.
   [href]
 
