@@ -269,7 +269,7 @@ class Queries(ContextServicesMixin):
             slots = self.session.query(ReservedSlot)
             slots = slots.filter(
                 ReservedSlot.reservation_token.in_(
-                    reservations.with_entities(Reservation.token).subquery()
+                    reservations.with_entities(Reservation.token)
                 )
             )
 

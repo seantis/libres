@@ -36,6 +36,7 @@ class UUID(TypeDecorator):
 
     """
     impl = postgresql.UUID
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):
         if value is not None:
