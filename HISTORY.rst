@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.5.4 (2022-06-15)
+~~~~~~~~~~~~~~~~~~~
+
 - Switches from Travis to GitHub Workflows.
   [msom]
 
