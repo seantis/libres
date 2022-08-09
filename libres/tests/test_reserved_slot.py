@@ -21,14 +21,14 @@ def test_add_reserved_slot(scheduler):
     slot.start = allocation.start
     slot.end = allocation.end
     slot.allocation = allocation
-    slot.reservation = reservation
+    slot.reservation_token = reservation
 
     # Ensure that the same slot cannot be doubly used
     another = ReservedSlot(resource=allocation.resource)
     another.start = allocation.start
     another.end = allocation.end
     another.allocation = allocation
-    another.reservation = reservation
+    another.reservation_token = reservation
 
     scheduler.session.add(allocation)
     scheduler.session.add(slot)

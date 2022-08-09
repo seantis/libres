@@ -2,7 +2,7 @@ Libres
 ======
 
 Libres is a reservations management library to reserve things like tables at
-a restaurant or tickets at an event. It works with Python 2.7 and Python 3.5+
+a restaurant or tickets at an event. It works with Python 3.7+
 and requires Postgresql 9.1+.
 
 `Documentation <http://libres.readthedocs.org/en/latest/>`_ | `Source <http://github.com/seantis/libres/>`_ | `Bugs <http://github.com/seantis/libres/issues>`_
@@ -79,7 +79,7 @@ Making a new Release
 
 Make sure all changes are in the HISTORY.rst, then bump the version::
 
-    bumpversion major|minor|patch
+    bump2version major|minor|patch
     git push && git push --tags
 
 After this, create a new release on Github.

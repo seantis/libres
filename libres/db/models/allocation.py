@@ -310,7 +310,8 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         return True
 
-    def limit_timespan(self, start, end, timezone=None):
+    def limit_timespan(self, start, end, timezone=None, is_dst=False,
+                       raise_non_existent=False, raise_ambiguous=False):
         """ Takes the given timespan and moves the start/end date to
         the closest reservable slot. So if 10:00 - 11:00 is requested it will
 
@@ -323,6 +324,11 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         The resulting times are combined with the allocations start/end date
         to form a datetime. (time in, datetime out -> maybe not the best idea)
 
+        For timezones with DST you may use ``is_dst``, ``raise_non_existent``
+        and ``raise_ambiguous`` to deal with DST <-> ST transitions with the
+        way you choose. It is recommended to at least raise
+        ``pytz.NonExistentTimeError`` to avoid timespans that run backwards.
+
         """
         timezone = timezone or self.timezone
 
@@ -331,7 +337,12 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             assert isinstance(end, time)
 
             s, e = sedate.get_date_range(
-                self.display_start(timezone), start, end
+                self.display_start(timezone),
+                start,
+                end,
+                is_dst=is_dst,
+                raise_non_existent=raise_non_existent,
+                raise_ambiguous=raise_ambiguous
             )
 
             if self.display_end(timezone) < e:
@@ -373,6 +384,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def availability(self):
         """Returns the availability in percent."""
 
+        # TODO: We either need a `normalized_availability`
+        #       or normalize this one to reflect what is
+        #       displayed through the availability_partitions
         total = self.count_slots()
         used = len(self.reserved_slots)
 
@@ -448,7 +462,70 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         return True
 
-    def availability_partitions(self):
+    def normalized_slots(self):
+        """Most of the times this will return the same thing as all_slots
+        however for DST timezones it will ensure the transitions days with
+        23 and 25 hours respectively still return 24 hours worth of slots.
+        This is achieved by inserting imaginary slots for the non-existent
+        hour or removing an hours worth of the ambiguous slots (skipping DST)
+
+        The non-existent time slots will all be a tuple of ``None, None``
+
+        Since frontends usually won't display the 23/25 hours days differently
+        users usually cannot pick between the two ambiguous times anyways and
+        the non-existent hour cannot be reserved either way.
+
+        For non-partly available allocations it will always return a single
+        slot for the entire duration, just the same as ``:func:all_slots``
+        """
+        if not self.partly_available:
+            yield from self.all_slots()
+            return
+
+        start = self.display_start()
+        end = self.display_end()
+
+        # we don't need to normalize
+        if start.tzname() == end.tzname():
+            yield from self.all_slots()
+            return
+
+        naive_start = start.replace(tzinfo=None)
+        naive_end = end.replace(tzinfo=None)
+        real_delta = (end - start)
+        display_delta = (naive_end - naive_start)
+
+        # the number of slots to skip / insert
+        raster = MIN_RASTER if self.raster is None else self.raster
+        num_slots = 60 // raster
+
+        if display_delta < real_delta:
+            # 25 hour day, we need to skip the ambiguous hour
+            ambiguous_start = start.replace(
+                hour=2, minute=0, second=0, microsecond=0)
+
+            skipped = 0
+            for s, e in self.all_slots():
+                # skip num_slots slots from the first start thats
+                # on or after the ambiguous start time
+                if skipped < num_slots and s >= ambiguous_start:
+                    skipped += 1
+                    continue
+
+                yield s, e
+
+        else:
+            # 23 hour day, so we need to insert an imaginary hour
+            imaginary_start = start.replace(
+                hour=2, minute=0, second=0, microsecond=0)
+            for s, e in self.all_slots():
+                if s == imaginary_start:
+                    for _ in range(num_slots):
+                        # insert the imaginary slots
+                        yield None, None
+                yield s, e
+
+    def availability_partitions(self, normalize_dst=True):
         """Partitions the space between start and end into blocks of either
         free or reserved time. Each block has a percentage representing the
         space the block occupies compared to the size of the whole allocation.
@@ -470,18 +547,39 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         frontend, indicating to the user which parts of an allocation are
         reserved.
 
+        Since usually frontends won't display days with a DST transition in a
+        different way, by default this function will normalize the 23/25 hour
+        days to a 24 hour day.
+
+        If you wish to instead get the "real" partitions for the 23/25 hour day
+        you may pass ``normalize_dst=False``
+
         """
-        if (len(self.reserved_slots) == 0):
+
+        if normalize_dst and self.partly_available:
+            if not self.reserved_slots:
+                # we potentially duplicate some of the work of normalized_slots
+                # so we can early out in the most common case
+                start = self.display_start()
+                end = self.display_end()
+                if start.tzname() == end.tzname():
+                    return [(100.0, False)]
+            slots_iter = self.normalized_slots()
+
+        elif not self.reserved_slots:
             return [(100.0, False)]
 
+        else:
+            slots_iter = self.all_slots()
+
         reserved = {r.start for r in self.reserved_slots}
+        slots = tuple(s[0] for s in slots_iter)
 
         # Get the percentage one slot represents
-        slots = tuple(s[0] for s in self.all_slots())
         step = 100.0 / float(len(slots))
 
         # Create an entry for each slot with either True or False
-        pieces = tuple(s in reserved for s in slots)
+        pieces = tuple(s is None or s in reserved for s in slots)
 
         # Group by the true/false values in the pieces and sum up the
         # percentage
@@ -490,12 +588,14 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         for flag, group in groupby(pieces, key=lambda p: p):
             percentage = sum(1 for item in group) * step
-            partitions.append([percentage, flag])
+            partitions.append((percentage, flag))
             total += percentage
 
         # Make sure to get rid of floating point rounding errors
         diff = 100.0 - total
-        partitions[-1:][0][0] -= diff
+        if partitions:
+            percentage, flag = partitions[-1]
+            partitions[-1] = (percentage - diff, flag)
 
         return partitions
 

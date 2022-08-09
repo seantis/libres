@@ -1,7 +1,7 @@
 import pytest
 
 from datetime import datetime, time
-from libres.db.models import Allocation
+from libres.db.models import Allocation, ReservedSlot
 from libres.modules import errors
 from pytz import utc
 from sqlalchemy.exc import IntegrityError
@@ -113,7 +113,7 @@ def test_whole_day():
     allocation.start = datetime(2013, 1, 1, 15, 0, tzinfo=utc)
     allocation.end = datetime(2013, 1, 1, 0, 0, tzinfo=utc)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         allocation.whole_day
 
 
@@ -225,3 +225,175 @@ def test_limit_timespan():
         datetime(2014, 1, 1, 8, 30, tzinfo=utc),
         datetime(2014, 1, 2, 0, 0, tzinfo=utc)
     )
+
+
+def add_reservation(scheduler, allocation, start, end):
+    # small helper to reserve all the slots between start and end
+    reservation = new_uuid()
+    for s, e in allocation.all_slots():
+        if s < start:
+            continue
+        if s >= end or e > end:
+            break
+
+        slot = ReservedSlot(resource=allocation.resource)
+        slot.start = s
+        slot.end = e
+        slot.allocation = allocation
+        slot.reservation_token = reservation
+        scheduler.session.add(slot)
+    scheduler.session.flush()
+    scheduler.session.refresh(allocation)
+
+
+def test_availability_partitions(scheduler):
+    allocation = Allocation(
+        raster=15, resource=new_uuid(), partly_available=True,
+        timezone='Europe/Zurich'
+    )
+    allocation.start = datetime(2022, 9, 29, 22, tzinfo=utc)
+    allocation.end = datetime(2022, 9, 30, 1, 59, 59, 999999, tzinfo=utc)
+    allocation.group = new_uuid().hex
+    allocation.mirror_of = scheduler.resource
+    scheduler.session.add(allocation)
+    scheduler.session.flush()
+    assert allocation.availability_partitions() == [(100.0, False)]
+
+    add_reservation(
+        scheduler,
+        allocation,
+        datetime(2022, 9, 29, 23, tzinfo=utc),
+        datetime(2022, 9, 30, 0, tzinfo=utc),
+    )
+    # this is just a regular 24 hour day so we should get the same result
+    # either way
+    assert allocation.availability_partitions() == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
+    assert allocation.availability_partitions(normalize_dst=False) == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
+
+
+def test_availability_partitions_dst_to_st(scheduler):
+    allocation = Allocation(
+        raster=15, resource=new_uuid(), partly_available=True,
+        timezone='Europe/Zurich'
+    )
+    allocation.start = datetime(2022, 10, 29, 22, tzinfo=utc)
+    allocation.end = datetime(2022, 10, 30, 2, 59, 59, 999999, tzinfo=utc)
+    allocation.group = new_uuid().hex
+    allocation.mirror_of = scheduler.resource
+    scheduler.session.add(allocation)
+    scheduler.session.flush()
+    assert allocation.availability_partitions() == [(100.0, False)]
+
+    add_reservation(
+        scheduler,
+        allocation,
+        datetime(2022, 10, 29, 23, tzinfo=utc),
+        datetime(2022, 10, 30, 0, tzinfo=utc),
+    )
+    assert allocation.availability_partitions() == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
+    assert allocation.availability_partitions(normalize_dst=False) == [
+        (20.0, False),
+        (20.0, True),
+        (60.0, False),
+    ]
+
+    # if we add a reservation during the ambiguous time period we skipped
+    # it will not affect the partitions, which is not ideal, but it is the
+    # behaviour we picked, if we pass normalize_dst=False, then we should
+    # get different partitions however
+    add_reservation(
+        scheduler,
+        allocation,
+        datetime(2022, 10, 30, 0, tzinfo=utc),
+        datetime(2022, 10, 30, 1, tzinfo=utc),
+    )
+    assert allocation.availability_partitions() == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
+    assert allocation.availability_partitions(normalize_dst=False) == [
+        (20.0, False),
+        (40.0, True),
+        (40.0, False),
+    ]
+
+
+def test_availability_partitions_dst_to_st_during_ambiguous_time(scheduler):
+    allocation = Allocation(
+        raster=5, resource=new_uuid(), partly_available=True,
+        timezone='Europe/Zurich'
+    )
+    # our allocation starts during the ambigious time period we skip
+    allocation.start = datetime(2022, 10, 30, 0, 40, tzinfo=utc)
+    allocation.end = datetime(2022, 10, 30, 22, 59, 59, 999999, tzinfo=utc)
+    allocation.group = new_uuid().hex
+    allocation.mirror_of = scheduler.resource
+    scheduler.session.add(allocation)
+    scheduler.session.flush()
+    assert allocation.availability_partitions() == [(100.0, False)]
+
+    add_reservation(
+        scheduler,
+        allocation,
+        datetime(2022, 10, 30, 7, 0, tzinfo=utc),
+        datetime(2022, 10, 30, 12, 20, tzinfo=utc),
+    )
+    assert allocation.availability_partitions() == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
+
+
+def test_availability_partitions_st_to_dst(scheduler):
+    allocation = Allocation(
+        raster=15, resource=new_uuid(), partly_available=True,
+        timezone='Europe/Zurich'
+    )
+    allocation.start = datetime(2022, 3, 26, 23, tzinfo=utc)
+    allocation.end = datetime(2022, 3, 27, 2, 59, 59, 999999, tzinfo=utc)
+    allocation.group = new_uuid().hex
+    allocation.mirror_of = scheduler.resource
+    scheduler.session.add(allocation)
+    scheduler.session.flush()
+    assert allocation.availability_partitions() == [
+        (40.0, False),
+        (20.0, True),  # our imaginary reserved hour
+        (40.0, False),
+    ]
+    # if we don't normalize the missing hour doesn't get marked
+    assert allocation.availability_partitions(normalize_dst=False) == [
+        (100.0, False),
+    ]
+
+    add_reservation(
+        scheduler,
+        allocation,
+        datetime(2022, 3, 27, 1, tzinfo=utc),
+        datetime(2022, 3, 27, 2, tzinfo=utc),
+    )
+    assert allocation.availability_partitions() == [
+        (40.0, False),
+        (40.0, True),
+        (20.0, False),
+    ]
+    # if we don't normalize we should only get a 4 hour interval, so the
+    # partitions should be quarters instead of fifths
+    assert allocation.availability_partitions(normalize_dst=False) == [
+        (50.0, False),
+        (25.0, True),
+        (25.0, False),
+    ]

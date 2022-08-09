@@ -1,6 +1,20 @@
 Changelog
 ---------
 
+- Drops Python 3.6 support.
+  [Daverball]
+
+- Normalizes availability partitions on 23/25 hours to a 24 hour day
+  so that DST transition days can be rendered the same as regular days.
+
+  This can optionally be avoided by passing ``normalize_dst=False`` to
+  the function.
+  [Daverball]
+
+- Adds extra parameters to ``Allocation.limit_timespan`` that match
+  the new parameters added to ``sedate.get_date_range``.
+  [Daverball]
+
 0.5.4 (2022-06-15)
 ~~~~~~~~~~~~~~~~~~~
 
