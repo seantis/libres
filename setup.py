@@ -15,7 +15,7 @@ def get_long_description():
 
 setup(
     name='libres',
-    version='0.5.4',
+    version='0.6.0',
     url='http://github.com/seantis/libres/',
     license='BSD',
     author='Denis Krienbühl',

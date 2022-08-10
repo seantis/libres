@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.6.0 (2022-08-10)
+~~~~~~~~~~~~~~~~~~~
+
 - Drops Python 3.6 support.
   [Daverball]
 
