@@ -560,7 +560,7 @@ class Scheduler(ContextServicesMixin):
 
         """
         masters = [a for a in allocations if a.is_master]
-        assert(len(masters) == 1)
+        assert len(masters) == 1
 
         master = masters[0]
         allocations = dict(((a.resource, a) for a in allocations))
@@ -616,7 +616,7 @@ class Scheduler(ContextServicesMixin):
             Scheduler.__init__ -> timezone
         """
 
-        assert(group or master.group)
+        assert group or master.group
 
         # Simulate the new allocation
         new_start = new_start or master.start

@@ -1,0 +1,26 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.3.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '^(.bumpversion.cfg)$'
+      - id: mixed-line-ending
+      - id: check-merge-conflict
+      - id: check-ast
+      - id: debug-statements
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-markup
+    rev: v1.0.1
+    hooks:
+      - id: rst-linter
+        files: '^[A-Z]+\.rst$'
+  - repo: https://github.com/seantis/pre-commit-hooks
+    rev: v1.0.1
+    hooks:
+      - id: nocheckin
+        exclude: .pre-commit-config.yaml
+  - repo: https://github.com/PyCQA/flake8
+    rev: 5.0.4
+    hooks:
+      - id: flake8
+        files: '^(sedate/.*|tests/.*)\.py$'
+        arguments: --ignore=E712
