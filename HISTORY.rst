@@ -11,6 +11,10 @@ Changelog
   the function.
   [Daverball]
 
+- Adds ``Allocation.normalized_availability`` that reports the
+  availability in the same normalized way.
+  [Daverball]
+
 - Adds extra parameters to ``Allocation.limit_timespan`` that match
   the new parameters added to ``sedate.get_date_range``.
   [Daverball]

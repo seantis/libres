@@ -384,9 +384,6 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def availability(self):
         """Returns the availability in percent."""
 
-        # TODO: We either need a `normalized_availability`
-        #       or normalize this one to reflect what is
-        #       displayed through the availability_partitions
         total = self.count_slots()
         used = len(self.reserved_slots)
 
@@ -395,6 +392,58 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         if used == 0:
             return 100.0
+
+        return 100.0 - (float(used) / float(total) * 100.0)
+
+    @property
+    def normalized_availability(self):
+        """Most of the time this will be the same value as
+        ``availability``.
+
+        For timezones with daylight savings it will treat the transition
+        days with 23 and 25 hours respectively like a 24 hour day by either
+        adding an imaginary unavailable hour or skipping the first ambiguous
+        hour, that way the percentage will visually match what we return from
+        from ``:func:availability_partitions``.
+
+        """
+
+        # partly available allocations don't need to be normalized
+        if not self.partly_available:
+            return self.availability
+
+        start = self.display_start()
+        end = self.display_end()
+
+        # nothing to normalize if there was no transition
+        if start.tzname() == end.tzname():
+            return self.availability
+
+        real_delta = (end - start)
+        naive_delta = (end.replace(tzinfo=None) - start.replace(tzinfo=None))
+
+        # the normalized total slots correspond to the naive delta
+        total = naive_delta.total_seconds() // (self.raster * 60)
+        if real_delta > naive_delta:
+            # this is the most complicated case since we need to
+            # reduce the set of reserved slots by the hour we skipped
+            ambiguous_start = start.replace(
+                hour=2, minute=0, second=0, microsecond=0)
+            ambiguous_end = ambiguous_start.replace(hour=3)
+            used = sum(
+                1 for r in self.reserved_slots
+                if not ambiguous_start <= r.start < ambiguous_end
+            )
+        else:
+            used = len(self.reserved_slots)
+            # add one hour's worth of reserved slots
+            used += 60 // self.raster
+
+        if used == 0:
+            return 100.0
+
+        if total == used:
+            return 0.0
 
         return 100.0 - (float(used) / float(total) * 100.0)
 
@@ -496,9 +545,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         display_delta = (naive_end - naive_start)
 
         # the number of slots to skip / insert
-        raster = MIN_RASTER if self.raster is None else self.raster
-        num_slots = 60 // raster
-
+        num_slots = 60 // self.raster
         if display_delta < real_delta:
             # 25 hour day, we need to skip the ambiguous hour
             ambiguous_start = start.replace(

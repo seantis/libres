@@ -272,11 +272,13 @@ def test_availability_partitions(scheduler):
         (25.0, True),
         (50.0, False),
     ]
+    assert allocation.normalized_availability == 75.0
     assert allocation.availability_partitions(normalize_dst=False) == [
         (25.0, False),
         (25.0, True),
         (50.0, False),
     ]
+    assert allocation.availability == 75.0
 
 
 def test_availability_partitions_dst_to_st(scheduler):
@@ -303,11 +305,13 @@ def test_availability_partitions_dst_to_st(scheduler):
         (25.0, True),
         (50.0, False),
     ]
+    assert allocation.normalized_availability == 75.0
     assert allocation.availability_partitions(normalize_dst=False) == [
         (20.0, False),
         (20.0, True),
         (60.0, False),
     ]
+    assert allocation.availability == 80.0
 
     # if we add a reservation during the ambiguous time period we skipped
     # it will not affect the partitions, which is not ideal, but it is the
@@ -324,11 +328,13 @@ def test_availability_partitions_dst_to_st(scheduler):
         (25.0, True),
         (50.0, False),
     ]
+    assert allocation.normalized_availability == 75.0
     assert allocation.availability_partitions(normalize_dst=False) == [
         (20.0, False),
         (40.0, True),
         (40.0, False),
     ]
+    assert allocation.availability == 60.0
 
 
 def test_availability_partitions_dst_to_st_during_ambiguous_time(scheduler):
@@ -356,6 +362,7 @@ def test_availability_partitions_dst_to_st_during_ambiguous_time(scheduler):
         (25.0, True),
         (50.0, False),
     ]
+    assert allocation.normalized_availability == 75.0
 
 
 def test_availability_partitions_st_to_dst(scheduler):
@@ -374,10 +381,12 @@ def test_availability_partitions_st_to_dst(scheduler):
         (20.0, True),  # our imaginary reserved hour
         (40.0, False),
     ]
+    assert allocation.normalized_availability == 80.0
     # if we don't normalize the missing hour doesn't get marked
     assert allocation.availability_partitions(normalize_dst=False) == [
         (100.0, False),
     ]
+    assert allocation.availability == 100.0
 
     add_reservation(
         scheduler,
@@ -390,6 +399,7 @@ def test_availability_partitions_st_to_dst(scheduler):
         (40.0, True),
         (20.0, False),
     ]
+    assert allocation.normalized_availability == 60.0
     # if we don't normalize we should only get a 4 hour interval, so the
     # partitions should be quarters instead of fifths
     assert allocation.availability_partitions(normalize_dst=False) == [
@@ -397,3 +407,4 @@ def test_availability_partitions_st_to_dst(scheduler):
         (25.0, True),
         (25.0, False),
     ]
+    assert allocation.availability == 75.0
