@@ -32,7 +32,7 @@ setup(
         'psycopg2-binary',
         'pytz',
         'sedate >= 1.0.0',
-        'SQLAlchemy>=0.9',
+        'SQLAlchemy>=0.9,<2',
     ],
     extras_require=dict(
         test=[
