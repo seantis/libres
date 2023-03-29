@@ -1,6 +1,22 @@
 Changelog
 ---------
 
+0.6.1 (2023-03-29)
+~~~~~~~~~~~~~~~~~~~
+
+- Adds additional parameters to ``Scheduler.remove_unused allocations``
+  to filter the to be removed Allocations by weekday or
+  whether or not they belong to a group.
+  [Daverball]
+
+- Fixes bug in ``Scheduler.search_allocations``. It did not
+  align the days parameter properly to the timezone of the
+  Allocation/Scheduler.
+  [Daverball]
+
+- Pins SQLAlchemy to versions before 2.0
+  [Daverball]
+
 0.6.0 (2022-08-10)
 ~~~~~~~~~~~~~~~~~~~
 
