@@ -19,6 +19,15 @@ from uuid import uuid4 as new_uuid
 
 
 missing = object()
+DAYS_MAP = {
+    'mo': 0,
+    'tu': 1,
+    'we': 2,
+    'th': 3,
+    'fr': 4,
+    'sa': 5,
+    'su': 6
+}
 
 
 class Scheduler(ContextServicesMixin):
@@ -736,18 +745,42 @@ class Scheduler(ContextServicesMixin):
             if not allocation.is_transient:
                 self.session.delete(allocation)
 
-    def remove_unused_allocations(self, start, end):
+    def remove_unused_allocations(
+        self, start, end,
+        days=None, exclude_groups=False
+    ):
         """ Removes all allocations without reservations between start and
         end and returns the number of allocations that were deleted.
 
         Groups which are partially inside the daterange are not included.
 
+        :days:
+            List of days which should be considered, a subset of:
+            (['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'])
+
+            If left out or empty, all days are included.
+
+        :exclude_groups:
+            Whether or not grouped allocations should ever be removed
+
+            If days is set to a subset of a full week, groups will always
+            be excluded, regardless of what this parameter is set to.
         """
 
         start, end = self._prepare_range(
             sedate.as_datetime(start),
             sedate.as_datetime(end)
         )
+
+        if days:
+            # get the day from the map - if impossible take the verbatim value
+            # this allows for using strings or integers
+            days = {DAYS_MAP.get(day, day) for day in days}
+            if days.issuperset(DAYS_MAP.values()):
+                # if all days are allowed we just unset the filter
+                days = None
+
+            exclude_groups = True
 
         # all the slots
         slots = self.managed_reserved_slots()
@@ -760,12 +793,26 @@ class Scheduler(ContextServicesMixin):
         # all the groups which are fully inside the required scope
         groups = self.managed_allocations().with_entities(Allocation.group)
         groups = groups.group_by(Allocation.group)
-        groups = groups.having(
-            and_(
-                start <= func.min(Allocation._start),
-                func.max(Allocation._end) <= end
+        if exclude_groups:
+            # FIXME: For now we only allow ungrouped allocations
+            #        if a days filter is set, othewise we would
+            #        need to make this function far more complicated
+            #        or reuse the search function and make this
+            #        function generally a lot slower
+            groups = groups.having(
+                and_(
+                    func.count(Allocation.id) == 1,
+                    start <= func.min(Allocation._start),
+                    func.max(Allocation._end) <= end
+                )
             )
-        )
+        else:
+            groups = groups.having(
+                and_(
+                    start <= func.min(Allocation._start),
+                    func.max(Allocation._end) <= end
+                )
+            )
 
         # all allocations
         candidates = self.managed_allocations()
@@ -783,7 +830,20 @@ class Scheduler(ContextServicesMixin):
         # .. including only the groups fully inside the required scope
         allocations = candidates.filter(Allocation.group.in_(groups))
 
-        return allocations.delete('fetch')
+        if not days:
+            # we can just emit a simple DELETE query
+            return allocations.delete('fetch')
+
+        # we need to filter by weekday which we cannot easily do in SQL
+        # so we fetch first and delete the allocations that match
+        deleted = 0
+        for allocation in allocations:
+            if allocation.display_start().weekday() not in days:
+                continue
+
+            self.session.delete(allocation)
+            deleted += 1
+        return deleted
 
     def reserve(
         self,
@@ -1305,7 +1365,7 @@ class Scheduler(ContextServicesMixin):
 
             Any is the same as leaving the option out.
 
-        :include_groups:
+        :groups:
             'any' if all allocations should be included.
             'yes' if only group-allocations should be included.
             'no' if no group-allocations should be included.
@@ -1326,19 +1386,9 @@ class Scheduler(ContextServicesMixin):
         assert groups in ('yes', 'no', 'any')
 
         if days:
-            days_map = {
-                'mo': 0,
-                'tu': 1,
-                'we': 2,
-                'th': 3,
-                'fr': 4,
-                'sa': 5,
-                'su': 6
-            }
-
             # get the day from the map - if impossible take the verbatim value
             # this allows for using strings or integers
-            days = set(days_map.get(day, day) for day in days)
+            days = {DAYS_MAP.get(day, day) for day in days}
 
         query = self.allocations_in_range(start, end)
         query = query.order_by(Allocation._start)
@@ -1363,7 +1413,7 @@ class Scheduler(ContextServicesMixin):
                 continue
 
             if days:
-                if allocation.start.weekday() not in days:
+                if allocation.display_start().weekday() not in days:
                     continue
 
             if whole_day != 'any':

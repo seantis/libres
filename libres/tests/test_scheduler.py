@@ -1910,6 +1910,25 @@ def test_search_allocations(scheduler):
     assert len(scheduler.search_allocations(*daterange, minspots=3)) == 0
 
 
+def test_search_allocation_days_timezones(scheduler):
+    start = sedate.replace_timezone(
+        datetime(2023, 3, 26, 0, 0), 'Europe/Zurich')
+    end = sedate.replace_timezone(datetime(2023, 3, 26, 1, 0), 'Europe/Zurich')
+    daterange = (start, end)
+    maxrange = (sedate.mindatetime, sedate.maxdatetime)
+
+    # test matching
+    scheduler.allocate(daterange, quota_limit=2, quota=4)
+    scheduler.commit()
+
+    assert len(scheduler.search_allocations(*maxrange)) == 1
+    assert len(scheduler.search_allocations(*daterange)) == 1
+
+    # test days
+    assert len(scheduler.search_allocations(*daterange, days=['su'])) == 1
+    assert len(scheduler.search_allocations(*daterange, days=['mo'])) == 0
+
+
 def test_search_allocation_groups(scheduler):
     s1, e1 = datetime(2014, 8, 3, 13, 0), datetime(2014, 8, 3, 15, 0)
     s2, e2 = datetime(2014, 8, 4, 13, 0), datetime(2014, 8, 4, 15, 0)
@@ -2045,7 +2064,7 @@ def test_remove_unused_allocations(scheduler):
         (datetime(2017, 12, 3, 13, 0), datetime(2017, 12, 3, 15, 0)),
         (datetime(2017, 12, 4, 13, 0), datetime(2017, 12, 4, 15, 0))
     ]
-    scheduler.allocate(daterange)
+    scheduler.allocate(daterange, grouped=True)
     scheduler.commit()
 
     # only the unused allocation should be removed
@@ -2070,8 +2089,51 @@ def test_remove_unused_allocations(scheduler):
     assert deleted == 0
     assert scheduler.managed_allocations().count() == 6
 
+    # .. unless we specifically exclude groups
+    deleted = scheduler.remove_unused_allocations(
+        date(2000, 1, 1), date(2020, 1, 1), exclude_groups=True)
+
+    assert deleted == 0
+    assert scheduler.managed_allocations().count() == 6
+
     deleted = scheduler.remove_unused_allocations(
         date(2000, 1, 1), date(2020, 1, 1))
 
     assert deleted == 2
     assert scheduler.managed_allocations().count() == 4
+
+
+def test_remove_unused_allocations_weekdays_with_tz(scheduler):
+
+    def met_dt(*args):
+        return sedate.replace_timezone(datetime(*args), 'Europe/Zurich')
+
+    # create seven unused allocation, one for each day
+    daterange = [
+        (met_dt(2023, 3, 19, 0, 0), met_dt(2023, 3, 19, 2, 0)),
+        (met_dt(2023, 3, 20, 0, 0), met_dt(2023, 3, 20, 2, 0)),
+        (met_dt(2023, 3, 21, 0, 0), met_dt(2023, 3, 21, 2, 0)),
+        (met_dt(2023, 3, 22, 0, 0), met_dt(2023, 3, 22, 2, 0)),
+        (met_dt(2023, 3, 23, 0, 0), met_dt(2023, 3, 23, 2, 0)),
+        (met_dt(2023, 3, 24, 0, 0), met_dt(2023, 3, 24, 2, 0)),
+        (met_dt(2023, 3, 25, 0, 0), met_dt(2023, 3, 25, 2, 0))
+    ]
+    scheduler.allocate(daterange)
+    scheduler.commit()
+
+    # create two unused allocations in a group, where one is on
+    # the wrong day
+    daterange = [
+        (met_dt(2023, 3, 26, 0, 0), met_dt(2023, 3, 26, 2, 0)),
+        (met_dt(2023, 3, 27, 0, 0), met_dt(2023, 3, 27, 2, 0))
+    ]
+    scheduler.allocate(daterange, grouped=True)
+    scheduler.commit()
+
+    # only the single ungrouped allocation on a sunday should be removed
+    assert scheduler.managed_allocations().count() == 9
+    deleted = scheduler.remove_unused_allocations(
+        date(2023, 3, 19), date(2023, 3, 28), days=['su'])
+
+    assert deleted == 1
+    assert scheduler.managed_allocations().count() == 8
