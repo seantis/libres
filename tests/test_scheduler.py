@@ -460,7 +460,7 @@ def test_change_reservation_assertions(scheduler):
     )
 
     scheduler.allocate(dates, grouped=True)
-    token = scheduler.reserve(u'original@example.org', dates)
+    token = scheduler.reserve('original@example.org', dates)
     scheduler.commit()
 
     reservation = scheduler.reservations_by_token(token).one()
@@ -468,7 +468,7 @@ def test_change_reservation_assertions(scheduler):
     scheduler.commit()
 
     with pytest.raises(MultipleResultsFound):
-        scheduler.change_reservation_time(
+        scheduler.change_reservation(
             token, reservation.id, datetime.now(), datetime.now()
         )
 
@@ -479,7 +479,7 @@ def test_change_reservation_assertions(scheduler):
     dates = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 0))
 
     scheduler.allocate(dates, partly_available=True)
-    token = scheduler.reserve(u'original@example.org', dates)
+    token = scheduler.reserve('original@example.org', dates)
     scheduler.commit()
 
     reservation = scheduler.reservations_by_token(token).one()
@@ -491,13 +491,13 @@ def test_change_reservation_assertions(scheduler):
 
     # make sure that the timerange given fits inside the allocation
     with pytest.raises(errors.TimerangeTooLong):
-        scheduler.change_reservation_time(
+        scheduler.change_reservation(
             token, reservation.id,
             datetime(2014, 3, 7, 7, 0), datetime(2014, 3, 7, 17, 0)
         )
 
     with pytest.raises(errors.TimerangeTooLong):
-        scheduler.change_reservation_time(
+        scheduler.change_reservation(
             token, reservation.id,
             datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 1)
         )
@@ -561,13 +561,13 @@ def test_change_reservation(scheduler):
     assert scheduler.change_reservation_time_candidates().count() == 1
 
     # make sure that no changes are made in these cases
-    assert not scheduler.change_reservation_time(
+    assert not scheduler.change_reservation(
         token, reservation.id,
         datetime(2014, 8, 7, 8, 0),
         datetime(2014, 8, 7, 9)
     )
 
-    assert not scheduler.change_reservation_time(
+    assert not scheduler.change_reservation(
         token, reservation.id,
         datetime(2014, 8, 7, 8, 0),
         datetime(2014, 8, 7, 9) - timedelta(microseconds=1)
@@ -576,7 +576,7 @@ def test_change_reservation(scheduler):
     assert not reservation_changed.called
 
     # make sure the change is propagated
-    scheduler.change_reservation_time(
+    scheduler.change_reservation(
         token, reservation.id,
         datetime(2014, 8, 7, 8, 0),
         datetime(2014, 8, 7, 10)
@@ -606,7 +606,7 @@ def test_change_reservation(scheduler):
     assert reservation.id == original_id
     assert reservation.token == token
 
-    scheduler.change_reservation_time(
+    scheduler.change_reservation(
         token, reservation.id,
         datetime(2014, 8, 7, 9, 0),
         datetime(2014, 8, 7, 10, 0)
@@ -619,7 +619,7 @@ def test_change_reservation(scheduler):
     )
 
     with pytest.raises(errors.AlreadyReservedError):
-        scheduler.change_reservation_time(
+        scheduler.change_reservation(
             token, reservation.id,
             datetime(2014, 8, 7, 8, 0),
             datetime(2014, 8, 7, 10, 0)
@@ -660,7 +660,7 @@ def test_change_reservation_quota(scheduler):
 
     # with 100% occupancy we can't change one of the small reservations
     with pytest.raises(errors.AlreadyReservedError):
-        scheduler.change_reservation_time(
+        scheduler.change_reservation(
             tokens[2], reservation.id,
             datetime(2014, 8, 7, 8, 0),
             datetime(2014, 8, 7, 10, 0)
@@ -674,14 +674,14 @@ def test_change_reservation_quota(scheduler):
     # removing the big reservation allows us to scale the other two
     scheduler.remove_reservation(tokens[0])
 
-    assert scheduler.change_reservation_time(
+    assert scheduler.change_reservation(
         tokens[2], reservation.id,
         datetime(2014, 8, 7, 8, 0),
         datetime(2014, 8, 7, 10, 0)
     )
 
     reservation = scheduler.reservations_by_token(tokens[1]).one()
-    assert scheduler.change_reservation_time(
+    assert scheduler.change_reservation(
         tokens[1], reservation.id,
         datetime(2014, 8, 7, 8, 0),
         datetime(2014, 8, 7, 10, 0)
