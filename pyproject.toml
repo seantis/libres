@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+log_level = "INFO"
+testpaths = ["tests"]
+timeout = 300
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = ["src/libres/modules/__init__.py"]
+
+[tool.mypy]
+python_version = "3.10"
+follow_imports = "silent"
+namespace_packages = true
+explicit_package_bases = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+disallow_any_generics = true
+disallow_untyped_defs = true
+plugins = "sqlmypy"
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py38,py39,py310,py311,flake8,bandit,mypy,report
+
+[gh-actions]
+python =
+    3.8: py38
+    3.9: py39
+    3.10: py310,flake8,bandit,mypy
+    3.11: py311
+
+[testenv]
+setenv =
+    py{38,39,310,311}: COVERAGE_FILE = .coverage.{envname}
+deps =
+    -e{toxinidir}[test]
+commands = pytest --cov --cov-report= {posargs}
+
+[testenv:flake8]
+basepython = python3.10
+skip_install = true
+deps =
+    flake8
+    flake8-bugbear
+commands = flake8 src/ tests/
+
+[testenv:bandit]
+basepython = python3.10
+skip_install = true
+deps =
+    bandit[toml]
+commands = bandit -q -c pyproject.toml -r src
+
+[testenv:mypy]
+basepython = python3.10
+deps =
+    -e{toxinidir}[mypy]
+commands = mypy -p libres
+
+[testenv:report]
+deps =
+    coverage
+skip_install = true
+commands =
+    coverage combine
+    coverage report -m
+
+"""

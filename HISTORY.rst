@@ -1,6 +1,12 @@
 Changelog
 ---------
 
+- Switches to ``pyproject.toml``
+  [Daverball]
+
+- Adds type annotations
+  [Daverball]
+
 0.6.1 (2023-03-29)
 ~~~~~~~~~~~~~~~~~~~
 
