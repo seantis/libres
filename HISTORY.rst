@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.7.0 (2023-07-11)
+~~~~~~~~~~~~~~~~~~~
+
 - Drops support for Python 3.7 and adds support for 3.11
   [Daverball]
 
