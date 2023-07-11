@@ -479,7 +479,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         Reservation = self.models.Reservation
         query = object_session(self).query(Reservation.id)
         query = query.filter(Reservation.target == self.group)
-        query = query.filter(Reservation.status == u'pending')
+        query = query.filter(Reservation.status == 'pending')
 
         return query
 
@@ -818,7 +818,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         query = query.filter(Allocation.mirror_of == self.mirror_of)
         query = query.filter(Allocation._start == self._start)
 
-        existing = dict(((e.resource, e) for e in query))
+        existing = {e.resource: e for e in query}
 
         master = self.is_master and self or existing[self.mirror_of]
         existing[master.resource] = master

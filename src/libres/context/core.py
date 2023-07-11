@@ -155,7 +155,7 @@ class Context:
         self.thread_lock = threading.RLock()
 
     def __repr__(self) -> str:
-        return "<Libres Context(name='{}')>".format(self.name)
+        return f"<Libres Context(name='{self.name}')>"
 
     @contextmanager
     def as_current_context(self) -> _t.Iterator[None]:

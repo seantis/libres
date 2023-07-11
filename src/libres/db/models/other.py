@@ -11,7 +11,7 @@ if _t.TYPE_CHECKING:
 models = None
 
 
-class OtherModels(object):
+class OtherModels:
     """ Mixin class which allows for all models to access the other model
     classes without causing circular imports. """
 

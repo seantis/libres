@@ -40,9 +40,9 @@ doc = []
 
 
 for name, (value, help_str) in _default.items():
-    reference = '.. _{name}:\n'.format(name=name)
+    reference = f'.. _{name}:\n'
     title = '{name}\n{line}'.format(name=name, line='-' * len(name))
-    default = 'default: **{value}**'.format(value=repr(value))
+    default = f'default: **{repr(value)}**'
     help_str = textwrap.dedent(help_str)
 
     doc.append('\n'.join((reference, title, default, help_str)))

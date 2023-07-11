@@ -11,7 +11,7 @@ if _t.TYPE_CHECKING:
     from datetime import datetime
 
 
-class TimestampMixin(object):
+class TimestampMixin:
     """ Mixin providing created/modified timestamps for all records. Pretty
     much relies on the database being Postgresql but could be made to work
     with others.

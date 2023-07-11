@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+- Drops support for Python 3.7 and adds support for 3.11
+  [Daverball]
+
 - Switches to ``pyproject.toml``
   [Daverball]
 

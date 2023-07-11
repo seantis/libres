@@ -619,10 +619,10 @@ class Scheduler(ContextServicesMixin):
         reordered = self.reordered_keylist(allocations, new_quota)
 
         # unused keys are the ones not present in the newly assignd uuid list
-        unused = set(reordered.keys()) - set(reordered.values()) - set((None,))
+        unused = set(reordered.keys()) - set(reordered.values()) - {None}
 
         # get a map for resource_uuid -> allocation.id
-        ids = dict(((a.resource, a.id) for a in allocations))
+        ids = {a.resource: a.id for a in allocations}
 
         for allocation in allocations:
 
@@ -1198,8 +1198,8 @@ class Scheduler(ContextServicesMixin):
                 reservation = self.reservation_cls()
                 reservation.token = token
                 reservation.target = group
-                reservation.status = u'pending'
-                reservation.target_type = u'group'
+                reservation.status = 'pending'
+                reservation.target_type = 'group'
                 reservation.resource = self.resource
                 reservation.data = data
                 reservation.session_id = session_id
@@ -1228,9 +1228,7 @@ class Scheduler(ContextServicesMixin):
                     if allocation.in_group:
                         already_reserved_groups.add(allocation.group)
 
-                        # I really want to use 'yield from'. Python 3 ftw!
-                        for r in new_reservations_by_group(allocation.group):
-                            yield r
+                        yield from new_reservations_by_group(allocation.group)
                     else:
                         reservation = self.reservation_cls()
                         reservation.token = token
