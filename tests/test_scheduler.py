@@ -1543,11 +1543,6 @@ def test_quota_changes_advanced(scheduler):
 
     master = scheduler.allocate(daterange, quota=7)[0]
 
-    # FIXME: Figure out why this test could previously just
-    #        nonchalantly skip approving the first reservation
-    #        and the allocation still had no quota left...
-    #        Was this maybe a feature and not a bug?!
-
     scheduler.change_quota(master, 7)
     r1 = scheduler.reserve('test@example.org', daterange)
     r2 = scheduler.reserve('test@example.org', daterange)
