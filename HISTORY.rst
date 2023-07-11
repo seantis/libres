@@ -7,6 +7,16 @@ Changelog
 - Adds type annotations
   [Daverball]
 
+- Changes ``Scheduler.allocate`` to avoid hundreds of separate
+  SQL queries when passing in hundreds of datetime ranges in
+  order to identify existing overlapping allocations.
+
+  Performance could still be a concern, since the query contains
+  a lot of datetime comparisons. It might be quicker in the common case to filter to the minimum and maximum dates that
+  have been passed in and doing the overlap checks entirely in
+  Python. We will need to keep an eye on this.
+  [Daverball]
+
 0.6.1 (2023-03-29)
 ~~~~~~~~~~~~~~~~~~~
 

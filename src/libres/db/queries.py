@@ -70,6 +70,29 @@ class Queries(ContextServicesMixin):
         )
 
     @staticmethod
+    def overlapping_allocations(
+        query: 'Query[_T]',
+        dates: _t.Iterable[_t.Tuple[datetime, datetime]]
+    ) -> 'Query[_T]':
+        """ Takes an allocation query and limits it to the allocations
+        overlapping with any of the passed in datetime ranges
+
+        """
+        return query.filter(or_(*(
+            or_(
+                and_(
+                    Allocation._start <= start,
+                    start <= Allocation._end
+                ),
+                and_(
+                    start <= Allocation._start,
+                    Allocation._start <= end
+                )
+            )
+            for start, end in dates
+        )))
+
+    @staticmethod
     def availability_by_allocations(
         allocations: _t.Iterable['Allocation']
     ) -> float:

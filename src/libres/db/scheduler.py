@@ -475,6 +475,12 @@ class Scheduler(ContextServicesMixin):
             rasterizer.rasterize_span(s, e, raster) for s, e in dates
         ]
 
+        # We can early out here, since this will create no allocations
+        # that way we also don't have to worry about calling min/max
+        # with an empty iterable
+        if not rasterized_dates:
+            return []
+
         for start, end in rasterized_dates:
             if sedate.count_overlaps(rasterized_dates, start, end) > 1:
                 raise errors.InvalidAllocationError
@@ -484,13 +490,26 @@ class Scheduler(ContextServicesMixin):
         # Make sure that this span does not overlap another master
         skipped = set()
 
-        for start, end in rasterized_dates:
-            existing = self.allocations_in_range(start, end).first()
+        # Find existing overlapping (master) allocations
+        query = self.managed_allocations()
+        query = self.queries.overlapping_allocations(query, rasterized_dates)
+        query = query.filter(Allocation.resource == self.resource)
+        for existing in query:
+            # we are doing a bit of redundant work here, since the
+            # query doesn't tell us which range(s) the existing
+            # allocation overlaps with
+            for start, end in rasterized_dates:
+                if not sedate.overlaps(
+                    start, end,
+                    existing.start, existing.end
+                ):
+                    continue
 
-            if existing and not skip_overlapping:
-                raise errors.OverlappingAllocationError(start, end, existing)
-            elif existing and skip_overlapping:
-                skipped.add((start, end))
+                if not skip_overlapping:
+                    raise errors.OverlappingAllocationError(
+                        start, end, existing)
+                else:
+                    skipped.add((start, end))
 
         # Write the master allocations
         allocations = []

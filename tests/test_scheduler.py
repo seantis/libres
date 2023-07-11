@@ -1118,6 +1118,15 @@ def test_allocation_overlap(scheduler):
     with pytest.raises(errors.OverlappingAllocationError):
         sc1.allocate((start, end), raster=15)
 
+    # even with 10 dates being passed in we should get an
+    # OverlappingAllocationError
+    with pytest.raises(errors.OverlappingAllocationError):
+        sc1.allocate((
+            (start + timedelta(days=days), end + timedelta(days=days))
+            for days in range(0, 10)
+
+        ), raster=15)
+
     # there's another way this could happen, which is illegal usage
     # of scheduler.allocate - we stop this befor it hits the database
     sc3 = scheduler.clone()
