@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.7.1 (2024-01-18)
+~~~~~~~~~~~~~~~~~~~
+
 - Fixes some incorrect type annotations in `Scheduler`.
   [Daverball]
 
