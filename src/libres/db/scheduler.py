@@ -204,7 +204,7 @@ class Scheduler(ContextServicesMixin):
 
     def allocations_by_ids(
         self,
-        ids: _t.Collection[UUID]
+        ids: _t.Collection[int]
     ) -> 'Query[Allocation]':
         query = self.managed_allocations()
         query = query.filter(Allocation.id.in_(ids))
@@ -308,7 +308,7 @@ class Scheduler(ContextServicesMixin):
 
     def allocation_dates_by_ids(
         self,
-        ids: _t.Collection[UUID],
+        ids: _t.Collection[int],
         start_time: _t.Optional[time] = None,
         end_time: _t.Optional[time] = None
     ) -> _t.Iterator[_t.Tuple[datetime, datetime]]:
@@ -322,7 +322,7 @@ class Scheduler(ContextServicesMixin):
 
             yield s_dt, e_dt - timedelta(microseconds=1)
 
-    def manual_approval_required(self, ids: _t.Collection[UUID]) -> bool:
+    def manual_approval_required(self, ids: _t.Collection[int]) -> bool:
         """ Returns True if any of the allocations require manual approval. """
         query = self.allocations_by_ids(ids)
         query = query.filter(Allocation.approve_manually == True)
@@ -803,8 +803,10 @@ class Scheduler(ContextServicesMixin):
                             change.reserved_slots[0]
                         )
 
-                    if change.is_master and \
-                            change.pending_reservations.count():
+                    if (
+                        change.is_master and
+                        change.pending_reservations.count()
+                    ):
                         raise errors.AffectedPendingReservationError(
                             change.pending_reservations[0]
                         )
