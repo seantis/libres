@@ -18,6 +18,7 @@ from libres.modules import utils
 
 import typing as _t
 if _t.TYPE_CHECKING:
+    from sedate.types import DateLike
     from sqlalchemy.orm import Query
     from typing_extensions import NotRequired, Self, TypeAlias, TypedDict
 
@@ -893,8 +894,8 @@ class Scheduler(ContextServicesMixin):
 
     def remove_unused_allocations(
         self,
-        start: datetime,
-        end: datetime,
+        start: 'DateLike',
+        end: 'DateLike',
         days: _t.Optional[_t.Iterable[_t.Union['Day', 'DayNumber']]] = None,
         exclude_groups: bool = False
     ) -> int:
@@ -916,7 +917,7 @@ class Scheduler(ContextServicesMixin):
             be excluded, regardless of what this parameter is set to.
         """
 
-        start, end = self._prepare_range(
+        start_dt, end_dt = self._prepare_range(
             sedate.as_datetime(start),
             sedate.as_datetime(end)
         )
@@ -957,22 +958,22 @@ class Scheduler(ContextServicesMixin):
             groups = groups.having(
                 and_(
                     func.count(Allocation.id) == 1,
-                    start <= func.min(Allocation._start),
-                    func.max(Allocation._end) <= end
+                    start_dt <= func.min(Allocation._start),
+                    func.max(Allocation._end) <= end_dt
                 )
             )
         else:
             groups = groups.having(
                 and_(
-                    start <= func.min(Allocation._start),
-                    func.max(Allocation._end) <= end
+                    start_dt <= func.min(Allocation._start),
+                    func.max(Allocation._end) <= end_dt
                 )
             )
 
         # all allocations
         candidates = self.managed_allocations()
-        candidates = candidates.filter(start <= Allocation._start)
-        candidates = candidates.filter(Allocation._end <= end)
+        candidates = candidates.filter(start_dt <= Allocation._start)
+        candidates = candidates.filter(Allocation._end <= end_dt)
 
         # .. without the ones with slots
         candidates = candidates.filter(not_(Allocation.id.in_(slots)))
