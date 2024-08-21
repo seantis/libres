@@ -40,11 +40,12 @@ python =
     3.9: py39
     3.10: py310,flake8,bandit,mypy
     3.11: py311
+    3.12: py312
 
 [testenv]
 usedevelop = true
 setenv =
-    py{38,39,310,311}: COVERAGE_FILE = .coverage.{envname}
+    py{38,39,310,311,312}: COVERAGE_FILE = .coverage.{envname}
 deps =
     -e{toxinidir}[test]
 commands = pytest --cov --cov-report= {posargs}
