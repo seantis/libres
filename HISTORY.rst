@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.7.3 (2024-08-21)
+~~~~~~~~~~~~~~~~~~~
+
 - Adds support for Python 3.12.
   [Daverball]
 
