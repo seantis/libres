@@ -61,15 +61,15 @@ class ContextServicesMixin:
 
     @cached_property
     def is_allocation_exposed(self) -> Callable[[Allocation], bool]:
-        return self.context.get_service('exposure').is_allocation_exposed
+        return self.context.get_service('exposure').is_allocation_exposed  # type: ignore[no-any-return]
 
     @cached_property
     def generate_uuid(self) -> Callable[[str], UUID]:
-        return self.context.get_service('uuid_generator')
+        return self.context.get_service('uuid_generator')  # type: ignore[no-any-return]
 
     @cached_property
     def validate_email(self) -> Callable[[str], bool]:
-        return self.context.get_service('email_validator')
+        return self.context.get_service('email_validator')  # type: ignore[no-any-return]
 
     def clear_cache(self) -> None:
         """ Clears the cache of the mixin. """
@@ -91,12 +91,12 @@ class ContextServicesMixin:
 
     @property
     def session_provider(self) -> SessionProvider:
-        return self.context.get_service('session_provider')
+        return self.context.get_service('session_provider')  # type: ignore[no-any-return]
 
     @property
     def session(self) -> Session:
         """ Returns the current session. """
-        return self.session_provider.session()
+        return self.session_provider.session()  # type: ignore[no-any-return]
 
     def close(self) -> None:
         """ Closes the current session. """

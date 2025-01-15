@@ -34,13 +34,17 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from sedate.types import TzInfoOrName
     from sqlalchemy.orm import Query
+    from typing import NamedTuple
     from typing_extensions import Self
 
-    from libres.db.models import Reservation, ReservedSlot
+    from libres.db.models import ReservedSlot
     from libres.modules.rasterizer import Raster
 
     _OptDT1 = TypeVar('_OptDT1', 'datetime | None', datetime, None)
     _OptDT2 = TypeVar('_OptDT2', 'datetime | None', datetime, None)
+
+    class _ReservationIdRow(NamedTuple):
+        id: int
 
 
 class Allocation(TimestampMixin, ORMBase, OtherModels):
@@ -470,7 +474,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             return self.display_start(timezone), self.display_end(timezone)
 
     @property
-    def pending_reservations(self) -> Query[Reservation]:
+    def pending_reservations(self) -> Query[_ReservationIdRow]:
         """ Returns the pending reservations query for this allocation.
         As the pending reservations target the group and not a specific
         allocation this function returns the same value for masters and
@@ -482,6 +486,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         )
 
         Reservation = self.models.Reservation  # noqa: N806
+        query: Query[_ReservationIdRow]
         query = object_session(self).query(Reservation.id)
         query = query.filter(Reservation.target == self.group)
         query = query.filter(Reservation.status == 'pending')
@@ -794,7 +799,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         if self.is_master:
             return self
         else:
-            query = object_session(self).query(Allocation)
+            # FIXME: This should either query `self.__class__` or
+            #        we need to return `Allocation` rather than `Self`
+            query: Query[Self] = object_session(self).query(Allocation)
             query = query.filter(Allocation._start == self._start)
             query = query.filter(Allocation.resource == self.mirror_of)
 
@@ -818,7 +825,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             assert self.is_master
             return [self]
 
-        query = object_session(self).query(Allocation)
+        # FIXME: This should either query `self.__class__` or
+        #        we need to return `Allocation` rather than `Self`
+        query: Query[Self] = object_session(self).query(Allocation)
         query = query.filter(Allocation.mirror_of == self.mirror_of)
         query = query.filter(Allocation._start == self._start)
 

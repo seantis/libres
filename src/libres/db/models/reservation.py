@@ -148,7 +148,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         # order by date
         query = query.order_by(Allocation._start)
 
-        return query
+        return query  # type: ignore[no-any-return]
 
     def display_start(
         self,
@@ -212,4 +212,4 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         # A reservation is deemed autoapprovable if no allocation
         # requires explicit approval
 
-        return object_session(self).query(~query.exists()).scalar()
+        return object_session(self).query(~query.exists()).scalar()  # type: ignore[no-any-return]

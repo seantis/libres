@@ -36,14 +36,12 @@ replace = """
 
 [tool.mypy]
 python_version = "3.9"
-follow_imports = "silent"
 namespace_packages = true
 explicit_package_bases = true
-warn_unused_ignores = true
-warn_redundant_casts = true
+strict = true
 warn_unreachable = true
-disallow_any_generics = true
-disallow_untyped_defs = true
+# FIXME: remove this exclusion when upgrading to SQlAlchemy 2.0
+untyped_calls_exclude = "sqlalchemy"
 plugins = "sqlmypy"
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
 

@@ -306,7 +306,10 @@ class Scheduler(ContextServicesMixin):
     ) -> list[tuple[datetime, datetime]]:
 
         query = self.allocations_by_group(group)
-        dates_query = query.with_entities(Allocation._start, Allocation._end)
+        dates_query: Query[tuple[datetime, datetime]] = query.with_entities(
+            Allocation._start,
+            Allocation._end
+        )
         return dates_query.all()
 
     def allocation_mirrors_by_master(
@@ -336,7 +339,7 @@ class Scheduler(ContextServicesMixin):
         query = self.allocations_by_ids(ids)
         query = query.filter(Allocation.approve_manually == True)
 
-        return self.session.query(query.exists()).scalar()
+        return self.session.query(query.exists()).scalar()  # type: ignore[no-any-return]
 
     def allocate(
         self,
@@ -1273,8 +1276,9 @@ class Scheduler(ContextServicesMixin):
         # reservation twice on a single session
         if session_id:
             found = self.queries.reservations_by_session(session_id)
-            found = found.with_entities(Reservation.target, Reservation.start)
-            found_set = set(found)
+            found_set: set[tuple[UUID, datetime | None]] = set(
+                found.with_entities(Reservation.target, Reservation.start)
+            )
 
             for reservation in reservations:
                 if (reservation.target, reservation.start) in found_set:

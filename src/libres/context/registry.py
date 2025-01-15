@@ -98,7 +98,7 @@ class Registry:
         if not hasattr(self.local, 'current_context'):
             self.local.current_context = self.master_context
 
-        return self.local.current_context
+        return self.local.current_context  # type: ignore[no-any-return]
 
     def is_existing_context(self, name: str) -> bool:
         return name in self.contexts
