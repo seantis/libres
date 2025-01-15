@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -5,7 +7,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from libres.context.core import StoppableService
 
 
-import typing as _t
+from typing import Any
 
 
 SERIALIZABLE = 'SERIALIZABLE'
@@ -24,8 +26,8 @@ class SessionProvider(StoppableService):
     def __init__(
         self,
         dsn: str,
-        engine_config: _t.Optional[_t.Dict[str, _t.Any]] = None,
-        session_config: _t.Optional[_t.Dict[str, _t.Any]] = None
+        engine_config: dict[str, Any] | None = None,
+        session_config: dict[str, Any] | None = None
     ):
         self.assert_valid_postgres_version(dsn)
         self.dsn = dsn
@@ -53,13 +55,13 @@ class SessionProvider(StoppableService):
         self.engine.raw_connection().invalidate()
         self.engine.dispose()
 
-    def get_postgres_version(self, dsn: str) -> _t.Tuple[str, int]:
+    def get_postgres_version(self, dsn: str) -> tuple[str, int]:
         """ Returns the postgres version as a tuple (string, integer).
 
         Uses it's own connection to be independent from any session.
 
         """
-        assert 'postgres' in dsn, "Not a postgres database"
+        assert 'postgres' in dsn, 'Not a postgres database'
 
         query = """
             SELECT current_setting('server_version'),
@@ -80,6 +82,6 @@ class SessionProvider(StoppableService):
         v, n = self.get_postgres_version(dsn)
 
         if n < 90100:
-            raise RuntimeError(f"PostgreSQL 9.1+ is required, got {v}")
+            raise RuntimeError(f'PostgreSQL 9.1+ is required, got {v}')
 
         return dsn

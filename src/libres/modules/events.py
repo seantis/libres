@@ -18,64 +18,49 @@ To remove the same event::
 
 Events are called in the order they were added.
 """
+from __future__ import annotations
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import overload
+from typing import Protocol
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from collections.abc import Sequence
     from datetime import datetime
-    from typing_extensions import ParamSpec, TypeAlias
+    from typing_extensions import ParamSpec
     from uuid import UUID
 
     from libres.context.core import Context
     from libres.db.models import Allocation, Reservation
 
     _P = ParamSpec('_P')
-    _dtrange: TypeAlias = _t.Tuple[datetime, datetime]
-
-    class Event(_t.List[_t.Callable[_P, _t.Any]]):
-        def __call__(self, *args: _P.args, **kwargs: _P.kwargs) -> None: ...
-
-    _OnReservationsConfirmed: TypeAlias = Event[
-        Context, _t.Sequence[Reservation], UUID
-    ]
-
-    # FIXME: This is unnecessarily complex, because we call
-    #        start_time and end_time on this callback by name
-    #        rather than positionally.
-    class _OnReservationTimeChangedCallback(_t.Protocol):
-        def __call__(
-            self,
-            __context: Context,
-            __reservation: Reservation,
-            old_time: _dtrange,
-            new_time: _dtrange
-        ) -> None: ...
-
-    class _OnReservationTimeChanged(
-        _t.List[_OnReservationTimeChangedCallback]
-    ):
-        def __call__(
-            self,
-            __context: Context,
-            __reservation: Reservation,
-            old_time: _dtrange,
-            new_time: _dtrange
-        ) -> None: ...
-
-else:
-    class Event(list):
-        """Event subscription. By http://stackoverflow.com/a/2022629
-
-        A list of callable objects. Calling an instance of this will cause a
-        call to each item in the list in ascending order by index.
-
-        """
-        def __call__(self, *args: _t.Any, **kwargs: _t.Any) -> None:
-            for f in self:
-                f(*args, **kwargs)
 
 
-on_allocations_added: 'Event[Context, _t.Sequence[Allocation]]' = Event()
+class Event(list['Callable[_P, object]']):
+    """Event subscription. By http://stackoverflow.com/a/2022629
+
+    A list of callable objects. Calling an instance of this will cause a
+    call to each item in the list in ascending order by index.
+
+    """
+    # NOTE: This is only used for binding the correct `ParamSpec` for callback
+    #       protocols, otherwise we have to define a pseudo-type, that doesn't
+    #       look like an instance of `Event`...
+    @overload
+    def __init__(self, f: type[Callable[_P, object]]) -> None: ...
+    @overload
+    def __init__(self) -> None: ...
+
+    def __init__(self, f: object = None) -> None:
+        return
+
+    def __call__(self, *args: _P.args, **kwargs: _P.kwargs) -> None:
+        for f in self:
+            f(*args, **kwargs)
+
+
+on_allocations_added: Event[Context, Sequence[Allocation]] = Event()
 """ Called when an allocation is added, with the following arguments:
 
     :context:
@@ -88,7 +73,7 @@ on_allocations_added: 'Event[Context, _t.Sequence[Allocation]]' = Event()
 
 """
 
-on_reservations_made: 'Event[Context, _t.Sequence[Reservation]]' = Event()
+on_reservations_made: Event[Context, Sequence[Reservation]] = Event()
 """ Called when a reservation is made, with the following arguments:
 
     :context:
@@ -103,7 +88,8 @@ on_reservations_made: 'Event[Context, _t.Sequence[Reservation]]' = Event()
 
 """
 
-on_reservations_confirmed: '_OnReservationsConfirmed' = Event()
+on_reservations_confirmed: Event[Context, Sequence[Reservation], UUID]
+on_reservations_confirmed = Event()
 """ Called when a reservation bound to a browser session is confirmed, with
 the following arguments:
 
@@ -119,7 +105,7 @@ the following arguments:
         The session id that is being confirmed.
 """
 
-on_reservations_approved: 'Event[Context, _t.Sequence[Reservation]]' = Event()
+on_reservations_approved: Event[Context, Sequence[Reservation]] = Event()
 """ Called when a reservation is approved, with the following arguments:
 
     :context:
@@ -132,7 +118,7 @@ on_reservations_approved: 'Event[Context, _t.Sequence[Reservation]]' = Event()
 
 """
 
-on_reservations_denied: 'Event[Context, _t.Sequence[Reservation]]' = Event()
+on_reservations_denied: Event[Context, Sequence[Reservation]] = Event()
 """ Called when a reservation is denied, with the following arguments:
 
     :context:
@@ -145,7 +131,7 @@ on_reservations_denied: 'Event[Context, _t.Sequence[Reservation]]' = Event()
 
 """
 
-on_reservations_removed: 'Event[Context, _t.Sequence[Reservation]]' = Event()
+on_reservations_removed: Event[Context, Sequence[Reservation]] = Event()
 """ Called when a reservation is removed, with the following arguments:
 
     :context:
@@ -158,8 +144,23 @@ on_reservations_removed: 'Event[Context, _t.Sequence[Reservation]]' = Event()
 
 """
 
-on_reservation_time_changed: '_OnReservationTimeChanged'
-on_reservation_time_changed = Event()  # type:ignore[assignment]
+
+# NOTE: We need to use a callback protocol, just because
+#       we provide old_time/new_time by name, we probably
+#       should do it positionally instead, but that would
+#       be a potentially breaking change...
+class _OnReservationTimeChangedCallback(Protocol):
+    def __call__(
+        self,
+        context: Context,
+        reservation: Reservation,
+        /,
+        old_time: tuple[datetime, datetime],
+        new_time: tuple[datetime, datetime]
+    ) -> None: ...
+
+
+on_reservation_time_changed = Event(_OnReservationTimeChangedCallback)
 """ Called when a reservation's time changes , with the following arguments:
 
     :context:

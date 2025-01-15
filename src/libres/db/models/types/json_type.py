@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 from json import loads, dumps
 from sqlalchemy.types import TypeDecorator, TEXT
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import Any
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
     from sqlalchemy.engine import Dialect
 
-    _Base = TypeDecorator[_t.Any]
+    _Base = TypeDecorator[Any]
 else:
     _Base = TypeDecorator
 
@@ -27,9 +30,9 @@ class JSON(_Base):
 
     def process_bind_param(
         self,
-        value: _t.Any,
-        dialect: 'Dialect'
-    ) -> _t.Optional[str]:
+        value: Any,
+        dialect: Dialect
+    ) -> str | None:
 
         if value is not None:
             value = (dialect._json_serializer or dumps)(value)  # type:ignore
@@ -38,9 +41,9 @@ class JSON(_Base):
 
     def process_result_value(
         self,
-        value: _t.Optional[str],
-        dialect: 'Dialect'
-    ) -> _t.Optional[_t.Any]:
+        value: str | None,
+        dialect: Dialect
+    ) -> Any | None:
 
         if value is not None:
             value = (dialect._json_deserializer or loads)(value)  # type:ignore

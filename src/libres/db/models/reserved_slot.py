@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sedate
 
 from datetime import datetime, timedelta
@@ -18,8 +20,8 @@ from libres.db.models.types import UUID, UTCDateTime
 from libres.db.models.timestamp import TimestampMixin
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
     import uuid
     from sedate.types import TzInfoOrName
 
@@ -29,32 +31,32 @@ class ReservedSlot(TimestampMixin, ORMBase):
 
     __tablename__ = 'reserved_slots'
 
-    resource: 'Column[uuid.UUID]' = Column(
+    resource: Column[uuid.UUID] = Column(
         UUID(),
         primary_key=True,
         nullable=False,
         autoincrement=False
     )
 
-    start: 'Column[datetime]' = Column(
+    start: Column[datetime] = Column(
         UTCDateTime(timezone=False),
         primary_key=True,
         nullable=False,
         autoincrement=False
     )
 
-    end: 'Column[datetime]' = Column(
+    end: Column[datetime] = Column(
         UTCDateTime(timezone=False),
         nullable=False
     )
 
-    allocation_id: 'Column[int]' = Column(
+    allocation_id: Column[int] = Column(
         types.Integer(),
         ForeignKey(Allocation.id),
         nullable=False
     )
 
-    allocation: 'relationship[Allocation]' = relationship(
+    allocation: relationship[Allocation] = relationship(
         Allocation,
         primaryjoin=Allocation.id == allocation_id,
 
@@ -68,7 +70,7 @@ class ReservedSlot(TimestampMixin, ORMBase):
         )
     )
 
-    reservation_token: 'Column[uuid.UUID]' = Column(
+    reservation_token: Column[uuid.UUID] = Column(
         UUID(),
         nullable=False
     )
@@ -79,7 +81,7 @@ class ReservedSlot(TimestampMixin, ORMBase):
 
     def display_start(
         self,
-        timezone: _t.Optional['TzInfoOrName'] = None
+        timezone: TzInfoOrName | None = None
     ) -> datetime:
 
         if timezone is None:
@@ -91,7 +93,7 @@ class ReservedSlot(TimestampMixin, ORMBase):
 
     def display_end(
         self,
-        timezone: _t.Optional['TzInfoOrName'] = None
+        timezone: TzInfoOrName | None = None
     ) -> datetime:
 
         if timezone is None:

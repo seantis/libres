@@ -42,19 +42,19 @@ Run the Tests
 
 Install tox and run it::
 
-    pip install tox
+    pip install tox tox-uv
     tox
 
 Limit the tests to a specific python version::
 
-    tox -e py27
+    tox -e py311
 
 Conventions
 -----------
 
 Libres follows PEP8 as close as possible. To test for it run::
 
-    tox -e pep8
+    tox -e ruff,flake8
 
 Libres uses `Semantic Versioning <http://semver.org/>`_
 
@@ -79,7 +79,7 @@ Making a new Release
 
 Make sure all changes are in the HISTORY.rst, then bump the version::
 
-    bump2version major|minor|patch
+    bump-my-version bump major|minor|patch
     git push && git push --tags
 
 After this, create a new release on Github.

@@ -1,12 +1,14 @@
-import typing as _t
-if _t.TYPE_CHECKING:
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
     from datetime import datetime
     from libres.db.models import Allocation, Reservation, ReservedSlot
 
 
 class LibresError(Exception):
     __slots__ = ('reservation',)
-    reservation: 'Reservation'
+    reservation: Reservation
     """
     This attribute is not guaranteed to exist
     """
@@ -98,9 +100,9 @@ class OverlappingAllocationError(LibresError):
 
     def __init__(
         self,
-        start: 'datetime',
-        end: 'datetime',
-        existing: 'Allocation'
+        start: datetime,
+        end: datetime,
+        existing: Allocation
     ):
         self.start = start
         self.end = end
@@ -117,7 +119,7 @@ class AffectedReservationError(LibresError):
 
     def __init__(
         self,
-        existing: _t.Union['Reservation', 'ReservedSlot', None]
+        existing: Reservation | ReservedSlot | None
     ):
         self.existing = existing
 

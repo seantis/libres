@@ -26,24 +26,28 @@ If we now have a key on the start time and this time is rastered we can block
 overlapping reservations on the database level.
 
 """
+from __future__ import annotations
 
 from datetime import datetime, timedelta
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import Literal
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from typing_extensions import TypeAlias
     from typing_extensions import TypeGuard
 
 
-Raster = _t.Literal[5, 10, 15, 30, 60]
+Raster: TypeAlias = Literal[5, 10, 15, 30, 60]
 
 # The raster values must divide an hour without any remaining minutes
-VALID_RASTER: _t.Tuple[Raster, ...] = (5, 10, 15, 30, 60)
+VALID_RASTER: tuple[Raster, ...] = (5, 10, 15, 30, 60)
 MIN_RASTER: Raster = min(VALID_RASTER)
 MAX_RASTER: Raster = max(VALID_RASTER)
 
 
-def is_valid_raster(raster: int) -> 'TypeGuard[Raster]':
+def is_valid_raster(raster: int) -> TypeGuard[Raster]:
     return raster in VALID_RASTER
 
 
@@ -76,7 +80,7 @@ def rasterize_span(
     start: datetime,
     end: datetime,
     raster: Raster
-) -> _t.Tuple[datetime, datetime]:
+) -> tuple[datetime, datetime]:
     """Rasterizes both a start and an end date."""
     return rasterize_start(start, raster), rasterize_end(end, raster)
 
@@ -85,7 +89,7 @@ def iterate_span(
     start: datetime,
     end: datetime,
     raster: Raster
-) -> '_t.Iterator[_t.Tuple[datetime, datetime]]':
+) -> Iterator[tuple[datetime, datetime]]:
     """Iterates through all raster blocks within a certain timespan."""
     start, end = rasterize_span(start, end, raster)
 

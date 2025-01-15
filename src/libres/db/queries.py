@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import sedate
 
@@ -11,14 +13,17 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, or_
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import TypeVar
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from collections.abc import Collection
+    from collections.abc import Iterable
     from sqlalchemy.orm import Query
     from uuid import UUID
 
     from libres.context.core import Context
 
-_T = _t.TypeVar('_T')
+_T = TypeVar('_T')
 
 
 log = logging.getLogger('libres')
@@ -34,24 +39,24 @@ class Queries(ContextServicesMixin):
 
     """
 
-    def __init__(self, context: 'Context'):
+    def __init__(self, context: Context):
         self.context = context
 
     def all_allocations_in_range(
         self,
         start: datetime,
         end: datetime
-    ) -> 'Query[Allocation]':
+    ) -> Query[Allocation]:
         return self.allocations_in_range(
             self.session.query(Allocation), start, end
         )
 
     @staticmethod
     def allocations_in_range(
-        query: 'Query[_T]',
+        query: Query[_T],
         start: datetime,
         end: datetime
-    ) -> 'Query[_T]':
+    ) -> Query[_T]:
         """ Takes an allocation query and limits it to the allocations
         overlapping with start and end.
 
@@ -71,9 +76,9 @@ class Queries(ContextServicesMixin):
 
     @staticmethod
     def overlapping_allocations(
-        query: 'Query[_T]',
-        dates: _t.Iterable[_t.Tuple[datetime, datetime]]
-    ) -> 'Query[_T]':
+        query: Query[_T],
+        dates: Iterable[tuple[datetime, datetime]]
+    ) -> Query[_T]:
         """ Takes an allocation query and limits it to the allocations
         overlapping with any of the passed in datetime ranges
 
@@ -94,7 +99,7 @@ class Queries(ContextServicesMixin):
 
     @staticmethod
     def availability_by_allocations(
-        allocations: _t.Iterable['Allocation']
+        allocations: Iterable[Allocation]
     ) -> float:
         """Takes any iterable with alloctions and calculates the availability.
         Counts missing mirrors as 100% free and returns a value between 0-100
@@ -124,7 +129,7 @@ class Queries(ContextServicesMixin):
         self,
         start: datetime,
         end: datetime,
-        resources: _t.Collection['UUID']
+        resources: Collection[UUID]
     ) -> float:
         """Returns the availability for the given resources in the given range.
         The exposure is used to check if the allocation is visible.
@@ -143,8 +148,8 @@ class Queries(ContextServicesMixin):
         self,
         start: datetime,
         end: datetime,
-        resources: _t.Collection['UUID']
-    ) -> _t.Dict[date, _t.Tuple[float, _t.Set['UUID']]]:
+        resources: Collection[UUID]
+    ) -> dict[date, tuple[float, set[UUID]]]:
         """Availability by range with a twist. Instead of returning a grand
         total, a dictionary is returned with each day in the range as key and
         a tuple of availability and the resources counted for that day.
@@ -181,8 +186,8 @@ class Queries(ContextServicesMixin):
 
     def reservations_by_session(
         self,
-        session_id: _t.Optional['UUID']
-    ) -> 'Query[Reservation]':
+        session_id: UUID | None
+    ) -> Query[Reservation]:
 
         # be sure to not query for all reservations. since a query should be
         # returned in any case we just use an impossible clause
@@ -190,7 +195,7 @@ class Queries(ContextServicesMixin):
         # this is mainly a security feature
         if not session_id:
             log.warn('empty session id')
-            return self.session.query(Reservation).filter("0=1")
+            return self.session.query(Reservation).filter('0=1')
 
         query = self.session.query(Reservation)
         query = query.filter(Reservation.session_id == session_id)
@@ -200,8 +205,8 @@ class Queries(ContextServicesMixin):
 
     def confirm_reservations_for_session(
         self,
-        session_id: 'UUID',
-        token: _t.Optional['UUID'] = None
+        session_id: UUID,
+        token: UUID | None = None
     ) -> None:
         """ Confirms all reservations of the given session id. Optionally
         confirms only the reservations with the given token. All if None.
@@ -229,8 +234,8 @@ class Queries(ContextServicesMixin):
 
     def remove_reservation_from_session(
         self,
-        session_id: 'UUID',
-        token: 'UUID'
+        session_id: UUID,
+        token: UUID
     ) -> None:
         """ Removes the reservation with the given session_id and token. """
 
@@ -262,12 +267,12 @@ class Queries(ContextServicesMixin):
         query = self.session.query(Reservation)
         query = query.filter(Reservation.session_id == session_id)
 
-        query.update({"modified": sedate.utcnow()})
+        query.update({'modified': sedate.utcnow()})
 
     def find_expired_reservation_sessions(
         self,
-        expiration_date: _t.Optional[datetime]
-    ) -> _t.List['UUID']:
+        expiration_date: datetime | None
+    ) -> list[UUID]:
         """ Goes through all reservations and returns the session ids of the
         unconfirmed ones which are older than the given expiration date.
         By default the expiration date is now - 15 minutes.
@@ -282,7 +287,7 @@ class Queries(ContextServicesMixin):
         )
 
         # first get the session ids which are expired
-        query: 'Query[_t.Tuple[UUID, datetime, _t.Optional[datetime]]]'
+        query: Query[tuple[UUID, datetime, datetime | None]]
         query = self.session.query(
             Reservation.session_id,
             func.max(Reservation.created),
@@ -306,8 +311,8 @@ class Queries(ContextServicesMixin):
 
     def remove_expired_reservation_sessions(
         self,
-        expiration_date: _t.Optional[datetime] = None
-    ) -> _t.List['UUID']:
+        expiration_date: datetime | None = None
+    ) -> list[UUID]:
         """ Removes all reservations which have an expired session id.
         By default the expiration date is now - 15 minutes.
 

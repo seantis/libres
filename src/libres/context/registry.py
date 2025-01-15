@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import threading
 
 from contextlib import contextmanager
@@ -6,12 +8,14 @@ from libres.modules import errors
 from libres.context.core import Context
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from collections.abc import Iterator
     from uuid import UUID
 
 
-def create_default_registry() -> 'Registry':
+def create_default_registry() -> Registry:
     """ Creates the default registry for libres. """
 
     import re
@@ -28,7 +32,7 @@ def create_default_registry() -> 'Registry':
     def session_provider(context: Context) -> SessionProvider:
         return SessionProvider(context.get_setting('dsn'))
 
-    def email_validator_factory(context: Context) -> _t.Callable[[str], bool]:
+    def email_validator_factory(context: Context) -> Callable[[str], bool]:
         # A very simple and stupid email validator. It's way too simple, but
         # it can be extended to do more powerful checks.
         def is_valid_email(email: str) -> bool:
@@ -39,11 +43,11 @@ def create_default_registry() -> 'Registry':
     def exposure_factory(context: Context) -> Exposure:
         return Exposure()
 
-    def uuid_generator_factory(context: Context) -> _t.Callable[[str], 'UUID']:
-        def uuid_generator(name: str) -> 'UUID':
+    def uuid_generator_factory(context: Context) -> Callable[[str], UUID]:
+        def uuid_generator(name: str) -> UUID:
             return new_namespace_uuid(
                 context.get_setting('uuid_namespace'),
-                '/'.join((context.name, name))
+                f'{context.name}/{name}'
             )
         return uuid_generator
 
@@ -77,8 +81,8 @@ class Registry:
 
     """
 
-    contexts: _t.Dict[str, Context]
-    master_context: _t.Optional[Context] = None
+    contexts: dict[str, Context]
+    master_context: Context | None = None
 
     def __init__(self) -> None:
         self.thread_lock = threading.RLock()
@@ -137,7 +141,7 @@ class Registry:
             self.local.current_context = self.get_context(name)
 
     @contextmanager
-    def context(self, name: str) -> _t.Iterator[Context]:
+    def context(self, name: str) -> Iterator[Context]:
         previous = self.current_context.name
         self.switch_context(name)
         yield self.current_context

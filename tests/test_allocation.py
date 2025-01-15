@@ -114,7 +114,7 @@ def test_whole_day():
     allocation.end = datetime(2013, 1, 1, 0, 0, tzinfo=utc)
 
     with pytest.raises(ValueError):
-        allocation.whole_day
+        _ = allocation.whole_day
 
 
 def test_separate_allocation(scheduler):

@@ -1,17 +1,23 @@
+from __future__ import annotations
+
 import enum
 import libres
 import threading
-
 from contextlib import contextmanager
 from functools import cached_property
 
 from libres.modules import errors
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import Any
+from typing import Literal
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from collections.abc import Iterator
     from sqlalchemy.orm import Session
     from sqlalchemy.orm.session import SessionTransaction
+    from typing_extensions import TypeAlias
     from uuid import UUID
 
     from libres.context.registry import Registry
@@ -24,8 +30,8 @@ class _Marker(enum.Enum):
     required = enum.auto()
 
 
-missing_t = _t.Literal[_Marker.missing]
-required_t = _t.Literal[_Marker.required]
+missing_t: TypeAlias = Literal[_Marker.missing]  # noqa: PYI042
+required_t: TypeAlias = Literal[_Marker.required]  # noqa: PYI042
 missing: missing_t = _Marker.missing
 required: required_t = _Marker.required
 
@@ -51,18 +57,18 @@ class ContextServicesMixin:
 
     """
 
-    context: 'Context'
+    context: Context
 
     @cached_property
-    def is_allocation_exposed(self) -> _t.Callable[['Allocation'], bool]:
+    def is_allocation_exposed(self) -> Callable[[Allocation], bool]:
         return self.context.get_service('exposure').is_allocation_exposed
 
     @cached_property
-    def generate_uuid(self) -> _t.Callable[[str], 'UUID']:
+    def generate_uuid(self) -> Callable[[str], UUID]:
         return self.context.get_service('uuid_generator')
 
     @cached_property
-    def validate_email(self) -> _t.Callable[[str], bool]:
+    def validate_email(self) -> Callable[[str], bool]:
         return self.context.get_service('email_validator')
 
     def clear_cache(self) -> None:
@@ -84,11 +90,11 @@ class ContextServicesMixin:
             pass
 
     @property
-    def session_provider(self) -> 'SessionProvider':
+    def session_provider(self) -> SessionProvider:
         return self.context.get_service('session_provider')
 
     @property
-    def session(self) -> 'Session':
+    def session(self) -> Session:
         """ Returns the current session. """
         return self.session_provider.session()
 
@@ -97,7 +103,7 @@ class ContextServicesMixin:
         self.session.close()
 
     @property
-    def begin_nested(self) -> _t.Callable[[], 'SessionTransaction']:
+    def begin_nested(self) -> Callable[[], SessionTransaction]:
         return self.session.begin_nested
 
     def commit(self) -> None:
@@ -143,13 +149,13 @@ class Context:
     def __init__(
         self,
         name: str,
-        registry: _t.Optional['Registry'] = None,
-        parent: _t.Optional['Context'] = None,
+        registry: Registry | None = None,
+        parent: Context | None = None,
         locked: bool = False
     ):
         self.name = name
         self.registry = registry or libres.registry
-        self.values: _t.Dict[str, _t.Any] = {}
+        self.values: dict[str, Any] = {}
         self.parent = parent
         self.locked = False
         self.thread_lock = threading.RLock()
@@ -158,7 +164,7 @@ class Context:
         return f"<Libres Context(name='{self.name}')>"
 
     @contextmanager
-    def as_current_context(self) -> _t.Iterator[None]:
+    def as_current_context(self) -> Iterator[None]:
         with self.registry.context(self.name):
             yield
 
@@ -173,7 +179,7 @@ class Context:
         with self.thread_lock:
             self.locked = False
 
-    def get(self, key: str) -> _t.Union[_t.Any, missing_t]:
+    def get(self, key: str) -> Any | missing_t:
         if key in self.values:
             return self.values[key]
         elif self.parent:
@@ -181,7 +187,7 @@ class Context:
         else:
             return missing
 
-    def set(self, key: str, value: _t.Any) -> None:
+    def set(self, key: str, value: Any) -> None:
         if self.locked:
             raise errors.ContextIsLocked
 
@@ -195,21 +201,21 @@ class Context:
 
             self.values[key] = value
 
-    def get_setting(self, name: str) -> _t.Any:
+    def get_setting(self, name: str) -> Any:
         return self.get(f'settings.{name}')
 
-    def set_setting(self, name: str, value: _t.Any) -> None:
+    def set_setting(self, name: str, value: Any) -> None:
         with self.thread_lock:
             self.set(f'settings.{name}', value)
 
-    def get_service(self, name: str) -> _t.Any:
-        service_id = '/'.join(('service', name))
+    def get_service(self, name: str) -> Any:
+        service_id = f'service/{name}'
         service = self.get(service_id)
 
         if service is missing:
             raise errors.UnknownService(service_id)
 
-        cache_id = '/'.join(('service', name, 'cache'))
+        cache_id = f'service/{name}/cache'
         cache = self.get(cache_id)
 
         # no cache
@@ -226,13 +232,13 @@ class Context:
     def set_service(
         self,
         name: str,
-        factory: _t.Callable[..., _t.Any],
+        factory: Callable[..., Any],
         cache: bool = False
     ) -> None:
         with self.thread_lock:
-            service_id = '/'.join(('service', name))
+            service_id = f'service/{name}'
             self.set(service_id, factory)
 
             if cache:
-                cache_id = '/'.join(('service', name, 'cache'))
+                cache_id = f'service/{name}/cache'
                 self.set(cache_id, required)

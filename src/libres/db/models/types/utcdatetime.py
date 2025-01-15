@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import sedate
 
 from sqlalchemy import types
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
     from datetime import datetime
     from sqlalchemy.engine import Dialect
 
@@ -29,9 +31,9 @@ class UTCDateTime(_Base):
 
     def process_bind_param(  # type:ignore[override]
         self,
-        value: _t.Optional['datetime'],
-        dialect: 'Dialect'
-    ) -> _t.Optional['datetime']:
+        value: datetime | None,
+        dialect: Dialect
+    ) -> datetime | None:
 
         if value is not None:
             return sedate.to_timezone(value, 'UTC').replace(tzinfo=None)
@@ -39,9 +41,9 @@ class UTCDateTime(_Base):
 
     def process_result_value(
         self,
-        value: _t.Optional['datetime'],
-        dialect: 'Dialect'
-    ) -> _t.Optional['datetime']:
+        value: datetime | None,
+        dialect: Dialect
+    ) -> datetime | None:
 
         if value is not None:
             return sedate.replace_timezone(value, 'UTC')

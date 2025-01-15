@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from libres.context.registry import create_default_registry
 from libres.db import new_scheduler
 

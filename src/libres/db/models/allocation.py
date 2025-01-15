@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sedate
 
 from datetime import datetime, timedelta, time
@@ -24,9 +26,12 @@ from libres.modules.rasterizer import (
 )
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import Any
+from typing import TypeVar
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
     import uuid
+    from collections.abc import Iterator
     from sedate.types import TzInfoOrName
     from sqlalchemy.orm import Query
     from typing_extensions import Self
@@ -34,8 +39,8 @@ if _t.TYPE_CHECKING:
     from libres.db.models import Reservation, ReservedSlot
     from libres.modules.rasterizer import Raster
 
-    _OptDT1 = _t.TypeVar('_OptDT1', _t.Optional[datetime], datetime, None)
-    _OptDT2 = _t.TypeVar('_OptDT2', _t.Optional[datetime], datetime, None)
+    _OptDT1 = TypeVar('_OptDT1', 'datetime | None', datetime, None)
+    _OptDT2 = TypeVar('_OptDT2', 'datetime | None', datetime, None)
 
 
 class Allocation(TimestampMixin, ORMBase, OtherModels):
@@ -63,7 +68,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     __tablename__ = 'allocations'
 
     #: the id of the allocation, autoincremented
-    id: 'Column[int]' = Column(
+    id: Column[int] = Column(
         types.Integer(),
         primary_key=True,
         autoincrement=True
@@ -71,27 +76,27 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     #: the resource uuid of the allocation, may not be an actual resource
     #: see :class:`.models.Allocation` for more information
-    resource: 'Column[uuid.UUID]' = Column(UUID(), nullable=False)
+    resource: Column[uuid.UUID] = Column(UUID(), nullable=False)
 
     #: the polymorphic type of the allocation
-    type: 'Column[_t.Optional[str]]' = Column(types.Text(), nullable=True)
+    type: Column[str | None] = Column(types.Text(), nullable=True)
 
     #: resource of which this allocation is a mirror. If the mirror_of
     #: attribute equals the resource, this is a real resource
     #: see :class:`.models.Allocation` for more information
-    mirror_of: 'Column[uuid.UUID]' = Column(UUID(), nullable=False)
+    mirror_of: Column[uuid.UUID] = Column(UUID(), nullable=False)
 
     #: Group uuid to which this allocation belongs to. Every allocation has a
     #: group but some allocations may be the only one in their group.
-    group: 'Column[uuid.UUID]' = Column(UUID(), nullable=False)
+    group: Column[uuid.UUID] = Column(UUID(), nullable=False)
 
     #: Number of times this allocation may be reserved
     # FIXME: Why is this not nullable=False? For now we pretend that it is
-    quota: 'Column[int]' = Column(types.Integer(), default=1)
+    quota: Column[int] = Column(types.Integer(), default=1)
 
     #: Maximum number of times this allocation may be reserved with one
     #: single reservation.
-    quota_limit: 'Column[int]' = Column(
+    quota_limit: Column[int] = Column(
         types.Integer(),
         default=0,
         nullable=False
@@ -99,37 +104,37 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     #: Partly available allocations may be reserved partially. How They may
     #: be partitioned is defined by the allocation's raster.
-    partly_available: 'Column[bool]' = Column(types.Boolean(), default=False)
+    partly_available: Column[bool] = Column(types.Boolean(), default=False)
 
     #: True if reservations for this allocation must be approved manually.
-    approve_manually: 'Column[bool]' = Column(types.Boolean(), default=False)
+    approve_manually: Column[bool] = Column(types.Boolean(), default=False)
 
     #: The timezone this allocation resides in.
     # FIXME: Why is this not nullable=False? A lot of properties rely on this!
-    timezone: 'Column[_t.Optional[str]]' = Column(types.String())
+    timezone: Column[str | None] = Column(types.String())
 
     #: Custom data reserved for the user
-    data: 'Column[_t.Optional[_t.Any]]' = Column(
+    data: Column[Any | None] = Column(
         JSON(),
         nullable=True
     )
 
-    _start: 'Column[datetime]' = Column(
+    _start: Column[datetime] = Column(
         UTCDateTime(timezone=False),
         nullable=False
     )
-    _end: 'Column[datetime]' = Column(
+    _end: Column[datetime] = Column(
         UTCDateTime(timezone=False),
         nullable=False
     )
-    _raster: 'Column[Raster]' = Column(
+    _raster: Column[Raster] = Column(
         types.Integer(),  # type:ignore[arg-type]
         nullable=False
     )
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
         # forward declare backref
-        reserved_slots: _t.List[ReservedSlot]
+        reserved_slots: list[ReservedSlot]
 
     __table_args__ = (
         Index('mirror_resource_ix', 'mirror_of', 'resource'),
@@ -149,7 +154,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def __hash__(self) -> int:
         return id(self)
 
-    def copy(self) -> 'Self':
+    def copy(self) -> Self:
         """ Creates a new copy of this allocation. """
         allocation = self.__class__()
         allocation.resource = self.resource
@@ -180,7 +185,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     #: The start of this allocation. Must be timezone aware.
     #: This date is rastered by the allocation's raster.
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
         # NOTE: type checkers perform some special sauce for property
         #       so the non-decorator style isn't well supported
         @property
@@ -209,7 +214,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     #: to avoid overlaps with other allocations.
     #: That is to say an allocation that ends at 15:00 really ends at
     #: 14:59:59.999999
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
         # NOTE: type checkers perform some special sauce for property
         #       so the non-decorator style isn't well supported
         @property
@@ -219,10 +224,10 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     else:
         end = property(get_end, set_end)
 
-    def get_raster(self) -> 'Raster':
+    def get_raster(self) -> Raster:
         return self._raster
 
-    def set_raster(self, raster: 'Raster') -> None:
+    def set_raster(self, raster: Raster) -> None:
         # the raster can only be set once!
         assert not self._raster
         self._raster = raster  # type:ignore[unreachable]
@@ -239,7 +244,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         if self._end:
             self._end = rasterize_end(self._end, self.raster)
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
         # NOTE: type checkers perform some special sauce for property
         #       so the non-decorator style isn't well supported
         @property
@@ -251,7 +256,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def display_start(
         self,
-        timezone: _t.Optional['TzInfoOrName'] = None
+        timezone: TzInfoOrName | None = None
     ) -> datetime:
         """Returns the start in either the timezone given or the timezone
         on the allocation."""
@@ -263,7 +268,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def display_end(
         self,
-        timezone: _t.Optional['TzInfoOrName'] = None
+        timezone: TzInfoOrName | None = None
     ) -> datetime:
         """Returns the end plus one microsecond in either the timezone given
         or the timezone on the allocation.
@@ -278,9 +283,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def _prepare_range(
         self,
-        start: '_OptDT1',
-        end: '_OptDT2'
-    ) -> _t.Tuple['_OptDT1', '_OptDT2']:
+        start: _OptDT1,
+        end: _OptDT2
+    ) -> tuple[_OptDT1, _OptDT2]:
 
         if start:
             assert self.timezone is not None
@@ -328,9 +333,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def free_slots(
         self,
-        start: _t.Optional[datetime] = None,
-        end: _t.Optional[datetime] = None
-    ) -> _t.List[_t.Tuple[datetime, datetime]]:
+        start: datetime | None = None,
+        end: datetime | None = None
+    ) -> list[tuple[datetime, datetime]]:
         """ Returns the slots which are not yet reserved. """
         reserved = {slot.start for slot in self.reserved_slots}
 
@@ -342,9 +347,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def align_dates(
         self,
-        start: _t.Optional[datetime] = None,
-        end: _t.Optional[datetime] = None
-    ) -> _t.Tuple[datetime, datetime]:
+        start: datetime | None = None,
+        end: datetime | None = None
+    ) -> tuple[datetime, datetime]:
         """ Aligns the given dates to the start and end date of the allocation.
 
         """
@@ -361,9 +366,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def all_slots(
         self,
-        start: _t.Optional[datetime] = None,
-        end: _t.Optional[datetime] = None
-    ) -> '_t.Iterator[_t.Tuple[datetime, datetime]]':
+        start: datetime | None = None,
+        end: datetime | None = None
+    ) -> Iterator[tuple[datetime, datetime]]:
         """ Returns the slots which exist with this timespan. Reserved or free.
 
         """
@@ -376,8 +381,8 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def count_slots(
         self,
-        start: _t.Optional[datetime] = None,
-        end: _t.Optional[datetime] = None
+        start: datetime | None = None,
+        end: datetime | None = None
     ) -> int:
         """ Returns the number of slots which exist with this timespan.
         Reserved or free.
@@ -393,8 +398,8 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     def is_available(
         self,
-        start: _t.Optional[datetime] = None,
-        end: _t.Optional[datetime] = None
+        start: datetime | None = None,
+        end: datetime | None = None
     ) -> bool:
         """ Returns true if the given daterange is completely available. """
 
@@ -414,11 +419,11 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         self,
         start: time,
         end: time,
-        timezone: _t.Optional['TzInfoOrName'] = None,
+        timezone: TzInfoOrName | None = None,
         is_dst: bool = False,
         raise_non_existent: bool = False,
         raise_ambiguous: bool = False
-    ) -> _t.Tuple[datetime, datetime]:
+    ) -> tuple[datetime, datetime]:
         """ Takes the given timespan and moves the start/end date to
         the closest reservable slot. So if 10:00 - 11:00 is requested it will
 
@@ -465,7 +470,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             return self.display_start(timezone), self.display_end(timezone)
 
     @property
-    def pending_reservations(self) -> 'Query[Reservation]':
+    def pending_reservations(self) -> Query[Reservation]:
         """ Returns the pending reservations query for this allocation.
         As the pending reservations target the group and not a specific
         allocation this function returns the same value for masters and
@@ -476,7 +481,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             "Don't call if the allocation does not yet exist"
         )
 
-        Reservation = self.models.Reservation
+        Reservation = self.models.Reservation  # noqa: N806
         query = object_session(self).query(Reservation.id)
         query = query.filter(Reservation.target == self.group)
         query = query.filter(Reservation.status == 'pending')
@@ -584,7 +589,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         self,
         start: datetime,
         end: datetime
-    ) -> _t.Optional['Self ']:
+    ) -> Self | None:
         """ Returns the first free allocation spot amongst the master and the
         mirrors. Honors the quota set on the master and will only try the
         master if the quota is set to 1.
@@ -623,10 +628,9 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         return True
 
-    def normalized_slots(self) -> _t.Iterator[_t.Union[
-        _t.Tuple[datetime, datetime],
-        _t.Tuple[None, None]
-    ]]:
+    def normalized_slots(self) -> Iterator[
+        tuple[datetime, datetime] | tuple[None, None]
+    ]:
         """Most of the times this will return the same thing as all_slots
         however for DST timezones it will ensure the transitions days with
         23 and 25 hours respectively still return 24 hours worth of slots.
@@ -690,7 +694,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def availability_partitions(
         self,
         normalize_dst: bool = True
-    ) -> _t.List[_t.Tuple[float, bool]]:
+    ) -> list[tuple[float, bool]]:
         """Partitions the space between start and end into blocks of either
         free or reserved time. Each block has a percentage representing the
         space the block occupies compared to the size of the whole allocation.
@@ -786,7 +790,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
         return self.resource == self.mirror_of
 
-    def get_master(self) -> 'Self':
+    def get_master(self) -> Self:
         if self.is_master:
             return self
         else:
@@ -796,7 +800,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
             return query.one()
 
-    def siblings(self, imaginary: bool = True) -> _t.List['Self']:
+    def siblings(self, imaginary: bool = True) -> list[Self]:
         """Returns the master/mirrors group this allocation is part of.
 
         If 'imaginary' is true, inexistant mirrors are created on the fly.

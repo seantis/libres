@@ -1,11 +1,16 @@
-import typing as _t
-if _t.TYPE_CHECKING:
+from __future__ import annotations
+
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Protocol
+
     import libres.db.models as _models
 
-    class _Models(_t.Protocol):
-        Allocation: _t.Type[_models.Allocation]
-        ReservedSlot: _t.Type[_models.ReservedSlot]
-        Reservation: _t.Type[_models.Reservation]
+    class _Models(Protocol):
+        Allocation: type[_models.Allocation]
+        ReservedSlot: type[_models.ReservedSlot]
+        Reservation: type[_models.Reservation]
 
 
 models = None
@@ -16,7 +21,7 @@ class OtherModels:
     classes without causing circular imports. """
 
     @property
-    def models(self) -> '_Models':
+    def models(self) -> _Models:
         global models
         if not models:
             # FIXME: libres.db exports ORMBase, do we really

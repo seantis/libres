@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sedate
 
 from libres.db.models.types import UTCDateTime
@@ -6,8 +8,8 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.schema import Column
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
     from datetime import datetime
 
 
@@ -22,16 +24,16 @@ class TimestampMixin:
     """
 
     @staticmethod
-    def timestamp() -> 'datetime':
+    def timestamp() -> datetime:
         return sedate.utcnow()
 
-    if _t.TYPE_CHECKING:
+    if TYPE_CHECKING:
         created: Column[datetime]
-        modified: Column[_t.Optional[datetime]]
+        modified: Column[datetime | None]
 
     else:
         @declared_attr
-        def created(cls) -> 'Column[datetime]':
+        def created(cls) -> Column[datetime]:
             return deferred(
                 Column(
                     UTCDateTime(timezone=False),
@@ -40,7 +42,7 @@ class TimestampMixin:
             )
 
         @declared_attr
-        def modified(cls) -> 'Column[_t.Optional[datetime]]':
+        def modified(cls) -> Column[datetime | None]:
             return deferred(
                 Column(
                     UTCDateTime(timezone=False),

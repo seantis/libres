@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sedate
 
 from datetime import datetime, time, timedelta
@@ -16,8 +18,14 @@ from libres.modules import rasterizer
 from libres.modules import utils
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import overload
+from typing import Any
+from typing import Literal
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from collections.abc import Collection
+    from collections.abc import Iterable
+    from collections.abc import Iterator
     from sedate.types import DateLike
     from sqlalchemy.orm import Query
     from typing_extensions import NotRequired, Self, TypeAlias, TypedDict
@@ -25,32 +33,32 @@ if _t.TYPE_CHECKING:
     from libres.context.core import Context
     from libres.modules.rasterizer import Raster
 
-    _dtrange: TypeAlias = _t.Tuple[datetime, datetime]
+    _dtrange: TypeAlias = tuple[datetime, datetime]  # noqa: PYI042
 
     class _ReserveArgs1(TypedDict):
         email: str
-        dates: _t.Union['_dtrange', _t.Collection['_dtrange']]
-        data: NotRequired[_t.Optional[_t.Any]]
-        session_id: NotRequired[_t.Optional[UUID]]
+        dates: _dtrange | Collection[_dtrange]
+        data: NotRequired[Any | None]
+        session_id: NotRequired[UUID | None]
         quota: NotRequired[int]
         single_token_per_session: NotRequired[bool]
 
     class _ReserveArgs2(TypedDict):
         email: str
         group: UUID
-        data: NotRequired[_t.Optional[_t.Any]]
-        session_id: NotRequired[_t.Optional[UUID]]
+        data: NotRequired[Any | None]
+        session_id: NotRequired[UUID | None]
         quota: NotRequired[int]
         single_token_per_session: NotRequired[bool]
 
-    _ReserveArgs: TypeAlias = _t.Union[_ReserveArgs1, _ReserveArgs2]
+    _ReserveArgs: TypeAlias = '_ReserveArgs1 | _ReserveArgs2'
 
 
 missing = object()
 
-Day = _t.Literal['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
-DayNumber = _t.Literal[0, 1, 2, 3, 4, 5, 6]
-DAYS_MAP: _t.Dict[Day, DayNumber] = {
+Day: TypeAlias = Literal['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
+DayNumber: TypeAlias = Literal[0, 1, 2, 3, 4, 5, 6]
+DAYS_MAP: dict[Day, DayNumber] = {
     'mo': 0,
     'tu': 1,
     'we': 2,
@@ -68,12 +76,12 @@ class Scheduler(ContextServicesMixin):
 
     def __init__(
         self,
-        context: 'Context',
+        context: Context,
         name: str,
         # FIXME: Not quite sure why we don't allow a PyTzInfo
         timezone: str,
-        allocation_cls: _t.Type[Allocation] = Allocation,
-        reservation_cls: _t.Type[Reservation] = Reservation
+        allocation_cls: type[Allocation] = Allocation,
+        reservation_cls: type[Reservation] = Reservation
     ):
         """ Initializeds a new Scheduler instance.
 
@@ -112,7 +120,7 @@ class Scheduler(ContextServicesMixin):
         self.allocation_cls = allocation_cls
         self.reservation_cls = reservation_cls
 
-    def clone(self) -> 'Self':
+    def clone(self) -> Self:
         """ Clones the scheduler. The result will be a new scheduler using the
         same context, name, settings and attributes.
 
@@ -145,8 +153,8 @@ class Scheduler(ContextServicesMixin):
 
     def _prepare_dates(
         self,
-        dates: 'utils._NestedIterable[datetime]'
-    ) -> _t.List[_t.Tuple[datetime, datetime]]:
+        dates: utils._NestedIterable[datetime]
+    ) -> list[tuple[datetime, datetime]]:
         return [
             (
                 sedate.standardize_date(s, self.timezone),
@@ -158,20 +166,20 @@ class Scheduler(ContextServicesMixin):
         self,
         start: datetime,
         end: datetime
-    ) -> _t.Tuple[datetime, datetime]:
+    ) -> tuple[datetime, datetime]:
         return (
             sedate.standardize_date(start, self.timezone),
             sedate.standardize_date(end, self.timezone)
         )
 
-    def managed_allocations(self) -> 'Query[Allocation]':
+    def managed_allocations(self) -> Query[Allocation]:
         """ The allocations managed by this scheduler / resource. """
         query = self.session.query(Allocation)
         query = query.filter(Allocation.mirror_of == self.resource)
 
         return query
 
-    def managed_reserved_slots(self) -> 'Query[ReservedSlot]':
+    def managed_reserved_slots(self) -> Query[ReservedSlot]:
         """ The reserved_slots managed by this scheduler / resource. """
         uuids = self.managed_allocations().with_entities(Allocation.resource)
 
@@ -180,7 +188,7 @@ class Scheduler(ContextServicesMixin):
 
         return query
 
-    def managed_reservations(self) -> 'Query[Reservation]':
+    def managed_reservations(self) -> Query[Reservation]:
         """ The reservations managed by this scheduler / resource. """
         query = self.session.query(Reservation)
         query = query.filter(Reservation.resource == self.resource)
@@ -205,8 +213,8 @@ class Scheduler(ContextServicesMixin):
 
     def allocations_by_ids(
         self,
-        ids: _t.Collection[int]
-    ) -> 'Query[Allocation]':
+        ids: Collection[int]
+    ) -> Query[Allocation]:
         query = self.managed_allocations()
         query = query.filter(Allocation.id.in_(ids))
         query = query.order_by(Allocation._start)
@@ -216,14 +224,14 @@ class Scheduler(ContextServicesMixin):
         self,
         group: UUID,
         masters_only: bool = True
-    ) -> 'Query[Allocation]':
+    ) -> Query[Allocation]:
         return self.allocations_by_groups([group], masters_only=masters_only)
 
     def allocations_by_groups(
         self,
-        groups: _t.Collection[UUID],
+        groups: Collection[UUID],
         masters_only: bool = True
-    ) -> 'Query[Allocation]':
+    ) -> Query[Allocation]:
 
         query = self.managed_allocations()
         query = query.filter(Allocation.group.in_(groups))
@@ -236,8 +244,8 @@ class Scheduler(ContextServicesMixin):
     def allocations_by_reservation(
         self,
         token: UUID,
-        id: _t.Optional[int] = None
-    ) -> 'Query[Allocation]':
+        id: int | None = None
+    ) -> Query[Allocation]:
         """ Returns the allocations for the reservation if it was *approved*,
         pending reservations return nothing. If you need to get the allocation
         a pending reservation might be targeting, use _target_allocations
@@ -276,7 +284,7 @@ class Scheduler(ContextServicesMixin):
         start: datetime,
         end: datetime,
         masters_only: bool = True
-    ) -> 'Query[Allocation]':
+    ) -> Query[Allocation]:
 
         start, end = self._prepare_range(start, end)
 
@@ -295,7 +303,7 @@ class Scheduler(ContextServicesMixin):
     def allocation_dates_by_group(
         self,
         group: UUID
-    ) -> _t.List[_t.Tuple[datetime, datetime]]:
+    ) -> list[tuple[datetime, datetime]]:
 
         query = self.allocations_by_group(group)
         dates_query = query.with_entities(Allocation._start, Allocation._end)
@@ -304,15 +312,15 @@ class Scheduler(ContextServicesMixin):
     def allocation_mirrors_by_master(
         self,
         master: Allocation
-    ) -> _t.List[Allocation]:
+    ) -> list[Allocation]:
         return [s for s in master.siblings() if not s.is_master]
 
     def allocation_dates_by_ids(
         self,
-        ids: _t.Collection[int],
-        start_time: _t.Optional[time] = None,
-        end_time: _t.Optional[time] = None
-    ) -> _t.Iterator[_t.Tuple[datetime, datetime]]:
+        ids: Collection[int],
+        start_time: time | None = None,
+        end_time: time | None = None
+    ) -> Iterator[tuple[datetime, datetime]]:
 
         for allocation in self.allocations_by_ids(ids).all():
 
@@ -323,7 +331,7 @@ class Scheduler(ContextServicesMixin):
 
             yield s_dt, e_dt - timedelta(microseconds=1)
 
-    def manual_approval_required(self, ids: _t.Collection[int]) -> bool:
+    def manual_approval_required(self, ids: Collection[int]) -> bool:
         """ Returns True if any of the allocations require manual approval. """
         query = self.allocations_by_ids(ids)
         query = query.filter(Allocation.approve_manually == True)
@@ -332,17 +340,17 @@ class Scheduler(ContextServicesMixin):
 
     def allocate(
         self,
-        dates: _t.Union['_dtrange', _t.Iterable['_dtrange']],
+        dates: _dtrange | Iterable[_dtrange],
         partly_available: bool = False,
-        raster: 'Raster' = rasterizer.MIN_RASTER,
+        raster: Raster = rasterizer.MIN_RASTER,
         whole_day: bool = False,
-        quota: _t.Optional[int] = None,
+        quota: int | None = None,
         quota_limit: int = 0,
         grouped: bool = False,
-        data: _t.Optional[_t.Any] = None,
+        data: Any | None = None,
         approve_manually: bool = False,
         skip_overlapping: bool = False,
-    ) -> _t.List[Allocation]:
+    ) -> list[Allocation]:
         """ Allocates a spot in the sedate.
 
         An allocation defines a timerange which can be reserved. No
@@ -596,7 +604,7 @@ class Scheduler(ContextServicesMixin):
 
         """
 
-        assert new_quota > 0, "Quota must be greater than 0"
+        assert new_quota > 0, 'Quota must be greater than 0'
 
         if new_quota == master.quota:
             return
@@ -607,7 +615,7 @@ class Scheduler(ContextServicesMixin):
 
         # Make sure that the quota can be decreased
         mirrors = self.allocation_mirrors_by_master(master)
-        allocations = [master] + mirrors
+        allocations = [master, *mirrors]
 
         free_allocations = [a for a in allocations if a.is_available()]
 
@@ -666,9 +674,9 @@ class Scheduler(ContextServicesMixin):
 
     def reordered_keylist(
         self,
-        allocations: _t.Collection[Allocation],
+        allocations: Collection[Allocation],
         new_quota: int
-    ) -> _t.Dict[UUID, _t.Optional[UUID]]:
+    ) -> dict[UUID, UUID | None]:
         """ Creates the map for the keylist reorganzation.
 
         Each key of the returned dictionary is a resource uuid pointing to the
@@ -687,7 +695,7 @@ class Scheduler(ContextServicesMixin):
         keylist.extend(utils.generate_uuids(master.resource, master.quota))
 
         # prefill the map
-        reordered: _t.Dict[UUID, _t.Optional[UUID]] = {
+        reordered: dict[UUID, UUID | None] = {
             k: None
             for k in keylist
         }
@@ -705,8 +713,8 @@ class Scheduler(ContextServicesMixin):
 
     def availability(
         self,
-        start: _t.Optional[datetime] = None,
-        end: _t.Optional[datetime] = None
+        start: datetime | None = None,
+        end: datetime | None = None
     ) -> float:
         """Goes through all allocations and sums up the availability."""
 
@@ -720,14 +728,14 @@ class Scheduler(ContextServicesMixin):
     def move_allocation(
         self,
         master_id: int,
-        new_start: _t.Optional[datetime] = None,
-        new_end: _t.Optional[datetime] = None,
-        group: _t.Optional[UUID] = None,
-        new_quota: _t.Optional[int] = None,
-        approve_manually: _t.Optional[bool] = None,
+        new_start: datetime | None = None,
+        new_end: datetime | None = None,
+        group: UUID | None = None,
+        new_quota: int | None = None,
+        approve_manually: bool | None = None,
         quota_limit: int = 0,
-        whole_day: _t.Optional[bool] = None,
-        data: _t.Optional[_t.Any] = missing
+        whole_day: bool | None = None,
+        data: Any | None = missing
     ) -> None:
 
         assert master_id
@@ -740,7 +748,7 @@ class Scheduler(ContextServicesMixin):
         master = self.allocation_by_id(master_id)
         mirrors = self.allocation_mirrors_by_master(master)
 
-        changing = [master] + mirrors
+        changing = [master, *mirrors]
         ids = [c.id for c in changing]
 
         assert master.timezone == self.timezone, """
@@ -834,24 +842,24 @@ class Scheduler(ContextServicesMixin):
             if data is not missing:
                 change.data = data
 
-    @_t.overload
+    @overload
     def remove_allocation(self, id: int) -> None: ...
 
-    @_t.overload
+    @overload
     def remove_allocation(
         self,
         id: None = ...,
         *,
-        groups: _t.Collection[UUID]
+        groups: Collection[UUID]
     ) -> None: ...
 
     def remove_allocation(
         self,
-        id: _t.Optional[int] = None,
-        groups: _t.Optional[_t.Collection[UUID]] = None
+        id: int | None = None,
+        groups: Collection[UUID] | None = None
     ) -> None:
 
-        allocations: _t.Iterable[Allocation]
+        allocations: Iterable[Allocation]
         if id:
             # FIXME: We probably should `assert groups is None`
             #        since the parameter does nothing if `id` is
@@ -894,9 +902,9 @@ class Scheduler(ContextServicesMixin):
 
     def remove_unused_allocations(
         self,
-        start: 'DateLike',
-        end: 'DateLike',
-        days: _t.Optional[_t.Iterable[_t.Union['Day', 'DayNumber']]] = None,
+        start: DateLike,
+        end: DateLike,
+        days: Iterable[Day | DayNumber] | None = None,
         exclude_groups: bool = False
     ) -> int:
         """ Removes all allocations without reservations between start and
@@ -922,7 +930,7 @@ class Scheduler(ContextServicesMixin):
             sedate.as_datetime(end)
         )
 
-        day_numbers: _t.Optional[_t.Set[DayNumber]] = None
+        day_numbers: set[DayNumber] | None = None
         if days:
             # get the day from the map - if impossible take the verbatim value
             # this allows for using strings or integers
@@ -1001,39 +1009,39 @@ class Scheduler(ContextServicesMixin):
             deleted += 1
         return deleted
 
-    @_t.overload
+    @overload
     def reserve(
         self,
         email: str,
-        dates: _t.Union['_dtrange', _t.Collection['_dtrange']],
+        dates: _dtrange | Collection[_dtrange],
         group: None = ...,
-        data: _t.Optional[_t.Any] = ...,
-        session_id: _t.Optional[UUID] = ...,
+        data: Any | None = ...,
+        session_id: UUID | None = ...,
         quota: int = ...,
         single_token_per_session: bool = ...
     ) -> UUID: ...
 
-    @_t.overload
+    @overload
     def reserve(
         self,
         email: str,
         dates: None,
         group: UUID,
-        data: _t.Optional[_t.Any] = ...,
-        session_id: _t.Optional[UUID] = ...,
+        data: Any | None = ...,
+        session_id: UUID | None = ...,
         quota: int = ...,
         single_token_per_session: bool = ...
     ) -> UUID: ...
 
-    @_t.overload
+    @overload
     def reserve(
         self,
         email: str,
         dates: None = ...,
         *,
         group: UUID,
-        data: _t.Optional[_t.Any] = ...,
-        session_id: _t.Optional[UUID] = ...,
+        data: Any | None = ...,
+        session_id: UUID | None = ...,
         quota: int = ...,
         single_token_per_session: bool = ...
     ) -> UUID: ...
@@ -1041,10 +1049,10 @@ class Scheduler(ContextServicesMixin):
     def reserve(
         self,
         email: str,
-        dates: _t.Union['_dtrange', _t.Collection['_dtrange'], None] = None,
-        group: _t.Optional[UUID] = None,
-        data: _t.Optional[_t.Any] = None,
-        session_id: _t.Optional[UUID] = None,
+        dates: _dtrange | Collection[_dtrange] | None = None,
+        group: UUID | None = None,
+        data: Any | None = None,
+        session_id: UUID | None = None,
         quota: int = 1,
         single_token_per_session: bool = False
     ) -> UUID:
@@ -1173,9 +1181,8 @@ class Scheduler(ContextServicesMixin):
                 if not allocation.contains(start, end):
                     raise errors.TimerangeTooLong()
 
-                if allocation.quota_limit > 0:
-                    if allocation.quota_limit < quota:
-                        raise errors.QuotaOverLimit
+                if 0 < allocation.quota_limit < quota:
+                    raise errors.QuotaOverLimit
 
                 if allocation.quota < quota:
                     raise errors.QuotaImpossible
@@ -1194,8 +1201,8 @@ class Scheduler(ContextServicesMixin):
         # or none of them. As such there's no start / end date which is defined
         # implicitly by the allocation
         def new_reservations_by_group(
-            group: _t.Optional[UUID]
-        ) -> _t.Iterator[Reservation]:
+            group: UUID | None
+        ) -> Iterator[Reservation]:
 
             if group:
                 reservation = self.reservation_cls()
@@ -1213,8 +1220,8 @@ class Scheduler(ContextServicesMixin):
 
         # all other reservations are reserved by start/end date
         def new_reservations_by_dates(
-            dates: _t.List[_t.Tuple[datetime, datetime]]
-        ) -> _t.Iterator[Reservation]:
+            dates: list[tuple[datetime, datetime]]
+        ) -> Iterator[Reservation]:
 
             already_reserved_groups = set()
 
@@ -1283,12 +1290,12 @@ class Scheduler(ContextServicesMixin):
     def _approve_reservation_record(
         self,
         reservation: Reservation
-    ) -> _t.List[ReservedSlot]:
+    ) -> list[ReservedSlot]:
 
         # write out the slots
         slots_to_reserve = []
 
-        dates: _t.Union[_t.Tuple['_dtrange', ...], _t.List['_dtrange']]
+        dates: tuple[_dtrange, ...] | list[_dtrange]
         if reservation.target_type == 'group':
             dates = self.allocation_dates_by_group(reservation.target)
         else:
@@ -1330,7 +1337,7 @@ class Scheduler(ContextServicesMixin):
 
         return slots_to_reserve
 
-    def approve_reservations(self, token: UUID) -> _t.List[ReservedSlot]:
+    def approve_reservations(self, token: UUID) -> list[ReservedSlot]:
         """ This function approves an existing reservation and writes the
         reserved slots accordingly.
 
@@ -1342,14 +1349,14 @@ class Scheduler(ContextServicesMixin):
 
         reservations = self.reservations_by_token(token).all()
 
-        for reservation in reservations:
-            try:
+        try:
+            for reservation in reservations:
                 slots_to_reserve.extend(
                     self._approve_reservation_record(reservation)
                 )
-            except errors.LibresError as e:
-                e.reservation = reservation
-                raise e
+        except errors.LibresError as e:
+            e.reservation = reservation
+            raise e
 
         events.on_reservations_approved(self.context, reservations)
 
@@ -1373,7 +1380,7 @@ class Scheduler(ContextServicesMixin):
     def remove_reservation(
         self,
         token: UUID,
-        id: _t.Optional[int] = None
+        id: int | None = None
     ) -> None:
         """ Removes all reserved slots of the given reservation token.
 
@@ -1411,7 +1418,7 @@ class Scheduler(ContextServicesMixin):
     def change_reservation_data(
         self,
         token: UUID,
-        data: _t.Optional[_t.Any]
+        data: Any | None
     ) -> None:
 
         for reservation in self.reservations_by_token(token).all():
@@ -1419,8 +1426,8 @@ class Scheduler(ContextServicesMixin):
 
     def change_reservation_time_candidates(
         self,
-        tokens: _t.Optional[_t.Collection[UUID]] = None
-    ) -> 'Query[Reservation]':
+        tokens: Collection[UUID] | None = None
+    ) -> Query[Reservation]:
         """ Returns the reservations that fullfill the restrictions
         imposed by change_reservation_time.
 
@@ -1448,7 +1455,7 @@ class Scheduler(ContextServicesMixin):
         id: int,
         new_start: datetime,
         new_end: datetime
-    ) -> _t.Optional[Reservation]:
+    ) -> Reservation | None:
         """ Kept for backwards compatibility, use :meth:`change_reservation`
         instead.
 
@@ -1468,8 +1475,8 @@ class Scheduler(ContextServicesMixin):
         id: int,
         new_start: datetime,
         new_end: datetime,
-        quota: _t.Optional[int] = None
-    ) -> _t.Optional[Reservation]:
+        quota: int | None = None
+    ) -> Reservation | None:
         """ Allows to change the timespan of a reservation under certain
         conditions:
 
@@ -1493,7 +1500,7 @@ class Scheduler(ContextServicesMixin):
         existing_reservation = self.reservations_by_token(token, id).one()
 
         # if there's nothing to change, do not change
-        if quota is None or existing_reservation.quota == quota:
+        if quota is None or existing_reservation.quota == quota:  # noqa: SIM102
             if existing_reservation.start == new_start:
                 ends = (new_end, new_end - timedelta(microseconds=1))
 
@@ -1511,7 +1518,7 @@ class Scheduler(ContextServicesMixin):
         if not allocation.contains(new_start, new_end):
             raise errors.TimerangeTooLong()
 
-        reservation_arguments: '_ReserveArgs' = {
+        reservation_arguments: _ReserveArgs = {
             'email': existing_reservation.email,
             'dates': (new_start, new_end),
             'data': existing_reservation.data,
@@ -1549,13 +1556,13 @@ class Scheduler(ContextServicesMixin):
         self,
         start: datetime,
         end: datetime,
-        days: _t.Optional[_t.Collection[_t.Union[Day, DayNumber]]] = None,
+        days: Collection[Day | DayNumber] | None = None,
         minspots: int = 0,
         available_only: bool = False,
-        whole_day: _t.Literal['any', 'yes', 'no'] = 'any',
-        groups: _t.Literal['any', 'yes', 'no'] = 'any',
+        whole_day: Literal['any', 'yes', 'no'] = 'any',
+        groups: Literal['any', 'yes', 'no'] = 'any',
         strict: bool = False
-    ) -> _t.List[Allocation]:
+    ) -> list[Allocation]:
         """ Search allocations using a number of options. The date is split
         into date/time. All allocations between start and end date within
         the given time (on each day) are included.
@@ -1623,7 +1630,7 @@ class Scheduler(ContextServicesMixin):
         assert whole_day in ('yes', 'no', 'any')
         assert groups in ('yes', 'no', 'any')
 
-        day_numbers: _t.Optional[_t.Set[DayNumber]]
+        day_numbers: set[DayNumber] | None
         if days:
             # get the day from the map - if impossible take the verbatim value
             # this allows for using strings or integers
@@ -1657,9 +1664,11 @@ class Scheduler(ContextServicesMixin):
             if not allocation.overlaps(s, e):
                 continue
 
-            if day_numbers:
-                if allocation.display_start().weekday() not in day_numbers:
-                    continue
+            if (
+                day_numbers
+                and allocation.display_start().weekday() not in day_numbers
+            ):
+                continue
 
             if whole_day != 'any':
                 if whole_day == 'yes' and not allocation.whole_day:
@@ -1673,14 +1682,11 @@ class Scheduler(ContextServicesMixin):
             #
             # the spots are later checked again for actual availability, but
             # that is a heavier check, so it doesn't belong here.
-            if minspots:
-                if allocation.quota_limit > 0:
-                    if allocation.quota_limit < minspots:
-                        continue
+            if minspots and (0 < allocation.quota_limit < minspots):
+                continue
 
-            if available_only:
-                if not allocation.find_spot(s, e):
-                    continue
+            if available_only and not allocation.find_spot(s, e):
+                continue
 
             if minspots:
                 availability = self.availability(
@@ -1750,7 +1756,7 @@ class Scheduler(ContextServicesMixin):
         self,
         start: datetime,
         end: datetime
-    ) -> _t.List[Allocation]:
+    ) -> list[Allocation]:
         """ Returns a list of allocations that are free within start and end.
         These allocations may come from the master or any of the mirrors.
 
@@ -1777,8 +1783,8 @@ class Scheduler(ContextServicesMixin):
     def reserved_slots_by_reservation(
         self,
         token: UUID,
-        id: _t.Optional[int] = None
-    ) -> 'Query[ReservedSlot]':
+        id: int | None = None
+    ) -> Query[ReservedSlot]:
         """ Returns all reserved slots of the given reservation.
         The id is optional and may be used only return the slots from a
         specific reservation matching token and id.
@@ -1796,7 +1802,7 @@ class Scheduler(ContextServicesMixin):
             ids = allocations.with_entities(Allocation.id)
             return query.filter(ReservedSlot.allocation_id.in_(ids))
 
-    def reservations_by_group(self, group: UUID) -> 'Query[Reservation]':
+    def reservations_by_group(self, group: UUID) -> Query[Reservation]:
         tokens = self.managed_reservations().with_entities(Reservation.token)
         tokens = tokens.filter(Reservation.target == group)
 
@@ -1807,7 +1813,7 @@ class Scheduler(ContextServicesMixin):
     def reservations_by_allocation(
         self,
         allocation_id: int
-    ) -> 'Query[Reservation]':
+    ) -> Query[Reservation]:
 
         master = self.allocation_by_id(allocation_id)
         return self.reservations_by_group(master.group)
@@ -1815,8 +1821,8 @@ class Scheduler(ContextServicesMixin):
     def reservations_by_token(
         self,
         token: UUID,
-        id: _t.Optional[int] = None
-    ) -> 'Query[Reservation]':
+        id: int | None = None
+    ) -> Query[Reservation]:
 
         query = self.managed_reservations()
         query = query.filter(Reservation.token == token)

@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import uuid
 
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.dialects import postgresql
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
     from sqlalchemy.engine import Dialect
 
     _Base = TypeDecorator['SoftUUID']
@@ -46,9 +48,9 @@ class UUID(_Base):
 
     def process_bind_param(
         self,
-        value: _t.Optional[uuid.UUID],
-        dialect: 'Dialect'
-    ) -> _t.Optional[str]:
+        value: uuid.UUID | None,
+        dialect: Dialect
+    ) -> str | None:
 
         if value is not None:
             return str(value)
@@ -56,9 +58,9 @@ class UUID(_Base):
 
     def process_result_value(
         self,
-        value: _t.Optional[str],
-        dialect: 'Dialect'
-    ) -> _t.Optional[SoftUUID]:
+        value: str | None,
+        dialect: Dialect
+    ) -> SoftUUID | None:
         if value is not None:
             # Postgres always returns the uuid in the same format, so we
             # can turn it into an int immediately, avoiding some checks

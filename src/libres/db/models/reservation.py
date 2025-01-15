@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sedate
 
 from datetime import datetime, timedelta
@@ -13,8 +15,11 @@ from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import Any
+from typing import Literal
+from typing import NamedTuple
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
     import uuid
     from sedate.types import TzInfoOrName
     from sqlalchemy.orm import Query
@@ -22,7 +27,7 @@ if _t.TYPE_CHECKING:
     from libres.db.models import Allocation
 
 
-class Timespan(_t.NamedTuple):
+class Timespan(NamedTuple):
     start: datetime
     end: datetime
 
@@ -34,23 +39,23 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
 
     __tablename__ = 'reservations'
 
-    id: 'Column[int]' = Column(
+    id: Column[int] = Column(
         types.Integer(),
         primary_key=True,
         autoincrement=True
     )
 
-    token: 'Column[uuid.UUID]' = Column(
+    token: Column[uuid.UUID] = Column(
         UUID(),
         nullable=False,
     )
 
-    target: 'Column[uuid.UUID]' = Column(
+    target: Column[uuid.UUID] = Column(
         UUID(),
         nullable=False,
     )
 
-    target_type: 'Column[_t.Literal["group", "allocation"]]' = Column(
+    target_type: Column[Literal['group', 'allocation']] = Column(
         types.Enum(  # type:ignore[arg-type]
             'group', 'allocation',
             name='reservation_target_type'
@@ -58,56 +63,56 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         nullable=False
     )
 
-    type: 'Column[_t.Optional[str]]' = Column(
+    type: Column[str | None] = Column(
         types.Text(),
         nullable=True
     )
 
-    resource: 'Column[uuid.UUID]' = Column(
+    resource: Column[uuid.UUID] = Column(
         UUID(),
         nullable=False
     )
 
-    start: 'Column[_t.Optional[datetime]]' = Column(
+    start: Column[datetime | None] = Column(
         UTCDateTime(timezone=False),
         nullable=True
     )
 
-    end: 'Column[_t.Optional[datetime]]' = Column(
+    end: Column[datetime | None] = Column(
         UTCDateTime(timezone=False),
         nullable=True
     )
 
-    timezone: 'Column[_t.Optional[str]]' = Column(
+    timezone: Column[str | None] = Column(
         types.String(),
         nullable=True
     )
 
-    status: 'Column[_t.Literal["pending", "approved"]]' = Column(
+    status: Column[Literal['pending', 'approved']] = Column(
         types.Enum(  # type:ignore[arg-type]
             'pending', 'approved',
-            name="reservation_status"
+            name='reservation_status'
         ),
         nullable=False
     )
 
-    data: 'Column[_t.Optional[_t.Any]]' = deferred(
+    data: Column[Any | None] = deferred(
         Column(
             JSON(),
             nullable=True
         )
     )
 
-    email: 'Column[str]' = Column(
+    email: Column[str] = Column(
         types.Unicode(254),
         nullable=False
     )
 
-    session_id: 'Column[_t.Optional[uuid.UUID]]' = Column(
+    session_id: Column[uuid.UUID | None] = Column(
         UUID()
     )
 
-    quota: 'Column[int]' = Column(
+    quota: Column[int] = Column(
         types.Integer(),
         nullable=False
     )
@@ -121,7 +126,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         'polymorphic_on': type
     }
 
-    def _target_allocations(self) -> 'Query[Allocation]':
+    def _target_allocations(self) -> Query[Allocation]:
         """ Returns the allocations this reservation is targeting. This should
         NOT be confused with db.allocations_by_reservation. The method in
         the db module returns the actual allocations belonging to an approved
@@ -133,7 +138,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         be dangerous.
 
         """
-        Allocation = self.models.Allocation
+        Allocation = self.models.Allocation  # noqa: N806
         query = object_session(self).query(Allocation)
         query = query.filter(Allocation.group == self.target)
 
@@ -147,7 +152,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
 
     def display_start(
         self,
-        timezone: _t.Optional['TzInfoOrName'] = None
+        timezone: TzInfoOrName | None = None
     ) -> datetime:
         """Does nothing but to form a nice pair to display_end."""
         assert self.start is not None
@@ -158,7 +163,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
 
     def display_end(
         self,
-        timezone: _t.Optional['TzInfoOrName'] = None
+        timezone: TzInfoOrName | None = None
     ) -> datetime:
         """Returns the end plus one microsecond (nicer display)."""
         assert self.end is not None
@@ -169,7 +174,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         end = self.end + timedelta(microseconds=1)
         return sedate.to_timezone(end, timezone)
 
-    def timespans(self) -> _t.List[Timespan]:
+    def timespans(self) -> list[Timespan]:
         """ Returns the timespans targeted by this reservation.
 
         The result is a list of :class:`~libres.db.models.reservation.Timespan`

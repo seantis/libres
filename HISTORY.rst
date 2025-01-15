@@ -1,6 +1,15 @@
 Changelog
 ---------
 
+- Adds support for Python 3.13
+  [Daverball]
+
+- Drops support for Python 3.8
+  [Daverball]
+
+- Modernizes type hints
+  [Daverball]
+
 0.7.3 (2024-08-21)
 ~~~~~~~~~~~~~~~~~~~
 

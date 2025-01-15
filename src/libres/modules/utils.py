@@ -1,26 +1,28 @@
+from __future__ import annotations
+
 import sedate
-
 from collections.abc import Iterable
-from uuid import UUID, uuid5 as new_uuid_mirror
+from uuid import UUID
+from uuid import uuid5 as new_uuid_mirror
 
 
-import typing as _t
-if _t.TYPE_CHECKING:
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from collections.abc import Iterator
     from datetime import datetime
     from sedate.types import TzInfoOrName
+    from typing import TypeVar
     from typing_extensions import TypeAlias
 
-    _T = _t.TypeVar('_T')
-    _NestedIterable: TypeAlias = _t.Iterable[
-        _t.Union[_T, '_NestedIterable[_T]']
-    ]
+    _T = TypeVar('_T')
+    _NestedIterable: TypeAlias = Iterable['_T | _NestedIterable[_T]']
 
 
-def generate_uuids(uuid: UUID, quota: int) -> _t.List[UUID]:
+def generate_uuids(uuid: UUID, quota: int) -> list[UUID]:
     return [new_uuid_mirror(uuid, str(n)) for n in range(1, quota)]
 
 
-def flatten(listlike: '_NestedIterable[_T]') -> _t.Iterable['_T']:
+def flatten(listlike: _NestedIterable[_T]) -> Iterator[_T]:
     """Generator for flattening irregularly nested lists. 'Borrowed' from here:
 
     http://stackoverflow.com/questions/2158395/
@@ -33,7 +35,7 @@ def flatten(listlike: '_NestedIterable[_T]') -> _t.Iterable['_T']:
             yield el  # type:ignore[misc]
 
 
-def pairs(listlike: '_NestedIterable[_T]') -> '_t.Iterator[_t.Tuple[_T, _T]]':
+def pairs(listlike: _NestedIterable[_T]) -> Iterator[tuple[_T, _T]]:
     """Takes any list and returns pairs:
     ((a,b),(c,d)) => ((a,b),(c,d))
     (a,b,c,d) => ((a,b),(c,d))
@@ -46,9 +48,9 @@ def pairs(listlike: '_NestedIterable[_T]') -> '_t.Iterator[_t.Tuple[_T, _T]]':
 
 
 def is_valid_reservation_length(
-    start: 'datetime',
-    end: 'datetime',
-    timezone: 'TzInfoOrName'
+    start: datetime,
+    end: datetime,
+    timezone: TzInfoOrName
 ) -> bool:
 
     start = sedate.standardize_date(start, timezone)

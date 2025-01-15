@@ -9,10 +9,33 @@ testpaths = ["tests"]
 [tool.coverage.run]
 branch = true
 source = ["src"]
-omit = ["src/libres/modules/__init__.py"]
+
+[tool.bumpversion]
+current_version = "0.7.3"
+commit = true
+message = "Release {new_version}"
+tag = true
+tag_message = "Release {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "src/libres/__init__.py"
+search= "__version__ = '{current_version}'"
+replace= "__version__ = '{new_version}'"
+
+[[tool.bumpversion.files]]
+filename = "docs/HISTORY.md"
+search = """
+---------
+"""
+replace = """
+---------
+
+{new_version} ({now:%d.%m.%Y})
+~~~~~~~~~~~~~~~~~~~
+"""
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.9"
 follow_imports = "silent"
 namespace_packages = true
 explicit_package_bases = true
@@ -24,52 +47,232 @@ disallow_untyped_defs = true
 plugins = "sqlmypy"
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
 
-
 [tool.bandit]
 exclude_dirs = ["tests"]
 skips = ["B101"]
 
+[tool.ruff]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+src = ["src", "tests"]
+include = [
+    "pyproject.toml",
+    "src/**/*.py",
+    "tests/**/*.py",
+    "stubs/**/*.pyi"
+]
+line-length = 79
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "B0",
+    "B904",
+    "B909",
+    "C4",
+    "COM818",
+    "D2",
+    "D301",
+    "D4",
+    "E",
+    "F",
+    "FLY002",
+    "I002",
+    "ISC",
+    "N",
+    "PERF",
+    "PGH004",
+    "PIE",
+    "PYI",
+    "Q",
+    "RUF",
+    "SIM",
+    "SLOT",
+    "UP",
+    "W"
+]
+ignore = [
+    "B007",
+    "C420",
+    "D200",
+    "D201",
+    "D202",
+    "D204",
+    "D205",
+    "D209",
+    "D210",
+    "D211",
+    "D400",
+    "D401",
+    "D412",
+    "E226",
+    "E402",
+    "E711",
+    "E712",
+    "E741",
+    "N818",
+    "PYI019",
+    "PYI041",
+    "RUF012",
+    "RUF013",
+    "RUF021",
+    "RUF022",
+    "RUF023",
+    "RUF031",
+    "RUF052",
+    "RUF056",
+    "SIM103",
+    "SIM105",
+    "SIM108",
+    "SIM110",
+    "SIM118",
+    "SIM210",
+    "SIM910",
+    "UP009",
+    "UP012",
+    "UP032",
+    "UP038",
+]
+unfixable = []
+external = ["TC"]
+allowed-confusables = ["×"]
+preview = true
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**/*.py" = [
+    "C4",
+    "D",
+    "FLY002",
+    "I002",
+    "ISC",
+    "N",
+    "Q",
+    "PERF",
+    "PGH",
+    "PIE",
+    "PYI",
+    "RUF",
+    "SIM",
+    "UP",
+]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.pep8-naming]
+extend-ignore-names = [
+    "afterFlowable",
+    "HSTORE",
+    "sortKey",
+    "URL",
+    "UUID"
+]
+classmethod-decorators = [
+    # NOTE: We can potentially get rid some of these with SQLAlchemy 2.0
+    #       since they should cleanly combine with classmethod
+    "declared_attr",
+    "expression",
+    "comparator",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+ignore-decorators = ["typing.overload"]
+
+[tool.ruff.lint.flake8-quotes]
+avoid-escape = true
+docstring-quotes = "double"
+inline-quotes = "single"
+multiline-quotes = "double"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
+
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py38,py39,py310,py311,flake8,bandit,mypy,report
+envlist = py39,py310,py311,flake8,bandit,mypy,report
 
 [gh-actions]
 python =
-    3.8: py38
     3.9: py39
-    3.10: py310,flake8,bandit,mypy
-    3.11: py311
+    3.10: py310
+    3.11: py311,flake8,bandit,mypy
     3.12: py312
+    3.13: py313
 
 [testenv]
 usedevelop = true
 setenv =
-    py{38,39,310,311,312}: COVERAGE_FILE = .coverage.{envname}
+    py{39,310,311,312,313}: COVERAGE_FILE = .coverage.{envname}
 deps =
     -e{toxinidir}[test]
 commands = pytest --cov --cov-report= {posargs}
 
+[testenv:ruff]
+basepython = python3.11
+skip_install = true
+deps =
+    ruff
+commands = ruff check
+
 [testenv:flake8]
-basepython = python3.10
+basepython = python3.11
 skip_install = true
 deps =
     flake8
-    flake8-bugbear
+    flake8-type-checking
 commands = flake8 src/ tests/
 
 [testenv:bandit]
-basepython = python3.10
+basepython = python3.11
 skip_install = true
 deps =
     bandit[toml]
 commands = bandit -q -c pyproject.toml -r src
 
 [testenv:mypy]
-basepython = python3.10
+basepython = python3.11
 deps =
     -e{toxinidir}[mypy]
-commands = mypy -p libres
+commands =
+    mypy -p libres --python-version 3.9
+    mypy -p libres --python-version 3.10
+    mypy -p libres --python-version 3.11
+    mypy -p libres --python-version 3.12
+    mypy -p libres --python-version 3.13
 
 [testenv:report]
 deps =
