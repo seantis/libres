@@ -1,6 +1,18 @@
 Changelog
 ---------
 
+- Replaces `JSON` database type with `JSONB`, this means
+  Postgres as a backend is not required. You will also need
+  to write a migration for existing JSON columns. You may use
+  the following recipe using an alembic `Operations` object::
+
+    operations.alter_column(
+      'table_name',
+      'column_name',
+      type_=JSON,
+      postgresql_using='"column_name"::jsonb'
+    )
+
 0.8.0 (15.01.2025)
 ~~~~~~~~~~~~~~~~~~~
 

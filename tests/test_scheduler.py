@@ -1821,7 +1821,7 @@ def test_data_coding(scheduler):
     scheduler.allocate((start, end), data=None)
     scheduler.commit()
 
-    assert scheduler.managed_allocations().first().data is None
+    assert scheduler.managed_allocations().first().data == {}
 
 
 def test_no_reservations_to_confirm(scheduler):

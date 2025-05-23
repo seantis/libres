@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from json import loads, dumps
-from sqlalchemy.types import TypeDecorator, TEXT
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.types import TypeDecorator
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 from typing import Any
@@ -9,41 +10,37 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from sqlalchemy.engine import Dialect
 
-    _Base = TypeDecorator[Any]
+    _Base = TypeDecorator[dict[str, Any]]
 else:
     _Base = TypeDecorator
 
 
 class JSON(_Base):
-    """Like the default JSON, but using the json serializer from the dialect
-    (postgres) each time the value is read, even if it never left the ORM. The
-    default json type will only do it when the record is read from the
-    database.
+    """ A JSONB based type that coerces None's to empty dictionaries.
+
+    That is, this JSONB column cannot be `'null'::jsonb`. It could
+    still be `NULL` though, if it's nullable and never explicitly
+    set. But on the Python end you should always see a dictionary.
 
     """
 
-    # FIXME: We should switch to JSONB now, but we will need to
-    #        add a database migration to OneGov at the same time
-    impl = TEXT
+    impl = JSONB
 
-    def process_bind_param(
+    def process_bind_param(  # type:ignore[override]
         self,
-        value: Any,
+        value: dict[str, Any] | None,
         dialect: Dialect
-    ) -> str | None:
+    ) -> dict[str, Any]:
 
-        if value is not None:
-            value = (dialect._json_serializer or dumps)(value)  # type:ignore
-
-        return value  # type: ignore[no-any-return]
+        return {} if value is None else value
 
     def process_result_value(
         self,
-        value: str | None,
+        value: dict[str, Any] | None,
         dialect: Dialect
-    ) -> Any | None:
+    ) -> dict[str, Any]:
 
-        if value is not None:
-            value = (dialect._json_deserializer or loads)(value)  # type:ignore
+        return {} if value is None else value
 
-        return value
+
+MutableDict.associate_with(JSON)  # type:ignore[no-untyped-call]

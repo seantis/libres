@@ -118,7 +118,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     timezone: Column[str | None] = Column(types.String())
 
     #: Custom data reserved for the user
-    data: Column[Any | None] = Column(
+    data: Column[dict[str, Any] | None] = Column(
         JSON(),
         nullable=True
     )

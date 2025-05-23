@@ -96,7 +96,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         nullable=False
     )
 
-    data: Column[Any | None] = deferred(
+    data: Column[dict[str, Any] | None] = deferred(
         Column(
             JSON(),
             nullable=True
