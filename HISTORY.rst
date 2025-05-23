@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.9.0 (23.05.2025)
+~~~~~~~~~~~~~~~~~~~
+
 - Replaces `JSON` database type with `JSONB`, this means
   Postgres as a backend is not required. You will also need
   to write a migration for existing JSON columns. You may use
