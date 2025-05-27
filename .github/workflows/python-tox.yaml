@@ -36,7 +36,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Install dependencies
-        run: uv pip install tox tox-gh tox-uv
+        run: uv pip install tox tox-gh tox-uv --system
 
       - name: Test with tox and upload coverage results
         run: tox -- --codecov --codecov-token=${{ secrets.CODECOV_TOKEN }}
