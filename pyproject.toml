@@ -219,65 +219,80 @@ docstring-code-format = true
 docstring-code-line-length = "dynamic"
 
 [tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py39,py310,py311,flake8,bandit,mypy,report
+requires = ["tox>=4.21"]
+envlist = [
+    "3.9",
+    "3.10",
+    "3.11",
+    "3.12",
+    "3.13",
+    "flake8",
+    "ruff",
+    "bandit",
+    "mypy",
+    "report"
+]
 
-[gh-actions]
-python =
-    3.9: py39
-    3.10: py310
-    3.11: py311,flake8,bandit,mypy
-    3.12: py312
-    3.13: py313
+[tool.tox.gh.python]
+"3.9" = ["3.9"]
+"3.10" = ["3.10"]
+"3.11" = ["3.11", "flake8", "bandit", "ruff", "mypy"]
+"3.12" = ["3.12"]
+"3.13" = ["3.13"]
 
-[testenv]
-usedevelop = true
-setenv =
-    py{39,310,311,312,313}: COVERAGE_FILE = .coverage.{envname}
-deps =
-    -e{toxinidir}[test]
-commands = pytest --cov --cov-report= {posargs}
-
-[testenv:ruff]
-basepython = python3.11
+[tool.tox.env_run_base]
+use_develop = true
+set_env = { COVERAGE_FILE = ".coverage.{envname}" }
+deps = ["-e{toxinidir}[test]"]
+commands = [
+    [
+        "pytest",
+        "--cov",
+        "--cov-report=",
+        { replace = "posargs", default = [], extend = true }
+    ],
+]
+[tool.tox.env.ruff]
+base_python = ["python3.11"]
 skip_install = true
-deps =
-    ruff
-commands = ruff check
+deps = ["ruff"]
+commands = [["ruff", "check"]]
 
-[testenv:flake8]
-basepython = python3.11
+[tool.tox.env.flake8]
+base_python = ["python3.11"]
 skip_install = true
-deps =
-    flake8
-    flake8-type-checking
-commands = flake8 src/ tests/
+deps = [
+    "flake8",
+    "flake8-type-checking",
+]
+commands = [["flake8", "src{/}", "tests{/}"]]
 
-[testenv:bandit]
-basepython = python3.11
+[tool.tox.env.bandit]
+base_python = ["python3.11"]
 skip_install = true
-deps =
-    bandit[toml]
-commands = bandit -q -c pyproject.toml -r src
+deps = ["bandit[toml]"]
+commands = [["bandit", "-q", "-c", "pyproject.toml", "-r", "src"]]
 
-[testenv:mypy]
-basepython = python3.11
-deps =
-    -e{toxinidir}[mypy]
-commands =
-    mypy -p libres --python-version 3.9
-    mypy -p libres --python-version 3.10
-    mypy -p libres --python-version 3.11
-    mypy -p libres --python-version 3.12
-    mypy -p libres --python-version 3.13
-
-[testenv:report]
-deps =
-    coverage
+[tool.tox.env.mypy]
+base_python = ["python3.11"]
 skip_install = true
-commands =
-    coverage combine
-    coverage report -m
+deps = ["-e{toxinidir}[mypy]"]
+commands = [
+    ["mypy", "-p", "libres", "--python-version", "3.9"],
+    ["mypy", "-p", "libres", "--python-version", "3.10"],
+    ["mypy", "-p", "libres", "--python-version", "3.11"],
+    ["mypy", "-p", "libres", "--python-version", "3.12"],
+    ["mypy", "-p", "libres", "--python-version", "3.13"],
+]
 
-"""
+[tool.tox.env.report]
+base_python = ["python3.11"]
+skip_install = true
+ignore_errors = true
+ignore_outcome = true
+set_env = { COVERAGE_FILE = ".coverage" }
+deps = ["coverage"]
+commands = [
+    ["coverage", "combine", "{toxinidir}"],
+    ["coverage", "report", "-m"],
+]
