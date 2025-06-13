@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 import sedate
 
@@ -12,7 +14,15 @@ from sqlalchemy.orm.exc import MultipleResultsFound
 from uuid import uuid4 as new_uuid
 
 
-def test_rollback(scheduler):
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libres.context.core import Context
+    from libres.db.models import ReservedSlot
+    from libres.db.scheduler import Scheduler
+    from uuid import UUID
+
+
+def test_rollback(scheduler: Scheduler) -> None:
 
     # write something in the transaction
     scheduler.allocate(
@@ -26,7 +36,7 @@ def test_rollback(scheduler):
     assert scheduler.managed_allocations().count() == 0
 
 
-def test_manual_approval_required(scheduler):
+def test_manual_approval_required(scheduler: Scheduler) -> None:
     dates = [
         (datetime(2014, 4, 4, 14, 0), datetime(2014, 4, 4, 15, 0)),
         (datetime(2015, 4, 4, 14, 0), datetime(2015, 4, 4, 15, 0))
@@ -41,7 +51,7 @@ def test_manual_approval_required(scheduler):
     assert scheduler.manual_approval_required(aut + man)
 
 
-def test_allocations_to_whole_day(scheduler):
+def test_allocations_to_whole_day(scheduler: Scheduler) -> None:
 
     dates = (datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 11))
     allocations = scheduler.allocate(dates)
@@ -60,7 +70,7 @@ def test_allocations_to_whole_day(scheduler):
     assert allocations[0].whole_day
 
 
-def test_move_allocation_over_existing(scheduler):
+def test_move_allocation_over_existing(scheduler: Scheduler) -> None:
     dates = [
         (datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 11)),
         (datetime(2015, 2, 9, 11), datetime(2015, 2, 9, 12)),
@@ -77,7 +87,10 @@ def test_move_allocation_over_existing(scheduler):
         )
 
 
-def test_move_allocation_with_existing_reservation(scheduler):
+def test_move_allocation_with_existing_reservation(
+    scheduler: Scheduler
+) -> None:
+
     dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 11))]
 
     allocations = scheduler.allocate(dates)
@@ -104,7 +117,10 @@ def test_move_allocation_with_existing_reservation(scheduler):
         )
 
 
-def test_move_partly_available_allocation_with_existing_reservation(scheduler):
+def test_move_partly_available_allocation_with_existing_reservation(
+    scheduler: Scheduler
+) -> None:
+
     dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12))]
 
     allocations = scheduler.allocate(dates, partly_available=True)
@@ -129,7 +145,7 @@ def test_move_partly_available_allocation_with_existing_reservation(scheduler):
     scheduler.commit()
 
 
-def test_change_allocation_data(scheduler):
+def test_change_allocation_data(scheduler: Scheduler) -> None:
     dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12))]
 
     allocation = scheduler.allocate(dates, data={'foo': 'bar'})[0]
@@ -146,7 +162,7 @@ def test_change_allocation_data(scheduler):
     assert allocation.data == {'bar': 'foo'}
 
 
-def test_change_reservation_data(scheduler):
+def test_change_reservation_data(scheduler: Scheduler) -> None:
 
     dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12))]
 
@@ -164,7 +180,7 @@ def test_change_reservation_data(scheduler):
     assert reservation.data == {'bar': 'foo'}
 
 
-def test_reserve_quota(scheduler):
+def test_reserve_quota(scheduler: Scheduler) -> None:
     dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12))]
 
     scheduler.allocate(dates, quota=2, quota_limit=1)
@@ -180,7 +196,7 @@ def test_reserve_quota(scheduler):
         scheduler.reserve('test@example.org', dates=dates, quota=3)
 
 
-def test_reserve_impossible_quota(scheduler):
+def test_reserve_impossible_quota(scheduler: Scheduler) -> None:
 
     dates = [(datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12))]
 
@@ -191,7 +207,10 @@ def test_reserve_impossible_quota(scheduler):
         scheduler.reserve('test@example.org', dates=dates, quota=3)
 
 
-def test_remove_allocation_with_pending_reservation(scheduler):
+def test_remove_allocation_with_pending_reservation(
+    scheduler: Scheduler
+) -> None:
+
     dates = [
         (datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12)),
         (datetime(2015, 2, 10, 10), datetime(2015, 2, 10, 12)),
@@ -205,7 +224,7 @@ def test_remove_allocation_with_pending_reservation(scheduler):
         scheduler.remove_allocation(id)
 
 
-def test_remove_grouped_allocation(scheduler):
+def test_remove_grouped_allocation(scheduler: Scheduler) -> None:
     dates = [
         (datetime(2015, 2, 9, 10), datetime(2015, 2, 9, 12)),
         (datetime(2015, 2, 10, 10), datetime(2015, 2, 10, 12)),
@@ -222,7 +241,7 @@ def test_remove_grouped_allocation(scheduler):
     assert scheduler.managed_allocations().count() == 0
 
 
-def test_remove_allocation_with_quota_regression(scheduler):
+def test_remove_allocation_with_quota_regression(scheduler: Scheduler) -> None:
     dates = [(datetime(2015, 2, 13, 10), datetime(2015, 2, 13, 12))]
     allocation = scheduler.allocate(dates, quota=10)[0]
 
@@ -230,14 +249,14 @@ def test_remove_allocation_with_quota_regression(scheduler):
     scheduler.remove_allocation(allocation.id)
 
 
-def test_invalid_new_allocation(scheduler):
+def test_invalid_new_allocation(scheduler: Scheduler) -> None:
     dates = [(datetime(2015, 2, 14, 10), datetime(2015, 2, 13, 12))]
 
     with pytest.raises(errors.InvalidAllocationError):
         scheduler.allocate(dates, quota=10)[0]
 
 
-def test_invalid_move_allocation(scheduler):
+def test_invalid_move_allocation(scheduler: Scheduler) -> None:
     dates = [(datetime(2015, 2, 13, 10), datetime(2015, 2, 13, 12))]
     allocation = scheduler.allocate(dates, quota=10)[0]
 
@@ -249,13 +268,13 @@ def test_invalid_move_allocation(scheduler):
         )
 
 
-def test_reserve_invalid_email(scheduler):
+def test_reserve_invalid_email(scheduler: Scheduler) -> None:
 
     with pytest.raises(errors.InvalidEmailAddress):
-        scheduler.reserve(group='foo', email='invalid-email')
+        scheduler.reserve(group=new_uuid(), email='invalid-email')
 
 
-def test_reservation_too_short(scheduler):
+def test_reservation_too_short(scheduler: Scheduler) -> None:
 
     with pytest.raises(errors.ReservationTooShort):
         scheduler.reserve(email='test@example.org', dates=[
@@ -263,7 +282,7 @@ def test_reservation_too_short(scheduler):
         ])
 
 
-def test_managed_allocations(scheduler):
+def test_managed_allocations(scheduler: Scheduler) -> None:
 
     start = datetime(2014, 4, 4, 14, 0)
     end = datetime(2014, 4, 4, 15, 0)
@@ -294,7 +313,7 @@ def test_managed_allocations(scheduler):
     s2.commit()
 
 
-def test_reserve(scheduler):
+def test_reserve(scheduler: Scheduler) -> None:
 
     start = datetime(2011, 1, 1, 15)
     end = datetime(2011, 1, 1, 16)
@@ -330,11 +349,10 @@ def test_reserve(scheduler):
 
     reserved_slots = scheduler.reserved_slots_by_reservation(token).all()
 
-    def by_start(s):
+    def by_start(s: ReservedSlot) -> datetime:
         return s.start
 
-    assert list(sorted(slots, key=by_start)) \
-        == list(sorted(reserved_slots, key=by_start))
+    assert sorted(slots, key=by_start) == sorted(reserved_slots, key=by_start)
 
     # try to illegally move the slot
     with pytest.raises(errors.AffectedReservationError):
@@ -362,14 +380,14 @@ def test_reserve(scheduler):
     assert len(allocation.free_slots()) == 2
 
 
-def test_reserve_single_token_per_session(scheduler):
+def test_reserve_single_token_per_session(scheduler: Scheduler) -> None:
 
     session_id = new_uuid()
 
     a1, a2 = scheduler.allocate(
         dates=(
-            datetime(2011, 1, 1, 15), datetime(2011, 1, 1, 16),
-            datetime(2011, 1, 2, 15), datetime(2011, 1, 2, 16)
+            (datetime(2011, 1, 1, 15), datetime(2011, 1, 1, 16)),
+            (datetime(2011, 1, 2, 15), datetime(2011, 1, 2, 16)),
         ),
         quota=1
     )
@@ -410,7 +428,7 @@ def test_reserve_single_token_per_session(scheduler):
     assert token3 == token4
 
 
-def test_change_email(scheduler):
+def test_change_email(scheduler: Scheduler) -> None:
     # reserve multiple allocations
     dates = (
         (datetime(2014, 8, 7, 11, 0), datetime(2014, 8, 7, 12, 0)),
@@ -440,11 +458,13 @@ def test_change_email(scheduler):
         == ['another@example.org'] * 2
 
 
-def test_change_reservation_assertions(scheduler):
+def test_change_reservation_assertions(scheduler: Scheduler) -> None:
     reservation_changed = Mock()
     events.on_reservation_time_changed.append(reservation_changed)
 
-    dates = (datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 17, 0))
+    dates: tuple[tuple[datetime, datetime], ...] = (
+        (datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 17, 0)),
+    )
 
     scheduler.allocate(dates, partly_available=False)
     token = scheduler.reserve('original@example.org', dates)
@@ -456,7 +476,7 @@ def test_change_reservation_assertions(scheduler):
 
     dates = (
         (datetime(2014, 8, 10, 11, 0), datetime(2014, 8, 10, 12, 0)),
-        (datetime(2014, 8, 11, 11, 0), datetime(2014, 8, 11, 12, 0))
+        (datetime(2014, 8, 11, 11, 0), datetime(2014, 8, 11, 12, 0)),
     )
 
     scheduler.allocate(dates, grouped=True)
@@ -476,7 +496,9 @@ def test_change_reservation_assertions(scheduler):
     assert not reservation_changed.called
 
     # fail if the dates are outside the allocation
-    dates = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 0))
+    dates = (
+        (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 0)),
+    )
 
     scheduler.allocate(dates, partly_available=True)
     token = scheduler.reserve('original@example.org', dates)
@@ -503,17 +525,19 @@ def test_change_reservation_assertions(scheduler):
         )
 
 
-def test_change_unapproved_reservation_quota(scheduler):
+def test_change_unapproved_reservation_quota(scheduler: Scheduler) -> None:
     dates = (datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 10, 0))
     scheduler.allocate(dates, quota=2)
 
     token = scheduler.reserve(
-        'original@example.org', dates, session_id=new_uuid().hex
+        'original@example.org', dates, session_id=new_uuid()
     )
 
     scheduler.commit()
 
     reservation = scheduler.reservations_by_token(token).one()
+    assert reservation.start is not None
+    assert reservation.end is not None
     assert not scheduler.change_reservation(
         token=token,
         id=reservation.id,
@@ -531,11 +555,13 @@ def test_change_unapproved_reservation_quota(scheduler):
     )
 
     new = scheduler.reservations_by_token(reservation.token).first()
+    assert new is not None
     assert new.quota == 2
-    assert new.session_id and new.session_id == reservation.session_id
+    assert new.session_id
+    assert new.session_id == reservation.session_id
 
 
-def test_change_reservation(scheduler):
+def test_change_reservation(scheduler: Scheduler) -> None:
     reservation_changed = Mock()
     events.on_reservation_time_changed.append(reservation_changed)
 
@@ -583,7 +609,7 @@ def test_change_reservation(scheduler):
     )
     scheduler.commit()
 
-    assert reservation_changed.called
+    reservation_changed.assert_called()
     assert reservation_changed.call_args[0][0].name == scheduler.context.name
     assert reservation_changed.call_args[1]['old_time'][0].hour == 8
     assert reservation_changed.call_args[1]['old_time'][1].hour == 9
@@ -626,7 +652,7 @@ def test_change_reservation(scheduler):
         )
 
 
-def test_change_reservation_quota(scheduler):
+def test_change_reservation_quota(scheduler: Scheduler) -> None:
     dates = (
         datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 10, 0)
     )
@@ -688,7 +714,7 @@ def test_change_reservation_quota(scheduler):
     )
 
 
-def test_group_reserve(scheduler):
+def test_group_reserve(scheduler: Scheduler) -> None:
     dates = [
         (datetime(2013, 4, 6, 12, 0), datetime(2013, 4, 6, 16, 0)),
         (datetime(2013, 4, 7, 12, 0), datetime(2013, 4, 7, 16, 0))
@@ -703,7 +729,7 @@ def test_group_reserve(scheduler):
     group = allocations[0].group
 
     # reserve the same thing three times, which should yield equal results
-    def reserve():
+    def reserve() -> None:
         token = scheduler.reserve('test@example.com', group=group)
         scheduler.commit()
 
@@ -727,7 +753,7 @@ def test_group_reserve(scheduler):
         reserve()
 
 
-def test_session_expiration(scheduler):
+def test_session_expiration(scheduler: Scheduler) -> None:
     session_id = new_uuid()
 
     start, end = datetime(2013, 5, 1, 13, 0), datetime(2013, 5, 1, 14)
@@ -773,7 +799,7 @@ def test_session_expiration(scheduler):
     assert len(expired) == 1
 
 
-def test_session_removal(scheduler):
+def test_session_removal(scheduler: Scheduler) -> None:
     start, end = datetime(2013, 9, 27, 9, 0), datetime(2013, 9, 27, 10)
     scheduler.allocate(dates=(start, end))
     session_id = new_uuid()
@@ -793,7 +819,7 @@ def test_session_removal(scheduler):
     assert scheduler.session.query(Allocation).count() == 1
 
 
-def test_invalid_reservation(scheduler):
+def test_invalid_reservation(scheduler: Scheduler) -> None:
     # try to reserve aspot that doesn't exist
     astart = datetime(2012, 1, 1, 15, 0)
     aend = datetime(2012, 1, 1, 16, 0)
@@ -809,7 +835,7 @@ def test_invalid_reservation(scheduler):
         scheduler.reserve('test@example.org', rdates)
 
 
-def test_waitinglist(scheduler):
+def test_waitinglist(scheduler: Scheduler) -> None:
     start = datetime(2012, 2, 29, 15, 0)
     end = datetime(2012, 2, 29, 19, 0)
     dates = (start, end)
@@ -861,7 +887,7 @@ def test_waitinglist(scheduler):
     assert allocation.waitinglist_length == 0
 
 
-def test_no_bleed(scheduler):
+def test_no_bleed(scheduler: Scheduler) -> None:
     """ Ensures that two allocations close to each other are not mistaken
     when using scheduler.reserve. If they do then they bleed over, hence
     the name.
@@ -883,7 +909,7 @@ def test_no_bleed(scheduler):
     scheduler.reserve('test@example.org', d1)
 
 
-def test_waitinglist_group(scheduler):
+def test_waitinglist_group(scheduler: Scheduler) -> None:
     from dateutil.rrule import rrule, DAILY, MO
 
     days = list(rrule(
@@ -931,7 +957,7 @@ def test_waitinglist_group(scheduler):
     scheduler.approve_reservations(token)
 
 
-def test_group_move(scheduler):
+def test_group_move(scheduler: Scheduler) -> None:
     dates = [
         (datetime(2013, 1, 1, 12, 0), datetime(2013, 1, 1, 13, 0)),
         (datetime(2013, 1, 2, 12, 0), datetime(2013, 1, 2, 13, 0))
@@ -983,7 +1009,7 @@ def test_group_move(scheduler):
         allocations[0].group).all()
     assert len(group_allocations) == 2
 
-    all = utils.flatten([a.siblings() for a in group_allocations])
+    all = list(utils.flatten(a.siblings() for a in group_allocations))
     assert scheduler.queries.availability_by_allocations(all) == 50.0
 
     scheduler.move_allocation(
@@ -993,7 +1019,7 @@ def test_group_move(scheduler):
 
     group_allocations = scheduler.allocations_by_group(
         allocations[0].group).all()
-    all = list(utils.flatten([a.siblings() for a in group_allocations]))
+    all = list(utils.flatten(a.siblings() for a in group_allocations))
     assert scheduler.queries.availability_by_allocations(all) == 0.0
 
     scheduler.move_allocation(allocations[0].id, newstart, newend, new_quota=2)
@@ -1017,7 +1043,7 @@ def test_group_move(scheduler):
         scheduler.move_allocation(allocations[0].id, newstart, newend, None, 1)
 
 
-def test_no_waitinglist(scheduler):
+def test_no_waitinglist(scheduler: Scheduler) -> None:
 
     start = datetime(2012, 4, 6, 22, 0)
     end = datetime(2012, 4, 6, 23, 0)
@@ -1049,7 +1075,7 @@ def test_no_waitinglist(scheduler):
     scheduler.reserve('test@example.org', dates)
 
 
-def test_quota_waitinglist(scheduler):
+def test_quota_waitinglist(scheduler: Scheduler) -> None:
     start = datetime(2012, 3, 4, 2, 0)
     end = datetime(2012, 3, 4, 3, 0)
     dates = (start, end)
@@ -1085,7 +1111,7 @@ def test_quota_waitinglist(scheduler):
         scheduler.approve_reservations(t4)
 
 
-def test_userlimits(scheduler):
+def test_userlimits(scheduler: Scheduler) -> None:
     # ensure that no user can make a reservation for more than 24 hours at
     # the time. the user acutally can't do that anyway, since we do not
     # offer start / end dates, but a day and two times. But if this changes
@@ -1100,7 +1126,7 @@ def test_userlimits(scheduler):
         scheduler.reserve('test@example.org', (start, end))
 
 
-def test_allocation_overlap(scheduler):
+def test_allocation_overlap(scheduler: Scheduler) -> None:
 
     sc1 = scheduler
     sc2 = scheduler.clone()
@@ -1166,7 +1192,7 @@ def test_allocation_overlap(scheduler):
     sc3.commit()
 
 
-def test_allocation_partition(scheduler):
+def test_allocation_partition(scheduler: Scheduler) -> None:
     allocations = scheduler.allocate(
         (
             datetime(2011, 1, 1, 8, 0),
@@ -1197,7 +1223,7 @@ def test_allocation_partition(scheduler):
     assert partitions[2][1] == False
 
 
-def test_partly(scheduler):
+def test_partly(scheduler: Scheduler) -> None:
     allocations = scheduler.allocate(
         (
             datetime(2011, 1, 1, 8, 0),
@@ -1233,7 +1259,7 @@ def test_partly(scheduler):
         ))
 
 
-def test_allocation_by_ids(scheduler):
+def test_allocation_by_ids(scheduler: Scheduler) -> None:
     dates = [
         (datetime(2015, 1, 1, 15, 0), datetime(2015, 1, 1, 16, 0)),
         (datetime(2015, 1, 2, 15, 0), datetime(2015, 1, 2, 16, 0)),
@@ -1245,7 +1271,7 @@ def test_allocation_by_ids(scheduler):
     assert scheduler.allocations_by_ids(ids).count() == 2
 
 
-def test_allocation_dates_by_ids(scheduler):
+def test_allocation_dates_by_ids(scheduler: Scheduler) -> None:
     dates = [
         (datetime(2015, 1, 1, 15, 0), datetime(2015, 1, 1, 16, 0)),
         (datetime(2015, 1, 2, 15, 0), datetime(2015, 1, 2, 16, 0)),
@@ -1256,10 +1282,10 @@ def test_allocation_dates_by_ids(scheduler):
 
     d = list(scheduler.allocation_dates_by_ids(ids))
 
-    def standardize(dt):
+    def standardize(dt: datetime) -> datetime:
         return sedate.standardize_date(dt, 'Europe/Zurich')
 
-    def as_utc(dt):
+    def as_utc(dt: datetime) -> datetime:
         return sedate.to_timezone(dt, 'UTC')
 
     assert as_utc(d[0][0]) == standardize(dates[0][0])
@@ -1280,7 +1306,7 @@ def test_allocation_dates_by_ids(scheduler):
         microseconds=1, seconds=30 * 60)
 
 
-def test_quotas(scheduler):
+def test_quotas(scheduler: Scheduler) -> None:
     start = datetime(2011, 1, 1, 15, 0)
     end = datetime(2011, 1, 1, 16, 0)
 
@@ -1342,11 +1368,11 @@ def test_quotas(scheduler):
         ))
 
     # test some queries
-    allocations = scheduler.allocations_in_range(start, end)
-    assert allocations.count() == 1
+    allocations_query = scheduler.allocations_in_range(start, end)
+    assert allocations_query.count() == 1
 
-    allocations = other.allocations_in_range(start, end)
-    assert allocations.count() == 1
+    allocations_query = other.allocations_in_range(start, end)
+    assert allocations_query.count() == 1
 
     allocation = scheduler.allocation_by_date(start, end)
     scheduler.allocation_by_id(allocation.id)
@@ -1360,7 +1386,7 @@ def test_quotas(scheduler):
     other.commit()
 
 
-def test_fragmentation(scheduler):
+def test_fragmentation(scheduler: Scheduler) -> None:
     start = datetime(2011, 1, 1, 15, 0)
     end = datetime(2011, 1, 1, 16, 0)
     daterange = (start, end)
@@ -1387,7 +1413,7 @@ def test_fragmentation(scheduler):
         scheduler.remove_allocation(allocation.id)
 
 
-def test_imaginary_mirrors(scheduler):
+def test_imaginary_mirrors(scheduler: Scheduler) -> None:
     start = datetime(2011, 1, 1, 15, 0)
     end = datetime(2011, 1, 1, 16, 0)
     daterange = (start, end)
@@ -1427,7 +1453,7 @@ def test_imaginary_mirrors(scheduler):
     assert len(mirrors) + 1 == len(allocation.siblings())
 
 
-def test_allocations_by_reservation(scheduler):
+def test_allocations_by_reservation(scheduler: Scheduler) -> None:
     start = datetime(2013, 12, 3, 13, 0)
     end = datetime(2013, 12, 3, 15, 0)
     daterange = (start, end)
@@ -1453,7 +1479,7 @@ def test_allocations_by_reservation(scheduler):
     assert reservation._target_allocations().all() == allocations
 
 
-def test_allocations_by_multiple_reservations(scheduler):
+def test_allocations_by_multiple_reservations(scheduler: Scheduler) -> None:
     ranges = (
         (datetime(2013, 12, 3, 13, 0), datetime(2013, 12, 3, 15, 0)),
         (datetime(2014, 12, 3, 13, 0), datetime(2014, 12, 3, 15, 0))
@@ -1483,7 +1509,7 @@ def test_allocations_by_multiple_reservations(scheduler):
     assert query.count() == 1
 
 
-def test_quota_changes_simple(scheduler):
+def test_quota_changes_simple(scheduler: Scheduler) -> None:
     start = datetime(2011, 1, 1, 15, 0)
     end = datetime(2011, 1, 1, 16, 0)
     daterange = (start, end)
@@ -1539,7 +1565,7 @@ def test_quota_changes_simple(scheduler):
         assert s.siblings() == siblings
 
 
-def test_quota_changes_advanced(scheduler):
+def test_quota_changes_advanced(scheduler: Scheduler) -> None:
     # let's do another round, adding 7 reservations and removing the three
     # in the middle, which should result in a reordering:
     # -> 1, 2, 3, 4, 5, 6, 7
@@ -1602,7 +1628,7 @@ def test_quota_changes_advanced(scheduler):
     assert a7_ != a7
 
 
-def test_availability(scheduler):
+def test_availability(scheduler: Scheduler) -> None:
     start = datetime(2011, 1, 1, 15, 0)
     end = datetime(2011, 1, 1, 16, 0)
 
@@ -1687,7 +1713,7 @@ def test_availability(scheduler):
     sc2.commit()
 
 
-def test_events(scheduler):
+def test_events(scheduler: Scheduler) -> None:
 
     # hookup test event subscribers
     allocations_added = Mock()
@@ -1719,14 +1745,14 @@ def test_events(scheduler):
     dates = (start, end)
 
     scheduler.allocate(dates, approve_manually=True)
-    assert allocations_added.called
+    allocations_added.assert_called()
     assert allocations_added.call_args[0][0].name == scheduler.context.name
     assert len(allocations_added.call_args[0][1]) == 1
 
     # create reservations
 
     token = scheduler.reserve('test@example.org', dates)
-    assert reservations_made.called
+    reservations_made.assert_called()
     assert reservations_made.call_args[0][0].name == scheduler.context.name
     assert reservations_made.call_args[0][0].name == scheduler.context.name
     assert reservations_made.call_args[0][1][0].token == token
@@ -1736,7 +1762,7 @@ def test_events(scheduler):
     # approve reservations
     scheduler.approve_reservations(token)
 
-    assert reservations_approved.called
+    reservations_approved.assert_called()
     assert not reservations_denied.called
     assert not reservations_made.called
     assert reservations_approved.call_args[0][0].name == scheduler.context.name
@@ -1747,22 +1773,22 @@ def test_events(scheduler):
 
     # remove the reservation and deny the next one
     scheduler.remove_reservation(token)
-    assert reservations_removed.called
+    reservations_removed.assert_called()
     assert reservations_removed.call_args[0][0].name == scheduler.context.name
 
     token = scheduler.reserve('test@example.org', dates)
-    assert reservations_made.called
+    reservations_made.assert_called()
     assert reservations_made.call_args[0][0].name == scheduler.context.name
 
     scheduler.deny_reservation(token)
 
     assert not reservations_approved.called
     assert reservations_denied.call_args[0][0].name == scheduler.context.name
-    assert reservations_denied.called
+    reservations_denied.assert_called()
     assert reservations_denied.call_args[0][1][0].token == token
 
 
-def test_data_coding(scheduler):
+def test_data_coding(scheduler: Scheduler) -> None:
     """ Make sure that reservation data stored in the database is returned
     without any alterations after encoding/decoding it to and from JSON.
 
@@ -1796,10 +1822,10 @@ def test_data_coding(scheduler):
     scheduler.rollback()
 
     # luckily we can provide a better json implementation
-    import jsonpickle
+    import jsonpickle  # type: ignore[import-untyped]
     from libres.context.session import SessionProvider
 
-    def session_provider(context):
+    def session_provider(context: Context) -> SessionProvider:
         return SessionProvider(context.get_setting('dsn'), engine_config=dict(
             json_serializer=jsonpickle.encode,
             json_deserializer=jsonpickle.decode
@@ -1813,7 +1839,7 @@ def test_data_coding(scheduler):
     scheduler.allocate((start, end), data=data)
     scheduler.commit()
 
-    assert scheduler.managed_allocations().first().data == data
+    assert scheduler.managed_allocations().first().data == data  # type: ignore[union-attr]
 
     scheduler.extinguish_managed_records()
     scheduler.commit()
@@ -1821,10 +1847,10 @@ def test_data_coding(scheduler):
     scheduler.allocate((start, end), data=None)
     scheduler.commit()
 
-    assert scheduler.managed_allocations().first().data == {}
+    assert scheduler.managed_allocations().first().data == {}  # type: ignore[union-attr]
 
 
-def test_no_reservations_to_confirm(scheduler):
+def test_no_reservations_to_confirm(scheduler: Scheduler) -> None:
     start = datetime(2014, 3, 25, 14, 0)
     end = datetime(2014, 3, 25, 16, 0)
     dates = (start, end)
@@ -1841,7 +1867,7 @@ def test_no_reservations_to_confirm(scheduler):
         )
 
 
-def test_search_allocations(scheduler):
+def test_search_allocations(scheduler: Scheduler) -> None:
     start = datetime(2014, 8, 3, 13, 0)
     end = datetime(2014, 8, 3, 15, 0)
     daterange = (start, end)
@@ -1873,10 +1899,10 @@ def test_search_allocations(scheduler):
     # make sure the exposure is taken into account..
     class MockExposure:
 
-        def __init__(self, return_value):
+        def __init__(self, return_value: bool) -> None:
             self.return_value = return_value
 
-        def is_allocation_exposed(self, allocation):
+        def is_allocation_exposed(self, allocation: Allocation) -> bool:
             return self.return_value
 
     scheduler.context.set_service('exposure', lambda ctx: MockExposure(False))
@@ -1901,28 +1927,28 @@ def test_search_allocations(scheduler):
         *daterange, available_only=True)) == 0
 
     # test minspots (takes quota_limit into account)
-    scheduler.availability = Mock(return_value=100.0)
+    scheduler.availability = Mock(return_value=100.0)  # type: ignore[method-assign]
     assert len(scheduler.search_allocations(*daterange, minspots=1)) == 1
     assert len(scheduler.search_allocations(*daterange, minspots=2)) == 1
     assert len(scheduler.search_allocations(*daterange, minspots=3)) == 0
 
-    scheduler.availability = Mock(return_value=50.0)
+    scheduler.availability = Mock(return_value=50.0)  # type: ignore[method-assign]
     assert len(scheduler.search_allocations(*daterange, minspots=1)) == 1
     assert len(scheduler.search_allocations(*daterange, minspots=2)) == 1
     assert len(scheduler.search_allocations(*daterange, minspots=3)) == 0
 
-    scheduler.availability = Mock(return_value=25.0)
+    scheduler.availability = Mock(return_value=25.0)  # type: ignore[method-assign]
     assert len(scheduler.search_allocations(*daterange, minspots=1)) == 1
     assert len(scheduler.search_allocations(*daterange, minspots=2)) == 0
     assert len(scheduler.search_allocations(*daterange, minspots=3)) == 0
 
-    scheduler.availability = Mock(return_value=0.0)
+    scheduler.availability = Mock(return_value=0.0)  # type: ignore[method-assign]
     assert len(scheduler.search_allocations(*daterange, minspots=1)) == 0
     assert len(scheduler.search_allocations(*daterange, minspots=2)) == 0
     assert len(scheduler.search_allocations(*daterange, minspots=3)) == 0
 
 
-def test_search_allocation_days_timezones(scheduler):
+def test_search_allocation_days_timezones(scheduler: Scheduler) -> None:
     start = sedate.replace_timezone(
         datetime(2023, 3, 26, 0, 0), 'Europe/Zurich')
     end = sedate.replace_timezone(datetime(2023, 3, 26, 1, 0), 'Europe/Zurich')
@@ -1941,7 +1967,7 @@ def test_search_allocation_days_timezones(scheduler):
     assert len(scheduler.search_allocations(*daterange, days=['mo'])) == 0
 
 
-def test_search_allocation_groups(scheduler):
+def test_search_allocation_groups(scheduler: Scheduler) -> None:
     s1, e1 = datetime(2014, 8, 3, 13, 0), datetime(2014, 8, 3, 15, 0)
     s2, e2 = datetime(2014, 8, 4, 13, 0), datetime(2014, 8, 4, 15, 0)
 
@@ -1960,7 +1986,7 @@ def test_search_allocation_groups(scheduler):
     assert len(scheduler.search_allocations(s1, e2, groups='no')) == 0
 
 
-def test_search_whole_day_regression(scheduler):
+def test_search_whole_day_regression(scheduler: Scheduler) -> None:
     # https://github.com/seantis/seantis.reservation/issues/162
     s, e = datetime(2014, 8, 18, 0, 0), datetime(2014, 8, 18, 0, 0)
 
@@ -1985,7 +2011,7 @@ def test_search_whole_day_regression(scheduler):
     assert len(search_result) == 1
 
 
-def test_remove_reservation_from_session(scheduler):
+def test_remove_reservation_from_session(scheduler: Scheduler) -> None:
     dates = (datetime(2014, 11, 26, 13, 0), datetime(2014, 11, 26, 14))
     scheduler.allocate(dates)
 
@@ -2007,7 +2033,7 @@ def test_remove_reservation_from_session(scheduler):
     assert scheduler.queries.reservations_by_session(sessions[1]).count() == 1
 
 
-def test_availability_by_day(scheduler):
+def test_availability_by_day(scheduler: Scheduler) -> None:
     dates = (datetime(2014, 11, 26, 13, 0), datetime(2014, 11, 26, 14))
 
     allocation = scheduler.allocate(dates)[0]
@@ -2025,7 +2051,7 @@ def test_availability_by_day(scheduler):
     # we need the timezone for this
     dates = (allocation.start, allocation.end)
 
-    resources = (sc2.resource, )
+    resources: tuple[UUID, ...] = (sc2.resource, )
     days = scheduler.queries.availability_by_day(*dates, resources=resources)
     assert days[dates[0].date()][0] == 100.0
 
@@ -2041,7 +2067,7 @@ def test_availability_by_day(scheduler):
     sc2.commit()
 
 
-def test_remove_unused_allocations(scheduler):
+def test_remove_unused_allocations(scheduler: Scheduler) -> None:
 
     # create one allocation with a pending reservation
     daterange = (datetime(2013, 12, 3, 13, 0), datetime(2013, 12, 3, 15, 0))
@@ -2058,12 +2084,12 @@ def test_remove_unused_allocations(scheduler):
     scheduler.commit()
 
     # create a group of allocations with a pending reservation
-    daterange = [
+    dateranges = [
         (datetime(2015, 12, 3, 13, 0), datetime(2015, 12, 3, 15, 0)),
         (datetime(2015, 12, 4, 13, 0), datetime(2015, 12, 4, 15, 0))
     ]
-    scheduler.allocate(daterange, grouped=True)
-    scheduler.reserve('test@example.org', daterange)
+    scheduler.allocate(dateranges, grouped=True)
+    scheduler.reserve('test@example.org', dateranges)
     scheduler.commit()
 
     # create one unused allocation
@@ -2072,11 +2098,11 @@ def test_remove_unused_allocations(scheduler):
     scheduler.commit()
 
     # create two unused allocations in a group
-    daterange = [
+    dateranges = [
         (datetime(2017, 12, 3, 13, 0), datetime(2017, 12, 3, 15, 0)),
         (datetime(2017, 12, 4, 13, 0), datetime(2017, 12, 4, 15, 0))
     ]
-    scheduler.allocate(daterange, grouped=True)
+    scheduler.allocate(dateranges, grouped=True)
     scheduler.commit()
 
     # only the unused allocation should be removed
@@ -2115,10 +2141,12 @@ def test_remove_unused_allocations(scheduler):
     assert scheduler.managed_allocations().count() == 4
 
 
-def test_remove_unused_allocations_weekdays_with_tz(scheduler):
+def test_remove_unused_allocations_weekdays_with_tz(
+    scheduler: Scheduler
+) -> None:
 
-    def met_dt(*args):
-        return sedate.replace_timezone(datetime(*args), 'Europe/Zurich')
+    def met_dt(*args: int) -> datetime:
+        return sedate.replace_timezone(datetime(*args), 'Europe/Zurich')  # type: ignore[arg-type]
 
     # create seven unused allocation, one for each day
     daterange = [

@@ -108,6 +108,7 @@ select = [
     "PERF",
     "PGH004",
     "PIE",
+    "PT",
     "PYI",
     "Q",
     "RUF",
@@ -164,11 +165,11 @@ allowed-confusables = ["×"]
 preview = true
 
 [tool.ruff.lint.extend-per-file-ignores]
+"src/**/*.py" = ["PT"]
 "tests/**/*.py" = [
     "C4",
     "D",
     "FLY002",
-    "I002",
     "ISC",
     "N",
     "Q",

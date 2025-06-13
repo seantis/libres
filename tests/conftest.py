@@ -1,23 +1,44 @@
+from __future__ import annotations
+
 import pytest
 from _pytest.fixtures import FixtureLookupError
 
 from libres import new_scheduler, registry
-from testing.postgresql import Postgresql
+# FIXME: Switch to pytest-postgresql, testing.postgresql is unmaintained
+from testing.postgresql import Postgresql  # type: ignore[import-untyped]
 from uuid import uuid4 as new_uuid
 
 
-def new_test_scheduler(dsn, context=None, name=None):
-    context = context or new_uuid().hex
-    name = name or new_uuid().hex
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from libres.db.scheduler import Scheduler
 
-    context = registry.register_context(context, replace=True)
+
+def new_test_scheduler(
+    dsn: str,
+    context_name: str | None = None,
+    scheduler_name: str | None = None
+) -> Scheduler:
+
+    context_name = context_name or new_uuid().hex
+    scheduler_name = scheduler_name or new_uuid().hex
+
+    context = registry.register_context(context_name, replace=True)
     context.set_setting('dsn', dsn)
 
-    return new_scheduler(context=context, name=name, timezone='Europe/Zurich')
+    return new_scheduler(
+        context=context,
+        name=scheduler_name,
+        timezone='Europe/Zurich'
+    )
 
 
-@pytest.fixture(scope="function")
-def scheduler(request, dsn):
+@pytest.fixture
+def scheduler(
+    request: pytest.FixtureRequest,
+    dsn: str
+) -> Generator[Scheduler, None, None]:
 
     # clear the events before each test
     from libres.modules import events
@@ -46,7 +67,7 @@ def scheduler(request, dsn):
 
 
 @pytest.fixture(scope="session")
-def dsn():
+def dsn() -> Generator[str, None, None]:
     postgres = Postgresql()
 
     scheduler = new_test_scheduler(postgres.url())

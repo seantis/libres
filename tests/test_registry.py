@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import threading
 import pytest
 import random
@@ -6,9 +8,10 @@ from libres.modules import errors
 from libres.context.registry import Registry
 
 
-def test_registry_contexts():
+def test_registry_contexts() -> None:
     r = Registry()
 
+    assert r.master_context is not None
     assert r.master_context.name == 'master'
     assert r.master_context is r.current_context
     assert r.is_existing_context('master')
@@ -36,7 +39,7 @@ def test_registry_contexts():
     assert r.current_context.name == 'bar'
 
 
-def test_autocreate():
+def test_autocreate() -> None:
     r = Registry()
 
     ctx = r.get_context('yo', autocreate=True)
@@ -45,7 +48,7 @@ def test_autocreate():
     assert r.get_context('yo') is ctx
 
 
-def test_assert_existence():
+def test_assert_existence() -> None:
     r = Registry()
 
     with pytest.raises(errors.UnknownContext):
@@ -57,7 +60,7 @@ def test_assert_existence():
         r.assert_does_not_exist('foo')
 
 
-def test_replace():
+def test_replace() -> None:
     r = Registry()
 
     ctx = r.register_context('gabba gabba')
@@ -74,7 +77,7 @@ def test_replace():
         ctx = r.register_context('gabba gabba', replace=True)
 
 
-def test_different_registries():
+def test_different_registries() -> None:
     r1 = Registry()
     r2 = Registry()
 
@@ -84,7 +87,7 @@ def test_different_registries():
     r2.register_context('foo')
 
 
-def test_locked_contexts():
+def test_locked_contexts() -> None:
     r = Registry()
 
     context = r.register_context('test')
@@ -95,9 +98,10 @@ def test_locked_contexts():
         context.set('foo', 'bar')
 
 
-def test_master_fallback():
+def test_master_fallback() -> None:
     r = Registry()
 
+    assert r.master_context is not None
     r.master_context.set_setting('host', 'localhost')
     assert r.master_context.get_setting('host') == 'localhost'
 
@@ -116,9 +120,10 @@ def test_master_fallback():
     assert another_app.get_setting('host') == 'localhost'
 
 
-def test_services():
+def test_services() -> None:
     r = Registry()
 
+    assert r.master_context is not None
     r.master_context.set_service('service', factory=lambda ctx: object())
     first_call = r.master_context.get_service('service')
     second_call = r.master_context.get_service('service')
@@ -126,9 +131,10 @@ def test_services():
     assert first_call is not second_call
 
 
-def test_services_cache():
+def test_services_cache() -> None:
     r = Registry()
 
+    assert r.master_context is not None
     r.master_context.set_service(
         'service', factory=lambda ctx: object(), cache=True
     )
@@ -139,17 +145,17 @@ def test_services_cache():
     assert first_call is second_call
 
 
-def test_threading_contexts():
+def test_threading_contexts() -> None:
     r = Registry()
 
     class Application(threading.Thread):
 
-        def __init__(self, name, registry):
+        def __init__(self, name: str, registry: Registry) -> None:
             threading.Thread.__init__(self)
             self.registry = registry
             self.name = name
 
-        def run(self):
+        def run(self) -> None:
             if self.registry.is_existing_context(self.name):
                 self.registry.get_context(self.name).switch_to()
             else:
@@ -157,7 +163,7 @@ def test_threading_contexts():
 
             self.result = self.registry.get_current_context().name
 
-        def join(self):
+        def join(self) -> str:  # type: ignore[override]
             threading.Thread.join(self)
             return self.result
 

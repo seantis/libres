@@ -1,15 +1,25 @@
+from __future__ import annotations
+
 import pytest
 
 from datetime import datetime
 from libres.db.models import Allocation
 
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libres.db.scheduler import Scheduler
+
+
 @pytest.mark.parametrize('execution_number', range(2))
 @pytest.mark.parametrize('scheduler_context', ['test'])
 @pytest.mark.parametrize('scheduler_name', ['test'])
 def test_independence(
-    scheduler, execution_number, scheduler_context, scheduler_name
-):
+    scheduler: Scheduler,
+    execution_number: int,
+    scheduler_context: str,
+    scheduler_name: str
+) -> None:
     """ Test the independence of tests. This test is run twice with the exact
     same records written. If any records remain after a single test run, the
     second run of this test fails.

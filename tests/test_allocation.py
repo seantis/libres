@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from datetime import datetime, time
@@ -8,12 +10,17 @@ from sqlalchemy.exc import IntegrityError
 from uuid import uuid4 as new_uuid
 
 
-def test_add_allocation(scheduler):
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libres.db.scheduler import Scheduler
 
-    allocation = Allocation(raster=15, resource=scheduler.resource)
+
+def test_add_allocation(scheduler: Scheduler) -> None:
+
+    allocation = Allocation(raster=15, resource=scheduler.resource)  # type: ignore[misc]
     allocation.start = datetime(2011, 1, 1, 15, tzinfo=utc)
     allocation.end = datetime(2011, 1, 1, 15, 59, tzinfo=utc)
-    allocation.group = new_uuid().hex
+    allocation.group = new_uuid()
     allocation.mirror_of = scheduler.resource
 
     scheduler.session.add(allocation)
@@ -22,14 +29,14 @@ def test_add_allocation(scheduler):
     assert scheduler.session.query(Allocation).count() == 1
 
 
-def test_add_invalid_allocation(scheduler):
-    scheduler.session.add(Allocation(raster=15))
+def test_add_invalid_allocation(scheduler: Scheduler) -> None:
+    scheduler.session.add(Allocation(raster=15))  # type: ignore[misc]
 
     with pytest.raises(IntegrityError):
         scheduler.commit()
 
 
-def test_get_master(scheduler):
+def test_get_master(scheduler: Scheduler) -> None:
     dates = [
         (datetime(2015, 2, 6, 12), datetime(2015, 2, 6, 13)),
         (datetime(2015, 2, 7, 12), datetime(2015, 2, 7, 13))
@@ -50,7 +57,7 @@ def test_get_master(scheduler):
     assert siblings[1].get_master().id == allocations[0].id
 
 
-def test_imaginary_siblings(scheduler):
+def test_imaginary_siblings(scheduler: Scheduler) -> None:
     dates = [(datetime(2015, 2, 6, 12), datetime(2015, 2, 6, 13))]
     allocations = scheduler.allocate(dates=dates, quota=2)
 
@@ -65,8 +72,8 @@ def test_imaginary_siblings(scheduler):
         imaginary_allocation.siblings(imaginary=False)
 
 
-def test_date_functions(scheduler):
-    allocation = Allocation(raster=60, resource=scheduler.resource)
+def test_date_functions(scheduler: Scheduler) -> None:
+    allocation = Allocation(raster=60, resource=scheduler.resource)  # type: ignore[misc]
     allocation.timezone = 'UTC'
     allocation.start = datetime(2011, 1, 1, 12, 30, tzinfo=utc)
     allocation.end = datetime(2011, 1, 1, 14, 00, tzinfo=utc)
@@ -89,8 +96,8 @@ def test_date_functions(scheduler):
     assert not allocation.contains(start, end)
 
 
-def test_whole_day():
-    allocation = Allocation(
+def test_whole_day() -> None:
+    allocation = Allocation(  # type: ignore[misc]
         raster=15, resource=new_uuid(), timezone='Europe/Zurich'
     )
 
@@ -113,11 +120,11 @@ def test_whole_day():
     allocation.start = datetime(2013, 1, 1, 15, 0, tzinfo=utc)
     allocation.end = datetime(2013, 1, 1, 0, 0, tzinfo=utc)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r'equal or greater than the start'):
         _ = allocation.whole_day
 
 
-def test_separate_allocation(scheduler):
+def test_separate_allocation(scheduler: Scheduler) -> None:
 
     # allocations which are partly available are never in a group
     # (some code, for example allocation.is_separarate, depends on that)
@@ -147,10 +154,10 @@ def test_separate_allocation(scheduler):
     assert allocations[0].is_separate
 
 
-def test_limit_timespan():
+def test_limit_timespan() -> None:
 
     # if not partly availabe the limit is always the same
-    allocation = Allocation(
+    allocation = Allocation(  # type: ignore[misc]
         raster=15, resource=new_uuid(), partly_available=False, timezone='UTC'
     )
 
@@ -166,7 +173,7 @@ def test_limit_timespan():
     )
 
     # if partly available, more complex things happen
-    allocation = Allocation(
+    allocation = Allocation(  # type: ignore[misc]
         raster=15, resource=new_uuid(), partly_available=True, timezone='UTC'
     )
 
@@ -227,7 +234,12 @@ def test_limit_timespan():
     )
 
 
-def add_reservation(scheduler, allocation, start, end):
+def add_reservation(
+    scheduler: Scheduler,
+    allocation: Allocation,
+    start: datetime,
+    end: datetime
+) -> None:
     # small helper to reserve all the slots between start and end
     reservation = new_uuid()
     for s, e in allocation.all_slots():
@@ -246,14 +258,14 @@ def add_reservation(scheduler, allocation, start, end):
     scheduler.session.refresh(allocation)
 
 
-def test_availability_partitions(scheduler):
-    allocation = Allocation(
+def test_availability_partitions(scheduler: Scheduler) -> None:
+    allocation = Allocation(  # type: ignore[misc]
         raster=15, resource=new_uuid(), partly_available=True,
         timezone='Europe/Zurich'
     )
     allocation.start = datetime(2022, 9, 29, 22, tzinfo=utc)
     allocation.end = datetime(2022, 9, 30, 1, 59, 59, 999999, tzinfo=utc)
-    allocation.group = new_uuid().hex
+    allocation.group = new_uuid()
     allocation.mirror_of = scheduler.resource
     scheduler.session.add(allocation)
     scheduler.session.flush()
@@ -281,14 +293,14 @@ def test_availability_partitions(scheduler):
     assert allocation.availability == 75.0
 
 
-def test_availability_partitions_dst_to_st(scheduler):
-    allocation = Allocation(
+def test_availability_partitions_dst_to_st(scheduler: Scheduler) -> None:
+    allocation = Allocation(  # type: ignore[misc]
         raster=15, resource=new_uuid(), partly_available=True,
         timezone='Europe/Zurich'
     )
     allocation.start = datetime(2022, 10, 29, 22, tzinfo=utc)
     allocation.end = datetime(2022, 10, 30, 2, 59, 59, 999999, tzinfo=utc)
-    allocation.group = new_uuid().hex
+    allocation.group = new_uuid()
     allocation.mirror_of = scheduler.resource
     scheduler.session.add(allocation)
     scheduler.session.flush()
@@ -337,15 +349,18 @@ def test_availability_partitions_dst_to_st(scheduler):
     assert allocation.availability == 60.0
 
 
-def test_availability_partitions_dst_to_st_during_ambiguous_time(scheduler):
-    allocation = Allocation(
+def test_availability_partitions_dst_to_st_during_ambiguous_time(
+    scheduler: Scheduler
+) -> None:
+
+    allocation = Allocation(  # type: ignore[misc]
         raster=5, resource=new_uuid(), partly_available=True,
         timezone='Europe/Zurich'
     )
     # our allocation starts during the ambigious time period we skip
     allocation.start = datetime(2022, 10, 30, 0, 40, tzinfo=utc)
     allocation.end = datetime(2022, 10, 30, 22, 59, 59, 999999, tzinfo=utc)
-    allocation.group = new_uuid().hex
+    allocation.group = new_uuid()
     allocation.mirror_of = scheduler.resource
     scheduler.session.add(allocation)
     scheduler.session.flush()
@@ -365,14 +380,14 @@ def test_availability_partitions_dst_to_st_during_ambiguous_time(scheduler):
     assert allocation.normalized_availability == 75.0
 
 
-def test_availability_partitions_st_to_dst(scheduler):
-    allocation = Allocation(
+def test_availability_partitions_st_to_dst(scheduler: Scheduler) -> None:
+    allocation = Allocation(  # type: ignore[misc]
         raster=15, resource=new_uuid(), partly_available=True,
         timezone='Europe/Zurich'
     )
     allocation.start = datetime(2022, 3, 26, 23, tzinfo=utc)
     allocation.end = datetime(2022, 3, 27, 2, 59, 59, 999999, tzinfo=utc)
-    allocation.group = new_uuid().hex
+    allocation.group = new_uuid()
     allocation.mirror_of = scheduler.resource
     scheduler.session.add(allocation)
     scheduler.session.flush()

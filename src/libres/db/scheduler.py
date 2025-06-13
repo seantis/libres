@@ -269,7 +269,7 @@ class Scheduler(ContextServicesMixin):
         allocations = allocations.with_entities(Allocation.id)
         allocations = allocations.filter(Allocation.group.in_(groups))
 
-        query = self.managed_allocations()
+        query: Query[Allocation] = self.managed_allocations()
         query = query.join(ReservedSlot)
         query = query.filter(
             ReservedSlot.reservation_token == token

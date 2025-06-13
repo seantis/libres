@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from datetime import datetime
@@ -7,12 +9,17 @@ from sqlalchemy.exc import IntegrityError
 from uuid import uuid4 as new_uuid
 
 
-def test_add_reserved_slot(scheduler):
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libres.db.scheduler import Scheduler
 
-    allocation = Allocation(raster=15, resource=scheduler.resource)
+
+def test_add_reserved_slot(scheduler: Scheduler) -> None:
+
+    allocation = Allocation(raster=15, resource=scheduler.resource)  # type: ignore[misc]
     allocation.start = datetime(2011, 1, 1, 15, tzinfo=utc)
     allocation.end = datetime(2011, 1, 1, 15, 59, tzinfo=utc)
-    allocation.group = new_uuid().hex
+    allocation.group = new_uuid()
     allocation.mirror_of = scheduler.resource
 
     reservation = new_uuid()
@@ -38,11 +45,11 @@ def test_add_reserved_slot(scheduler):
         scheduler.session.flush()
 
 
-def test_reserved_slot_date_display(scheduler):
+def test_reserved_slot_date_display(scheduler: Scheduler) -> None:
     start = datetime(2015, 2, 5, 10, 0, tzinfo=utc)
     end = datetime(2015, 2, 5, 12, 0, tzinfo=utc)
 
-    allocation = Allocation(raster=5)
+    allocation = Allocation(raster=5)  # type: ignore[misc]
     allocation.start = start
     allocation.end = end
 

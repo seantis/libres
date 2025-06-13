@@ -82,6 +82,8 @@ class Registry:
     """
 
     contexts: dict[str, Context]
+    # FIXME: Why do we allow this to be None? Do we make use
+    #        of this anywhere?
     master_context: Context | None = None
 
     def __init__(self) -> None:

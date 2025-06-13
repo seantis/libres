@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from datetime import datetime, timedelta
@@ -7,16 +9,21 @@ from sedate import standardize_date
 from uuid import uuid4
 
 
-def test_reservation_title():
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libres.db.scheduler import Scheduler
+
+
+def test_reservation_title() -> None:
     assert Reservation(email='test@example.org').title == 'test@example.org'
 
 
-def test_unknown_target_type():
+def test_unknown_target_type() -> None:
     with pytest.raises(NotImplementedError):
-        Reservation(target_type='foo').timespans()
+        Reservation(target_type='foo').timespans()  # type: ignore[misc]
 
 
-def test_reservation_timespans(scheduler):
+def test_reservation_timespans(scheduler: Scheduler) -> None:
     start = datetime(2015, 2, 5, 15)
     end = datetime(2015, 2, 5, 16)
 
@@ -33,7 +40,7 @@ def test_reservation_timespans(scheduler):
     assert timespans[0].end == reservation.end + timedelta(microseconds=1)
 
 
-def test_group_reservation_timespans(scheduler):
+def test_group_reservation_timespans(scheduler: Scheduler) -> None:
     dates = [
         (datetime(2015, 2, 5, 15), datetime(2015, 2, 5, 16)),
         (datetime(2015, 2, 6, 15), datetime(2015, 2, 6, 16))
@@ -57,7 +64,7 @@ def test_group_reservation_timespans(scheduler):
         - timedelta(microseconds=1)
 
 
-def test_overlapping_reservations(scheduler):
+def test_overlapping_reservations(scheduler: Scheduler) -> None:
     start = datetime(2015, 2, 5, 15)
     end = datetime(2015, 2, 5, 16)
 

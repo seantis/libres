@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 from libres.modules.utils import is_valid_reservation_length
 
 
-def test_is_valid_reservation_length():
+def test_is_valid_reservation_length() -> None:
     assert is_valid_reservation_length(
         start=datetime(2017, 1, 1, 0),
         end=datetime(2017, 1, 2, 0) - timedelta(microseconds=1),
