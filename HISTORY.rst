@@ -1,6 +1,13 @@
 Changelog
 ---------
 
+0.9.1 (05.08.2025)
+~~~~~~~~~~~~~~~~~~~
+
+- Fixes bug in `Scheduler.search_allocations` when the searched
+  time range contains multiple DST <-> ST transitions.
+  [Daverball]
+
 0.9.0 (23.05.2025)
 ~~~~~~~~~~~~~~~~~~~
 
