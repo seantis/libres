@@ -1629,8 +1629,6 @@ class Scheduler(ContextServicesMixin):
         assert start
         assert end
 
-        start, end = self._prepare_range(start, end)
-
         assert whole_day in ('yes', 'no', 'any')
         assert groups in ('yes', 'no', 'any')
 
@@ -1645,7 +1643,7 @@ class Scheduler(ContextServicesMixin):
         else:
             day_numbers = None
 
-        query = self.allocations_in_range(start, end)
+        query = self.allocations_in_range(*self._prepare_range(start, end))
         query = query.order_by(Allocation._start)
 
         allocations = []
@@ -1657,13 +1655,19 @@ class Scheduler(ContextServicesMixin):
 
             if not self.is_allocation_exposed(allocation):
                 continue
-
-            s = datetime.combine(allocation.start.date(), start.time())
-            e = datetime.combine(allocation.end.date(), end.time())
-
-            # the raw dates will be UTC
-            s = sedate.replace_timezone(s, 'UTC')
-            e = sedate.replace_timezone(e, 'UTC')
+            allocation_start = allocation.display_start()
+            # NOTE: We want the correct timezone, but we don't want the
+            #       date to be on the next day for a full-day reservation
+            #       so we skip the microsecond addition
+            allocation_end = sedate.to_timezone(allocation.end, self.timezone)
+            s = sedate.standardize_date(datetime.combine(
+                allocation_start.date(),
+                start.time()
+            ), self.timezone)
+            e = sedate.standardize_date(datetime.combine(
+                allocation_end.date(),
+                end.time()
+            ), self.timezone)
 
             if not allocation.overlaps(s, e):
                 continue
