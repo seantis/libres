@@ -253,7 +253,7 @@ class Queries(ContextServicesMixin):
 
         slots = self.session.query(ReservedSlot).filter(
             ReservedSlot.reservation_token == token
-        )
+        ).filter(ReservedSlot.source_type == 'reservation')
 
         slots.delete('fetch')
 
@@ -340,6 +340,7 @@ class Queries(ContextServicesMixin):
                     reservations.with_entities(Reservation.token)
                 )
             )
+            slots = slots.filter(ReservedSlot.source_type == 'reservation')
 
             slots.delete('fetch')
             reservations.delete('fetch')

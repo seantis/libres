@@ -2105,13 +2105,28 @@ def test_remove_unused_allocations(scheduler: Scheduler) -> None:
     scheduler.allocate(dateranges, grouped=True)
     scheduler.commit()
 
+    # create one allocation with a blocker
+    daterange = (datetime(2018, 12, 3, 13, 0), datetime(2018, 12, 3, 15, 0))
+    scheduler.allocate(daterange)
+    scheduler.add_blocker(daterange)
+    scheduler.commit()
+
+    # create a group of allocations with a blocker
+    dateranges = [
+        (datetime(2019, 12, 3, 13, 0), datetime(2019, 12, 3, 15, 0)),
+        (datetime(2019, 12, 4, 13, 0), datetime(2019, 12, 4, 15, 0))
+    ]
+    scheduler.allocate(dateranges, grouped=True)
+    scheduler.add_blocker(dateranges)
+    scheduler.commit()
+
     # only the unused allocation should be removed
-    assert scheduler.managed_allocations().count() == 7
+    assert scheduler.managed_allocations().count() == 10
     deleted = scheduler.remove_unused_allocations(
         date(2013, 1, 1), date(2016, 12, 31))
 
     assert deleted == 1
-    assert scheduler.managed_allocations().count() == 6
+    assert scheduler.managed_allocations().count() == 9
 
     # if a grouped allocation is touched, the whole group must be inside
     # the date scope for it to be deleted
@@ -2119,26 +2134,26 @@ def test_remove_unused_allocations(scheduler: Scheduler) -> None:
         date(2017, 12, 3), date(2017, 12, 3))
 
     assert deleted == 0
-    assert scheduler.managed_allocations().count() == 6
+    assert scheduler.managed_allocations().count() == 9
 
     deleted = scheduler.remove_unused_allocations(
         date(2017, 12, 4), date(2017, 12, 4))
 
     assert deleted == 0
-    assert scheduler.managed_allocations().count() == 6
+    assert scheduler.managed_allocations().count() == 9
 
     # .. unless we specifically exclude groups
     deleted = scheduler.remove_unused_allocations(
         date(2000, 1, 1), date(2020, 1, 1), exclude_groups=True)
 
     assert deleted == 0
-    assert scheduler.managed_allocations().count() == 6
+    assert scheduler.managed_allocations().count() == 9
 
     deleted = scheduler.remove_unused_allocations(
         date(2000, 1, 1), date(2020, 1, 1))
 
     assert deleted == 2
-    assert scheduler.managed_allocations().count() == 4
+    assert scheduler.managed_allocations().count() == 7
 
 
 def test_remove_unused_allocations_weekdays_with_tz(

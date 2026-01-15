@@ -1,6 +1,30 @@
 Changelog
 ---------
 
+- Adds new entity `ReservationBlocker` for administrative blockers
+  of targeted allocations for the targeted timespans, this also ends
+  up adding a new column `source_type` to `ReservedSlot` which can be
+  added using the following recipe using an alembic `Operations` object::
+
+    operations.add_column(
+      'reserved_slots',
+      Column(
+        'source_type',
+        Enum(
+            'reservation', 'blocker',
+            name='reserved_slot_source_type'
+        ),
+        nullable=False,
+        server_default='reservation'
+      )
+    )
+    operations.alter_column(
+      'reserved_slots',
+      'source_type',
+      server_default=None
+    )
+
+
 0.9.1 (05.08.2025)
 ~~~~~~~~~~~~~~~~~~~
 

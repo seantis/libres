@@ -11,6 +11,7 @@ if TYPE_CHECKING:
         Allocation: type[_models.Allocation]
         ReservedSlot: type[_models.ReservedSlot]
         Reservation: type[_models.Reservation]
+        ReservationBlocker: type[_models.ReservationBlocker]
 
 
 models = None
@@ -25,7 +26,7 @@ class OtherModels:
         global models
         if not models:
             # FIXME: libres.db exports ORMBase, do we really
-            #        want to makes this accesible?
+            #        want to makes this accessible?
             from libres.db import models as m_
             models = m_
 

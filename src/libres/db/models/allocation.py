@@ -10,9 +10,10 @@ from sqlalchemy.schema import Column
 from sqlalchemy.schema import Index
 from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.orm import object_session
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm.util import has_identity
 
-from libres.db.models import ORMBase
+from libres.db.models.base import ORMBase
 from libres.db.models.types import UUID, UTCDateTime, JSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
@@ -136,9 +137,15 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         nullable=False
     )
 
-    if TYPE_CHECKING:
-        # forward declare backref
-        reserved_slots: list[ReservedSlot]
+    # Reserved_slots are eagerly joined since we usually want both
+    # allocation and reserved_slots. There's barely a function which does
+    # not need to know about reserved slots when working with allocations.
+    reserved_slots: relationship[list[ReservedSlot]] = relationship(
+        'ReservedSlot',
+        lazy='joined',
+        cascade='all, delete-orphan',
+        back_populates='allocation'
+    )
 
     __table_args__ = (
         Index('mirror_resource_ix', 'mirror_of', 'resource'),
@@ -502,15 +509,32 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         """Returns the availability in percent."""
 
         total = self.count_slots()
-        used = len(self.reserved_slots)
+        blocked = sum(
+            1
+            for s in self.reserved_slots
+            if s.source_type == 'blocker'
+        )
+        reserved = sum(
+            1
+            for s in self.reserved_slots
+            if s.source_type == 'reservation'
+        )
 
-        if total == used:
+        if total == blocked:
+            # if everything is blocked this allocation is unavailable
             return 0.0
 
-        if used == 0:
+        # blockers detract from the total slots
+        # they're not part of the availability
+        total -= blocked
+
+        if total == reserved:
+            return 0.0
+
+        if reserved == 0:
             return 100.0
 
-        return 100.0 - (float(used) / float(total) * 100.0)
+        return 100.0 - 100.0 * (reserved / total)
 
     @property
     def normalized_availability(self) -> float:
@@ -542,27 +566,53 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         # the normalized total slots correspond to the naive delta
         total = naive_delta.total_seconds() // (self.raster * 60)
         if real_delta > naive_delta:
-            # this is the most complicated case since we need to
-            # reduce the set of reserved slots by the hour we skipped
+            # this is the most complicated case since we need to reduce the
+            # set of reserved slots by the hour we removed from the total
             ambiguous_start = start.replace(
                 hour=2, minute=0, second=0, microsecond=0)
             ambiguous_end = ambiguous_start.replace(hour=3)
-            used = sum(
-                1 for r in self.reserved_slots
+            blocked = sum(
+                1
+                for r in self.reserved_slots
+                if r.source_type == 'blocker'
+                if not ambiguous_start <= r.start < ambiguous_end
+            )
+            reserved = sum(
+                1
+                for r in self.reserved_slots
+                if r.source_type == 'reservation'
                 if not ambiguous_start <= r.start < ambiguous_end
             )
         else:
-            used = len(self.reserved_slots)
-            # add one hour's worth of reserved slots
-            used += 60 // self.raster
+            blocked = sum(
+                1
+                for s in self.reserved_slots
+                if s.source_type == 'blocker'
+            )
+            reserved = sum(
+                1
+                for s in self.reserved_slots
+                if s.source_type == 'reservation'
+            )
+            # add one hour's worth of slots to compensate for the extra
+            # hour we added to the total.
+            reserved += 60 // self.raster
 
-        if used == 0:
-            return 100.0
-
-        if total == used:
+        if total == blocked:
+            # if everything is blocked this allocation is unavailable
             return 0.0
 
-        return 100.0 - (float(used) / float(total) * 100.0)
+        # blockers detract from the total slots
+        # they're not part of the availability
+        total -= blocked
+
+        if total == reserved:
+            return 0.0
+
+        if reserved == 0:
+            return 100.0
+
+        return 100.0 - 100.0 * (reserved / total)
 
     @property
     def in_group(self) -> int:

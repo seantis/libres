@@ -8,18 +8,19 @@ from sqlalchemy.schema import Column
 from sqlalchemy.schema import Index
 from sqlalchemy.schema import ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import backref
 
 from libres.modules.rasterizer import (
     rasterize_start,
     rasterize_end,
 )
 
-from libres.db.models import ORMBase, Allocation
+from libres.db.models.allocation import Allocation
+from libres.db.models.base import ORMBase
 from libres.db.models.types import UUID, UTCDateTime
 from libres.db.models.timestamp import TimestampMixin
 
 
+from typing import Literal
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import uuid
@@ -52,22 +53,25 @@ class ReservedSlot(TimestampMixin, ORMBase):
 
     allocation_id: Column[int] = Column(
         types.Integer(),
-        ForeignKey(Allocation.id),
+        ForeignKey('allocations.id'),
         nullable=False
     )
 
+    # Reserved_slots are eagerly joined since we usually want both
+    # allocation and reserved_slots. There's barely a function which does
+    # not need to know about reserved slots when working with allocations.
     allocation: relationship[Allocation] = relationship(
         Allocation,
         primaryjoin=Allocation.id == allocation_id,
+        back_populates='reserved_slots',
+    )
 
-        # Reserved_slots are eagerly joined since we usually want both
-        # allocation and reserved_slots. There's barely a function which does
-        # not need to know about reserved slots when working with allocation.
-        backref=backref(
-            'reserved_slots',
-            lazy='joined',
-            cascade='all, delete-orphan'
-        )
+    source_type: Column[Literal['reservation', 'blocker']] = Column(
+        types.Enum(  # type:ignore[arg-type]
+            'reservation', 'blocker',
+            name='reserved_slot_source_type'
+        ),
+        nullable=False
     )
 
     reservation_token: Column[uuid.UUID] = Column(

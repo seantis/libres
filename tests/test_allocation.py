@@ -253,6 +253,32 @@ def add_reservation(
         slot.end = e
         slot.allocation = allocation
         slot.reservation_token = reservation
+        slot.source_type = 'reservation'
+        scheduler.session.add(slot)
+    scheduler.session.flush()
+    scheduler.session.refresh(allocation)
+
+
+def add_blocker(
+    scheduler: Scheduler,
+    allocation: Allocation,
+    start: datetime,
+    end: datetime
+) -> None:
+    # small helper to block all the slots between start and end
+    blocker = new_uuid()
+    for s, e in allocation.all_slots():
+        if s < start:
+            continue
+        if s >= end or e > end:
+            break
+
+        slot = ReservedSlot(resource=allocation.resource)
+        slot.start = s
+        slot.end = e
+        slot.allocation = allocation
+        slot.reservation_token = blocker
+        slot.source_type = 'blocker'
         scheduler.session.add(slot)
     scheduler.session.flush()
     scheduler.session.refresh(allocation)
@@ -291,6 +317,41 @@ def test_availability_partitions(scheduler: Scheduler) -> None:
         (50.0, False),
     ]
     assert allocation.availability == 75.0
+
+
+def test_availability_partitions_with_blocker(scheduler: Scheduler) -> None:
+    allocation = Allocation(  # type: ignore[misc]
+        raster=15, resource=new_uuid(), partly_available=True,
+        timezone='Europe/Zurich'
+    )
+    allocation.start = datetime(2022, 9, 29, 22, tzinfo=utc)
+    allocation.end = datetime(2022, 9, 30, 1, 59, 59, 999999, tzinfo=utc)
+    allocation.group = new_uuid()
+    allocation.mirror_of = scheduler.resource
+    scheduler.session.add(allocation)
+    scheduler.session.flush()
+    assert allocation.availability_partitions() == [(100.0, False)]
+
+    add_blocker(
+        scheduler,
+        allocation,
+        datetime(2022, 9, 29, 23, tzinfo=utc),
+        datetime(2022, 9, 30, 0, tzinfo=utc),
+    )
+    # blockers have the same effect on partitions as reservations
+    # but the total availability calculation is different
+    assert allocation.availability_partitions() == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
+    assert allocation.normalized_availability == 100.0
+    assert allocation.availability_partitions(normalize_dst=False) == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
+    assert allocation.availability == 100.0
 
 
 def test_availability_partitions_dst_to_st(scheduler: Scheduler) -> None:

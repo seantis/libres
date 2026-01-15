@@ -10,7 +10,11 @@ from sqlalchemy.sql import and_, not_
 from uuid import uuid4 as new_uuid, UUID
 
 from libres.context.core import ContextServicesMixin
-from libres.db.models import ORMBase, Allocation, ReservedSlot, Reservation
+from libres.db.models import ORMBase
+from libres.db.models import Allocation
+from libres.db.models import ReservedSlot
+from libres.db.models import Reservation
+from libres.db.models import ReservationBlocker
 from libres.db.queries import Queries
 from libres.modules import errors
 from libres.modules import events
@@ -195,6 +199,13 @@ class Scheduler(ContextServicesMixin):
 
         return query
 
+    def managed_blockers(self) -> Query[ReservationBlocker]:
+        """ The blockers managed by this scheduler / resource. """
+        query = self.session.query(ReservationBlocker)
+        query = query.filter(ReservationBlocker.resource == self.resource)
+
+        return query
+
     def extinguish_managed_records(self) -> None:
         """ WARNING:
         Completely removes any trace of the records managed by this scheduler.
@@ -202,6 +213,7 @@ class Scheduler(ContextServicesMixin):
 
         """
         self.managed_reservations().delete('fetch')
+        self.managed_blockers().delete('fetch')
         self.managed_reserved_slots().delete('fetch')
         self.managed_allocations().delete('fetch')
 
@@ -265,17 +277,43 @@ class Scheduler(ContextServicesMixin):
         if id is not None:
             groups = groups.filter(Reservation.id == id)
 
-        allocations = self.managed_allocations()
-        allocations = allocations.with_entities(Allocation.id)
-        allocations = allocations.filter(Allocation.group.in_(groups))
-
         query: Query[Allocation] = self.managed_allocations()
         query = query.join(ReservedSlot)
+        query = query.filter(Allocation.group.in_(groups))
         query = query.filter(
             ReservedSlot.reservation_token == token
         )
         query = query.filter(
-            ReservedSlot.allocation_id.in_(allocations)
+            ReservedSlot.source_type == 'reservation'
+        )
+        return query
+
+    def allocations_by_blocker(
+        self,
+        token: UUID,
+        id: int | None = None
+    ) -> Query[Allocation]:
+        """ Returns the allocations for the blocker.
+
+        If you already have a blocker you can instead use target_allocations.
+
+        """
+
+        groups = self.managed_blockers()
+        groups = groups.with_entities(ReservationBlocker.target)
+        groups = groups.filter(ReservationBlocker.token == token)
+
+        if id is not None:
+            groups = groups.filter(ReservationBlocker.id == id)
+
+        query: Query[Allocation] = self.managed_allocations()
+        query = query.join(ReservedSlot)
+        query = query.filter(Allocation.group.in_(groups))
+        query = query.filter(
+            ReservedSlot.reservation_token == token
+        )
+        query = query.filter(
+            ReservedSlot.source_type == 'blocker'
         )
         return query
 
@@ -957,6 +995,10 @@ class Scheduler(ContextServicesMixin):
         reservations = self.managed_reservations()
         reservations = reservations.with_entities(Reservation.target)
 
+        # all the blockers
+        blockers = self.managed_blockers()
+        blockers = blockers.with_entities(ReservationBlocker.target)
+
         # all the groups which are fully inside the required scope
         groups = self.managed_allocations().with_entities(Allocation.group)
         groups = groups.group_by(Allocation.group)
@@ -992,6 +1034,11 @@ class Scheduler(ContextServicesMixin):
         # .. without the ones with reservations
         candidates = candidates.filter(
             not_(Allocation.group.in_(reservations))
+        )
+
+        # .. without the ones with blockers
+        candidates = candidates.filter(
+            not_(Allocation.group.in_(blockers))
         )
 
         # .. including only the groups fully inside the required scope
@@ -1324,6 +1371,7 @@ class Scheduler(ContextServicesMixin):
                     slot.end = slot_end
                     slot.resource = allocation.resource
                     slot.reservation_token = reservation.token
+                    slot.source_type = 'reservation'
 
                     # the slots are written with the allocation
                     allocation.reserved_slots.append(slot)
@@ -1416,7 +1464,7 @@ class Scheduler(ContextServicesMixin):
 
     def change_email(self, token: UUID, new_email: str) -> None:
 
-        for reservation in self.reservations_by_token(token).all():
+        for reservation in self.reservations_by_token(token):
             reservation.email = new_email
 
     def change_reservation_data(
@@ -1425,7 +1473,7 @@ class Scheduler(ContextServicesMixin):
         data: Any | None
     ) -> None:
 
-        for reservation in self.reservations_by_token(token).all():
+        for reservation in self.reservations_by_token(token):
             reservation.data = data
 
     def change_reservation_time_candidates(
@@ -1511,7 +1559,7 @@ class Scheduler(ContextServicesMixin):
                 if existing_reservation.end in ends:
                     return None
 
-        # will return raise a MultipleResultsFound exception if this is a group
+        # will raise a MultipleResultsFound exception if this is a group
         if existing_reservation.status == 'approved':
             allocation = self.allocations_by_reservation(token, id).one()
         else:
@@ -1555,6 +1603,298 @@ class Scheduler(ContextServicesMixin):
             )
 
         return new_reservation
+
+    @overload
+    def add_blocker(
+        self,
+        dates: _dtrange | Collection[_dtrange],
+        group: None = ...,
+        reason: str | None = ...,
+        token: UUID | None = ...
+    ) -> list[ReservationBlocker]: ...
+
+    @overload
+    def add_blocker(
+        self,
+        dates: None,
+        group: UUID,
+        reason: str | None = ...,
+        token: UUID | None = ...
+    ) -> list[ReservationBlocker]: ...
+
+    @overload
+    def add_blocker(
+        self,
+        dates: None = ...,
+        *,
+        group: UUID,
+        reason: str | None = ...,
+        token: UUID | None = ...
+    ) -> list[ReservationBlocker]: ...
+
+    def add_blocker(
+        self,
+        dates: _dtrange | Collection[_dtrange] | None = None,
+        group: UUID | None = None,
+        reason: str | None = None,
+        token: UUID | None = None
+    ) -> list[ReservationBlocker]:
+        """ Adds a blocker to one or many allocations.
+
+        Returns a list of `ReservationBlocker`, compared to reservations
+        blockers are added in a single step and don't require approval.
+
+        Blockers are intended for administrative purposes, where adding
+        a reservation would be too cumbersome by comparison.
+
+        :dates:
+            The dates to reserve. May either be a tuple of start/end datetimes
+            or a list of such tuples.
+
+        :group:
+            The allocation group to reserve. ``dates``and ``group`` are
+            mutually exclusive.
+
+        :reason:
+            The reason for blocking the targeted ranges.
+
+        """
+
+        assert (dates or group) and not (dates and group)
+
+        if group:
+            dates = self.allocation_dates_by_group(group)
+
+        assert dates is not None
+        dates = self._prepare_dates(dates)
+        timezone = self.timezone
+
+        # First, the request is checked for saneness. If any requested
+        # date cannot be reserved the request as a whole fails.
+        for start, end in dates:
+
+            # are the parameters valid?
+            if not utils.is_valid_reservation_length(start, end, timezone):
+                raise errors.ReservationTooLong
+
+            if start > end or (end - start).seconds < 5 * 60:
+                raise errors.ReservationTooShort
+
+            # can all allocations be reserved?
+            for allocation in self.allocations_in_range(start, end):
+
+                # start and end are not rasterized, so we need this check
+                if not allocation.overlaps(start, end):
+                    continue
+
+                assert allocation.is_master
+
+                if not allocation.find_spot(start, end):
+                    raise errors.AlreadyReservedError
+
+                free = self.free_allocations_count(allocation, start, end)
+                if free < allocation.quota:
+                    raise errors.AlreadyReservedError
+
+                if not allocation.contains(start, end):
+                    raise errors.TimerangeTooLong()
+
+        # ok, we're good to go
+        if token is None:
+            token = new_uuid()
+        reserved_slots = []
+
+        def create_reserved_slots(
+            allocation: Allocation,
+            start: datetime,
+            end: datetime,
+            including_mirrors: bool = True
+        ) -> None:
+            for slot_start, slot_end in allocation.all_slots(start, end):
+                slot = ReservedSlot()
+                slot.start = slot_start
+                slot.end = slot_end
+                slot.resource = allocation.resource
+                slot.reservation_token = token
+                slot.source_type = 'blocker'
+
+                # the slots are written with the allocation
+                allocation.reserved_slots.append(slot)
+                reserved_slots.append(slot)
+
+            # the allocation may be fake, make it real
+            if allocation.is_transient:
+                self.session.add(allocation)
+
+            if not including_mirrors or allocation.quota == 1:
+                return
+
+            for mirror in self.allocation_mirrors_by_master(allocation):
+                create_reserved_slots(
+                    mirror, start, end,
+                    including_mirrors=False
+                )
+
+        # groups are reserved by group-identifier - so all members of a group
+        # or none of them. As such there's no start / end date which is defined
+        # implicitly by the allocation
+        def new_blockers_by_group(
+            group: UUID | None
+        ) -> Iterator[ReservationBlocker]:
+
+            if group:
+                blocker = ReservationBlocker()
+                blocker.token = token
+                blocker.target = group
+                blocker.target_type = 'group'
+                blocker.resource = self.resource
+                blocker.reason = reason
+
+                for allocation in self.allocations_by_group(group):
+                    create_reserved_slots(
+                        allocation,
+                        allocation._start,
+                        allocation._end
+                    )
+
+                yield blocker
+
+        # all other reservations are reserved by start/end date
+        def new_blockers_by_dates(
+            dates: list[tuple[datetime, datetime]]
+        ) -> Iterator[ReservationBlocker]:
+
+            already_reserved_groups = set()
+
+            for start, end in dates:
+                for allocation in self.allocations_in_range(start, end):
+                    if allocation.group in already_reserved_groups:
+                        continue
+
+                    if not allocation.overlaps(start, end):
+                        continue
+
+                    # automatically reserve the whole group if the allocation
+                    # is part of a group
+                    if allocation.in_group:
+                        already_reserved_groups.add(allocation.group)
+
+                        yield from new_blockers_by_group(allocation.group)
+                    else:
+                        blocker = ReservationBlocker()
+                        blocker.token = token
+                        blocker.start, blocker.end = rasterizer.rasterize_span(
+                            start, end, allocation.raster
+                        )
+                        blocker.timezone = allocation.timezone
+                        blocker.target = allocation.group
+                        blocker.target_type = 'allocation'
+                        blocker.resource = self.resource
+                        blocker.reason = reason
+
+                        create_reserved_slots(allocation, start, end)
+
+                        yield blocker
+
+        # create the blockers and reserved slots
+        if group:
+            blockers = list(new_blockers_by_group(group))
+        else:
+            blockers = list(new_blockers_by_dates(dates))
+
+        if not blockers:
+            raise errors.InvalidReservationError
+
+        if not reserved_slots:
+            raise errors.NotReservableError
+
+        for blocker in blockers:
+            self.session.add(blocker)
+
+        return blockers
+
+    def remove_blocker(
+        self,
+        token: UUID,
+        id: int | None = None
+    ) -> None:
+        """ Removes all reserved slots of the given reservation blocker token.
+
+        The id is optional. If given, only the blocker with the given
+        token AND id is removed.
+
+        """
+
+        for slot in self.reserved_slots_by_blocker(token, id):
+            self.session.delete(slot)
+
+        for blocker in self.blockers_by_token(token, id):
+            self.session.delete(blocker)
+
+        # some allocations still reference reserved_slots if not for this
+        self.session.expire_all()
+
+    def change_blocker_reason(
+        self,
+        token: UUID,
+        new_reason: str | None,
+    ) -> None:
+
+        for blocker in self.blockers_by_token(token):
+            blocker.reason = new_reason
+
+    def change_blocker(
+        self,
+        token: UUID,
+        id: int,
+        new_start: datetime,
+        new_end: datetime,
+    ) -> ReservationBlocker | None:
+        """ Allows to change the timespan of a blocker under certain
+        conditions:
+
+        - The new timespan must be reservable inside the existing allocation.
+          (So you cannot use this method to block another allocation)
+        - The referenced allocation must not be in a group.
+
+        Returns the new blocker if a change was made and None instead.
+
+        """
+
+        assert new_start and new_end
+
+        new_start, new_end = self._prepare_range(new_start, new_end)
+        existing_blocker = self.blockers_by_token(token, id).one()
+
+        # if there's nothing to change, do not change
+        if (
+            existing_blocker.start == new_start
+            and existing_blocker.end in (
+                new_end,
+                new_end - timedelta(microseconds=1)
+            )
+        ):
+            return None
+
+        # will raise a MultipleResultsFound exception if this is a group
+        allocation = existing_blocker.target_allocations().one()
+
+        if not allocation.contains(new_start, new_end):
+            raise errors.TimerangeTooLong()
+
+        old_reason = existing_blocker.reason
+
+        with self.begin_nested():
+            self.remove_blocker(token, id)
+
+            new_blocker, = self.add_blocker(
+                dates=(new_start, new_end),
+                reason=old_reason,
+                token=token
+            )
+            new_blocker.id = id
+
+        return new_blocker
 
     def search_allocations(
         self,
@@ -1651,7 +1991,7 @@ class Scheduler(ContextServicesMixin):
         known_groups = set()
         known_ids = set()
 
-        for allocation in query.all():
+        for allocation in query:
 
             if not self.is_allocation_exposed(allocation):
                 continue
@@ -1788,6 +2128,23 @@ class Scheduler(ContextServicesMixin):
 
         return targets
 
+    def reserved_slots_by_type(
+        self,
+        token: UUID,
+        type: Literal['reservation', 'blocker'] | None = None,
+    ) -> Query[ReservedSlot]:
+        """ Returns all reserved slots for the given token.
+        The type is also optional and can be used to restrict the type of
+        reserved slot that's returned
+        """
+
+        assert token
+
+        query = self.managed_reserved_slots()
+        if type is not None:
+            query = query.filter(ReservedSlot.source_type == type)
+        return query.filter(ReservedSlot.reservation_token == token)
+
     def reserved_slots_by_reservation(
         self,
         token: UUID,
@@ -1798,15 +2155,31 @@ class Scheduler(ContextServicesMixin):
         specific reservation matching token and id.
         """
 
-        assert token
-
-        query = self.managed_reserved_slots()
-        query = query.filter(ReservedSlot.reservation_token == token)
+        query = self.reserved_slots_by_type(token, 'reservation')
 
         if id is None:
             return query
         else:
             allocations = self.allocations_by_reservation(token, id)
+            ids = allocations.with_entities(Allocation.id)
+            return query.filter(ReservedSlot.allocation_id.in_(ids))
+
+    def reserved_slots_by_blocker(
+        self,
+        token: UUID,
+        id: int | None = None
+    ) -> Query[ReservedSlot]:
+        """ Returns all reserved slots of the given blocker.
+        The id is optional and may be used only return the slots from a
+        specific reservation matching token and id.
+        """
+
+        query = self.reserved_slots_by_type(token, 'blocker')
+
+        if id is None:
+            return query
+        else:
+            allocations = self.allocations_by_blocker(token, id)
             ids = allocations.with_entities(Allocation.id)
             return query.filter(ReservedSlot.allocation_id.in_(ids))
 
@@ -1837,6 +2210,25 @@ class Scheduler(ContextServicesMixin):
 
         if id:
             query = query.filter(Reservation.id == id)
+
+        try:
+            query.first()
+        except exc.NoResultFound:
+            raise errors.InvalidReservationToken from None
+
+        return query
+
+    def blockers_by_token(
+        self,
+        token: UUID,
+        id: int | None = None
+    ) -> Query[ReservationBlocker]:
+
+        query = self.managed_blockers()
+        query = query.filter(ReservationBlocker.token == token)
+
+        if id:
+            query = query.filter(ReservationBlocker.id == id)
 
         try:
             query.first()

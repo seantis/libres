@@ -29,6 +29,7 @@ def test_add_reserved_slot(scheduler: Scheduler) -> None:
     slot.end = allocation.end
     slot.allocation = allocation
     slot.reservation_token = reservation
+    slot.source_type = 'reservation'
 
     # Ensure that the same slot cannot be doubly used
     another = ReservedSlot(resource=allocation.resource)
@@ -36,6 +37,7 @@ def test_add_reserved_slot(scheduler: Scheduler) -> None:
     another.end = allocation.end
     another.allocation = allocation
     another.reservation_token = reservation
+    another.source_type = 'reservation'
 
     scheduler.session.add(allocation)
     scheduler.session.add(slot)
@@ -57,6 +59,7 @@ def test_reserved_slot_date_display(scheduler: Scheduler) -> None:
     slot.allocation = allocation
     slot.start = start
     slot.end = end
+    slot.source_type = 'reservation'
 
     tz = timezone('Europe/Zurich')
 
