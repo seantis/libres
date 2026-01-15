@@ -157,7 +157,6 @@ ignore = [
     "UP009",
     "UP012",
     "UP032",
-    "UP038",
 ]
 unfixable = []
 external = ["TC"]
