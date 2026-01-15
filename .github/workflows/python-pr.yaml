@@ -25,4 +25,4 @@ jobs:
         run: uv pip install tox tox-gh tox-uv --system
 
       - name: Test with tox without uploading coverage
-        run: tox
+        run: tox -c pyproject.toml

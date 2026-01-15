@@ -39,4 +39,4 @@ jobs:
         run: uv pip install tox tox-gh tox-uv --system
 
       - name: Test with tox and upload coverage results
-        run: tox -- --codecov --codecov-token=${{ secrets.CODECOV_TOKEN }}
+        run: tox -c pyproject.toml -- --codecov --codecov-token=${{ secrets.CODECOV_TOKEN }}
