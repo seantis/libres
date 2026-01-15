@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.10.0 (15.01.2026)
+~~~~~~~~~~~~~~~~~~~
+
 - Adds new entity `ReservationBlocker` for administrative blockers
   of targeted allocations for the targeted timespans, this also ends
   up adding a new column `source_type` to `ReservedSlot` which can be
