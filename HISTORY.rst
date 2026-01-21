@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+0.10.1 (21.01.2026)
+~~~~~~~~~~~~~~~~~~~
+
 - Adds proper support for SQLAlchemy 1.4. As a result of this
   `Allocation.type` and `Reservation.type` are no longer nullable
   and have a default value of 'generic', you may use the following
