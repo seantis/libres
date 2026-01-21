@@ -60,7 +60,8 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
 
     type: Column[str | None] = Column(
         types.Text(),
-        nullable=True
+        nullable=False,
+        default='generic'
     )
 
     resource: Column[uuid.UUID] = Column(
@@ -117,7 +118,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
     )
 
     __mapper_args__ = {
-        'polymorphic_identity': None,
+        'polymorphic_identity': 'generic',
         'polymorphic_on': type
     }
 

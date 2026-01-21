@@ -84,7 +84,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     resource: Column[uuid.UUID] = Column(UUID(), nullable=False)
 
     #: the polymorphic type of the allocation
-    type: Column[str | None] = Column(types.Text(), nullable=True)
+    type: Column[str] = Column(types.Text(), nullable=False, default='generic')
 
     #: resource of which this allocation is a mirror. If the mirror_of
     #: attribute equals the resource, this is a real resource
@@ -153,7 +153,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     )
 
     __mapper_args__ = {
-        'polymorphic_identity': None,
+        'polymorphic_identity': 'generic',
         'polymorphic_on': type
     }
 

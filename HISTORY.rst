@@ -1,6 +1,25 @@
 Changelog
 ---------
 
+- Adds proper support for SQLAlchemy 1.4. As a result of this
+  `Allocation.type` and `Reservation.type` are no longer nullable
+  and have a default value of 'generic', you may use the following
+  recipe using an alembic `Operations` object to migrate existing
+  databases::
+
+    context.operations.execute("""
+      UPDATE allocations
+         SET type = 'generic'
+       WHERE type IS NULL;
+    """)
+    context.operations.alter_column('allocations', 'type', nullable=False)
+    context.operations.execute("""
+      UPDATE reservations
+         SET type = 'generic'
+       WHERE type IS NULL;
+    """)
+    context.operations.alter_column('reservations', 'type', nullable=False)
+
 0.10.0 (15.01.2026)
 ~~~~~~~~~~~~~~~~~~~
 
