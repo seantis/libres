@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+- Prepares for SQLAlchemy 2.0 support
+  [Daverball]
+
 0.10.1 (21.01.2026)
 ~~~~~~~~~~~~~~~~~~~
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.orm import scoped_session, sessionmaker
 
@@ -34,12 +34,12 @@ class SessionProvider(StoppableService):
 
         self.engine = create_engine(
             dsn, poolclass=QueuePool, pool_size=5, max_overflow=5,
-            isolation_level=SERIALIZABLE,
+            isolation_level=SERIALIZABLE, future=True,
             **(engine_config or {})
         )
 
         self.session = scoped_session(sessionmaker(
-            bind=self.engine, **(session_config or {})
+            bind=self.engine, future=True, **(session_config or {}),
         ))
 
     def stop_service(self) -> None:
@@ -58,20 +58,21 @@ class SessionProvider(StoppableService):
     def get_postgres_version(self, dsn: str) -> tuple[str, int]:
         """ Returns the postgres version as a tuple (string, integer).
 
-        Uses it's own connection to be independent from any session.
+        Uses its own connection to be independent from any session.
 
         """
         assert 'postgres' in dsn, 'Not a postgres database'
 
-        query = """
+        query = text("""
             SELECT current_setting('server_version'),
                    current_setting('server_version_num')
-        """
+        """)
 
-        engine = create_engine(dsn)
+        engine = create_engine(dsn, future=True)
 
         try:
-            result = engine.execute(query).first()
+            with engine.connect() as conn:
+                result = conn.execute(query).first()
             assert result is not None
             version, number = result
             return version, int(number)
