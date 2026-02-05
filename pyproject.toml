@@ -11,7 +11,7 @@ branch = true
 source = ["src"]
 
 [tool.bumpversion]
-current_version = "0.10.1"
+current_version = "0.10.2"
 commit = true
 message = "Release {new_version}"
 tag = true
