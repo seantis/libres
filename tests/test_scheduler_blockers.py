@@ -6,7 +6,7 @@ import sedate
 from datetime import datetime, timedelta
 from libres.modules import errors
 from libres.modules import utils
-from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.exc import MultipleResultsFound
 
 
 from typing import TYPE_CHECKING

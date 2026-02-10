@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 def test_add_reserved_slot(scheduler: Scheduler) -> None:
 
-    allocation = Allocation(raster=15, resource=scheduler.resource)  # type: ignore[misc]
+    allocation = Allocation(raster=15, resource=scheduler.resource)
     allocation.start = datetime(2011, 1, 1, 15, tzinfo=utc)
     allocation.end = datetime(2011, 1, 1, 15, 59, tzinfo=utc)
     allocation.group = new_uuid()
@@ -24,7 +24,8 @@ def test_add_reserved_slot(scheduler: Scheduler) -> None:
 
     reservation = new_uuid()
 
-    slot = ReservedSlot(resource=allocation.resource)
+    slot = ReservedSlot()
+    slot.resource = allocation.resource
     slot.start = allocation.start
     slot.end = allocation.end
     slot.allocation = allocation
@@ -32,7 +33,8 @@ def test_add_reserved_slot(scheduler: Scheduler) -> None:
     slot.source_type = 'reservation'
 
     # Ensure that the same slot cannot be doubly used
-    another = ReservedSlot(resource=allocation.resource)
+    another = ReservedSlot()
+    another.resource = allocation.resource
     another.start = allocation.start
     another.end = allocation.end
     another.allocation = allocation
@@ -51,7 +53,7 @@ def test_reserved_slot_date_display(scheduler: Scheduler) -> None:
     start = datetime(2015, 2, 5, 10, 0, tzinfo=utc)
     end = datetime(2015, 2, 5, 12, 0, tzinfo=utc)
 
-    allocation = Allocation(raster=5)  # type: ignore[misc]
+    allocation = Allocation(raster=5)
     allocation.start = start
     allocation.end = end
 

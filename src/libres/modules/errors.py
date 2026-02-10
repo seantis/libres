@@ -3,7 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from datetime import datetime
-    from libres.db.models import Allocation, Reservation, ReservedSlot
+    from libres.db.models import Allocation, Reservation
+    from typing import Protocol
+
+    class HasStartAndEnd(Protocol):
+        @property
+        def start(self) -> datetime | None: ...
+        @property
+        def end(self) -> datetime | None: ...
 
 
 class LibresError(Exception):
@@ -119,7 +126,7 @@ class AffectedReservationError(LibresError):
 
     def __init__(
         self,
-        existing: Reservation | ReservedSlot | None
+        existing: HasStartAndEnd | None
     ):
         self.existing = existing
 

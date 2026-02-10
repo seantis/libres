@@ -2,15 +2,9 @@ from __future__ import annotations
 
 import sedate
 
-from libres.db.models.types import UTCDateTime
-from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import deferred
-from sqlalchemy.schema import Column
-
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from datetime import datetime
+from datetime import datetime
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import Mapped
 
 
 class TimestampMixin:
@@ -27,25 +21,11 @@ class TimestampMixin:
     def timestamp() -> datetime:
         return sedate.utcnow()
 
-    if TYPE_CHECKING:
-        created: Column[datetime]
-        modified: Column[datetime | None]
-
-    else:
-        @declared_attr
-        def created(cls) -> Column[datetime]:
-            return deferred(
-                Column(
-                    UTCDateTime(timezone=False),
-                    default=cls.timestamp
-                )
-            )
-
-        @declared_attr
-        def modified(cls) -> Column[datetime | None]:
-            return deferred(
-                Column(
-                    UTCDateTime(timezone=False),
-                    onupdate=cls.timestamp
-                )
-            )
+    created: Mapped[datetime] = mapped_column(
+        default=timestamp,
+        deferred=True
+    )
+    modified: Mapped[datetime | None] = mapped_column(
+        onupdate=timestamp,
+        deferred=True
+    )

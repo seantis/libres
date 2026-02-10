@@ -1,6 +1,18 @@
 Changelog
 ---------
 
+- Adds support for Python 3.14
+  [Daverball]
+
+- Adds support for SQLAlchemy 2.0
+  [Daverball]
+
+- Drops support for Python 3.9
+  [Daverball]
+
+- Drops support for SQLAlchemy 1.4
+  [Daverball]
+
 0.10.2 (05.02.2026)
 ~~~~~~~~~~~~~~~~~~~
 

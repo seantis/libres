@@ -3,14 +3,15 @@ from __future__ import annotations
 import sedate
 
 from datetime import datetime, timedelta
+from uuid import UUID
 
 from sqlalchemy import types
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import object_session
-from sqlalchemy.schema import Column
+from sqlalchemy.orm import Mapped
 from sqlalchemy.schema import Index
 
 from libres.db.models.base import ORMBase
-from libres.db.models.types import UUID, UTCDateTime
 from libres.db.models.other import OtherModels
 from libres.db.models.timespan import Timespan
 from libres.db.models.timestamp import TimestampMixin
@@ -19,7 +20,6 @@ from libres.db.models.timestamp import TimestampMixin
 from typing import Literal
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    import uuid
     from sedate.types import TzInfoOrName
     from sqlalchemy.orm import Query
 
@@ -37,58 +37,40 @@ class ReservationBlocker(TimestampMixin, ORMBase, OtherModels):
 
     __tablename__ = 'reservation_blockers'
 
-    id: Column[int] = Column(
-        types.Integer(),
+    id: Mapped[int] = mapped_column(
         primary_key=True,
         autoincrement=True
     )
 
-    token: Column[uuid.UUID] = Column(
-        UUID(),
-        nullable=False,
-    )
+    token: Mapped[UUID]
 
-    target: Column[uuid.UUID] = Column(
-        UUID(),
-        nullable=False,
-    )
+    target: Mapped[UUID]
 
-    target_type: Column[Literal['group', 'allocation']] = Column(
-        types.Enum(  # type:ignore[arg-type]
+    target_type: Mapped[Literal['group', 'allocation']] = mapped_column(
+        types.Enum(
             'group', 'allocation',
             name='reservation_blocker_target_type'
-        ),
-        nullable=False
+        )
     )
 
-    resource: Column[uuid.UUID] = Column(
-        UUID(),
-        nullable=False
-    )
+    resource: Mapped[UUID]
 
-    start: Column[datetime | None] = Column(
-        UTCDateTime(timezone=False),
-        nullable=True
-    )
+    start: Mapped[datetime | None]
 
-    end: Column[datetime | None] = Column(
-        UTCDateTime(timezone=False),
-        nullable=True
-    )
+    end: Mapped[datetime | None]
 
-    timezone: Column[str | None] = Column(
-        types.String(),
-        nullable=True
-    )
+    timezone: Mapped[str | None]
 
-    reason: Column[str | None] = Column(
-        types.String(),
-        nullable=True
-    )
+    reason: Mapped[str | None]
 
     __table_args__ = (
         Index('blocker_target_ix', 'target', 'id'),
     )
+
+    def __init__(self) -> None:
+        # NOTE: Avoid auto-generated __init__, the mypy plugin is
+        #       deprecated and cannot be used with newer versions.
+        pass
 
     def target_allocations(
         self,
@@ -97,8 +79,12 @@ class ReservationBlocker(TimestampMixin, ORMBase, OtherModels):
         """ Returns the allocations this blocker is targeting.
 
         """
+        session = object_session(self)
+        assert session, (
+            "Don't call if the blocker is detached"
+        )
         Allocation = self.models.Allocation  # noqa: N806
-        query = object_session(self).query(Allocation)
+        query = session.query(Allocation)
         query = query.filter(Allocation.group == self.target)
 
         if masters_only:
@@ -107,7 +93,7 @@ class ReservationBlocker(TimestampMixin, ORMBase, OtherModels):
         # order by date
         query = query.order_by(Allocation._start)
 
-        return query  # type: ignore[no-any-return]
+        return query
 
     def display_start(
         self,

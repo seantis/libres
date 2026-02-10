@@ -10,12 +10,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from sqlalchemy.engine import Dialect
 
-    _Base = TypeDecorator[dict[str, Any]]
-else:
-    _Base = TypeDecorator
 
-
-class JSON(_Base):
+class JSON(TypeDecorator[dict[str, Any]]):
     """ A JSONB based type that coerces None's to empty dictionaries.
 
     That is, this JSONB column cannot be `'null'::jsonb`. It could
@@ -27,7 +23,7 @@ class JSON(_Base):
     impl = JSONB
     cache_ok = True
 
-    def process_bind_param(  # type:ignore[override]
+    def process_bind_param(
         self,
         value: dict[str, Any] | None,
         dialect: Dialect
@@ -44,4 +40,4 @@ class JSON(_Base):
         return {} if value is None else value
 
 
-MutableDict.associate_with(JSON)  # type:ignore[no-untyped-call]
+MutableDict.associate_with(JSON)

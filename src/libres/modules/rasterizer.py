@@ -35,8 +35,8 @@ from typing import Literal
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from typing_extensions import TypeAlias
-    from typing_extensions import TypeGuard
+    from typing import TypeAlias
+    from typing import TypeGuard
 
 
 Raster: TypeAlias = Literal[5, 10, 15, 30, 60]

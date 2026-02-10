@@ -8,7 +8,7 @@ from itertools import groupby
 from libres.context.core import ContextServicesMixin
 from libres.db.models import Allocation, Reservation, ReservedSlot
 from libres.modules import errors, events
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, or_
 
@@ -195,7 +195,7 @@ class Queries(ContextServicesMixin):
         # this is mainly a security feature
         if not session_id:
             log.warn('empty session id')
-            return self.session.query(Reservation).filter('0=1')
+            return self.session.query(Reservation).filter(text('0=1'))
 
         query = self.session.query(Reservation)
         query = query.filter(Reservation.session_id == session_id)
@@ -288,7 +288,7 @@ class Queries(ContextServicesMixin):
 
         # first get the session ids which are expired
         query: Query[tuple[UUID, datetime, datetime | None]]
-        query = self.session.query(
+        query = self.session.query(  # type: ignore[assignment]
             Reservation.session_id,
             func.max(Reservation.created),
             func.max(Reservation.modified)

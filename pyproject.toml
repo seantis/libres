@@ -2,6 +2,96 @@
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "libres"
+dynamic = ["version", "readme"]
+description = "A library to reserve things"
+requires-python = ">=3.10"
+authors = [
+    { name = "Denis Krienbühl", email = "denis@href.ch" },
+]
+maintainers = [
+    { name = "Seantis GmbH", email = "info@seantis.ch" },
+]
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "Framework :: Pytest",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+    "python-dateutil",
+    "pytz",
+    "sedate >= 1.0.0",
+    "SQLAlchemy >= 2.0.0, < 2.1.0",
+]
+
+[project.urls]
+Repository = "http://github.com/seantis/libres"
+
+[tool.setuptools.package-data]
+libres = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = {attr = "libres.__version__"}
+readme = {file = ["README.rst", "HISTORY.rst"]}
+
+[dependency-groups]
+ruff = [
+    "ruff",
+]
+flake8 = [
+    "flake8",
+    "flake8-pyproject",
+    "flake8-type-checking",
+]
+bandit = [
+    "bandit[toml]",
+]
+mypy = [
+    "mypy",
+    "types-python-dateutil",
+    "types-pytz",
+    "typing-extensions",
+]
+lint = [
+    {include-group = "flake8"},
+    {include-group = "ruff"},
+    {include-group = "bandit"},
+    {include-group = "mypy"},
+]
+test = [
+    "jsonpickle",
+    "psycopg2-binary",
+    "pytest",
+    "pytest-codecov[git]",
+    "testing.postgresql",
+]
+tox = [
+    "tox>=4.22",
+    "tox-uv",
+]
+dev = [
+    "bump-my-version",
+    "pre-commit",
+    "pre-commit-uv",
+    "uv",
+    {include-group = "tox"},
+    {include-group = "test"},
+    {include-group = "lint"},
+]
+
 [tool.pytest.ini_options]
 log_level = "INFO"
 testpaths = ["tests"]
@@ -35,19 +125,35 @@ replace = """
 """
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 namespace_packages = true
 explicit_package_bases = true
 strict = true
 warn_unreachable = true
-# FIXME: remove this exclusion when upgrading to SQlAlchemy 2.0
-untyped_calls_exclude = "sqlalchemy"
-plugins = "sqlmypy"
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
 
 [tool.bandit]
 exclude_dirs = ["tests"]
 skips = ["B101"]
+
+[tool.flake8]
+select = ["TC0" , "TC1"]
+per_file_ignores = [
+    "*.pyi: TC",
+    "tests/**.py: TC",
+]
+exclude=[
+    ".venv",
+    "venv",
+    ".git",
+    ".tox",
+    "dist",
+    "docs",
+    "*lib/python*",
+    "*egg",
+    "build"
+]
+type-checking-sqlalchemy-enabled = true
 
 [tool.ruff]
 exclude = [
@@ -87,7 +193,7 @@ include = [
 ]
 line-length = 79
 indent-width = 4
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [
@@ -221,11 +327,11 @@ docstring-code-line-length = "dynamic"
 [tool.tox]
 requires = ["tox>=4.21"]
 envlist = [
-    "3.9",
     "3.10",
     "3.11",
     "3.12",
     "3.13",
+    "3.14",
     "flake8",
     "ruff",
     "bandit",
@@ -234,16 +340,17 @@ envlist = [
 ]
 
 [tool.tox.gh.python]
-"3.9" = ["3.9"]
 "3.10" = ["3.10"]
 "3.11" = ["3.11", "flake8", "bandit", "ruff", "mypy"]
 "3.12" = ["3.12"]
 "3.13" = ["3.13"]
+"3.14" = ["3.14"]
 
 [tool.tox.env_run_base]
 use_develop = true
 set_env = { COVERAGE_FILE = ".coverage.{envname}" }
-deps = ["-e{toxinidir}[test]"]
+deps = ["-e{toxinidir}"]
+dependency_groups = ["test"]
 commands = [
     [
         "pytest",
@@ -255,34 +362,31 @@ commands = [
 [tool.tox.env.ruff]
 base_python = ["python3.11"]
 skip_install = true
-deps = ["ruff"]
+dependency_groups = ["ruff"]
 commands = [["ruff", "check"]]
 
 [tool.tox.env.flake8]
 base_python = ["python3.11"]
 skip_install = true
-deps = [
-    "flake8",
-    "flake8-type-checking",
-]
+dependency_groups = ["flake8"]
 commands = [["flake8", "src{/}", "tests{/}"]]
 
 [tool.tox.env.bandit]
 base_python = ["python3.11"]
 skip_install = true
-deps = ["bandit[toml]"]
+dependency_groups = ["bandit"]
 commands = [["bandit", "-q", "-c", "pyproject.toml", "-r", "src"]]
 
 [tool.tox.env.mypy]
 base_python = ["python3.11"]
 skip_install = true
-deps = ["-e{toxinidir}[mypy]"]
+dependency_groups = ["mypy"]
 commands = [
-    ["mypy", "-p", "libres", "--python-version", "3.9"],
     ["mypy", "-p", "libres", "--python-version", "3.10"],
     ["mypy", "-p", "libres", "--python-version", "3.11"],
     ["mypy", "-p", "libres", "--python-version", "3.12"],
     ["mypy", "-p", "libres", "--python-version", "3.13"],
+    ["mypy", "-p", "libres", "--python-version", "3.14"],
 ]
 
 [tool.tox.env.report]

@@ -4,8 +4,8 @@ import sedate
 
 from datetime import datetime, time, timedelta
 from operator import attrgetter
+from sqlalchemy import exc
 from sqlalchemy import func
-from sqlalchemy.orm import exc
 from sqlalchemy.sql import and_, not_
 from uuid import uuid4 as new_uuid, UUID
 
@@ -32,7 +32,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from sedate.types import DateLike
     from sqlalchemy.orm import Query
-    from typing_extensions import NotRequired, Self, TypeAlias, TypedDict
+    from typing import TypeAlias
+    from typing_extensions import NotRequired, Self, TypedDict
 
     from libres.context.core import Context
     from libres.modules.rasterizer import Raster
@@ -153,6 +154,7 @@ class Scheduler(ContextServicesMixin):
         they are unnecessary.
 
         """
+        assert self.session.bind is not None
         ORMBase.metadata.create_all(self.session.bind)
 
     def _prepare_dates(
@@ -343,12 +345,10 @@ class Scheduler(ContextServicesMixin):
         group: UUID
     ) -> list[tuple[datetime, datetime]]:
 
-        query = self.allocations_by_group(group)
-        dates_query: Query[tuple[datetime, datetime]] = query.with_entities(
+        return self.allocations_by_group(group).with_entities(
             Allocation._start,
             Allocation._end
-        )
-        return dates_query.all()
+        ).tuples().all()
 
     def allocation_mirrors_by_master(
         self,
@@ -812,7 +812,7 @@ class Scheduler(ContextServicesMixin):
         if new_end < new_start:
             raise errors.InvalidAllocationError
 
-        new = self.allocation_cls(  # type:ignore[misc]
+        new = self.allocation_cls(
             start=new_start,
             end=new_end,
             raster=master.raster,
@@ -1323,7 +1323,7 @@ class Scheduler(ContextServicesMixin):
         # reservation twice on a single session
         if session_id:
             found = self.queries.reservations_by_session(session_id)
-            found_set: set[tuple[UUID, datetime | None]] = set(
+            found_set = set(
                 found.with_entities(Reservation.target, Reservation.start)
             )
 

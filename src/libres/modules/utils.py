@@ -11,8 +11,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from datetime import datetime
     from sedate.types import TzInfoOrName
+    from typing import TypeAlias
     from typing import TypeVar
-    from typing_extensions import TypeAlias
 
     _T = TypeVar('_T')
     _NestedIterable: TypeAlias = Iterable['_T | _NestedIterable[_T]']

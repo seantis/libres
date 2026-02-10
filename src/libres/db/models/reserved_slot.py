@@ -3,11 +3,14 @@ from __future__ import annotations
 import sedate
 
 from datetime import datetime, timedelta
+from uuid import UUID
+
 from sqlalchemy import types
-from sqlalchemy.schema import Column
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped
 from sqlalchemy.schema import Index
 from sqlalchemy.schema import ForeignKey
-from sqlalchemy.orm import relationship
 
 from libres.modules.rasterizer import (
     rasterize_start,
@@ -16,14 +19,12 @@ from libres.modules.rasterizer import (
 
 from libres.db.models.allocation import Allocation
 from libres.db.models.base import ORMBase
-from libres.db.models.types import UUID, UTCDateTime
 from libres.db.models.timestamp import TimestampMixin
 
 
 from typing import Literal
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    import uuid
     from sedate.types import TzInfoOrName
 
 
@@ -32,56 +33,45 @@ class ReservedSlot(TimestampMixin, ORMBase):
 
     __tablename__ = 'reserved_slots'
 
-    resource: Column[uuid.UUID] = Column(
-        UUID(),
+    resource: Mapped[UUID] = mapped_column(
         primary_key=True,
-        nullable=False,
         autoincrement=False
     )
 
-    start: Column[datetime] = Column(
-        UTCDateTime(timezone=False),
+    start: Mapped[datetime] = mapped_column(
         primary_key=True,
-        nullable=False,
         autoincrement=False
     )
 
-    end: Column[datetime] = Column(
-        UTCDateTime(timezone=False),
-        nullable=False
-    )
+    end: Mapped[datetime]
 
-    allocation_id: Column[int] = Column(
-        types.Integer(),
-        ForeignKey('allocations.id'),
-        nullable=False
-    )
+    allocation_id: Mapped[int] = mapped_column(ForeignKey('allocations.id'))
 
     # Reserved_slots are eagerly joined since we usually want both
     # allocation and reserved_slots. There's barely a function which does
     # not need to know about reserved slots when working with allocations.
-    allocation: relationship[Allocation] = relationship(
-        Allocation,
+    allocation: Mapped[Allocation] = relationship(
         primaryjoin=Allocation.id == allocation_id,
         back_populates='reserved_slots',
     )
 
-    source_type: Column[Literal['reservation', 'blocker']] = Column(
-        types.Enum(  # type:ignore[arg-type]
+    source_type: Mapped[Literal['reservation', 'blocker']] = mapped_column(
+        types.Enum(
             'reservation', 'blocker',
             name='reserved_slot_source_type'
-        ),
-        nullable=False
+        )
     )
 
-    reservation_token: Column[uuid.UUID] = Column(
-        UUID(),
-        nullable=False
-    )
+    reservation_token: Mapped[UUID]
 
     __table_args__ = (
         Index('reservation_resource_ix', 'reservation_token', 'resource'),
     )
+
+    def __init__(self) -> None:
+        # NOTE: Avoid auto-generated __init__, the mypy plugin is
+        #       deprecated and cannot be used with newer versions.
+        pass
 
     def display_start(
         self,

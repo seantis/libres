@@ -15,12 +15,16 @@ if TYPE_CHECKING:
 
 
 def test_reservation_title() -> None:
-    assert Reservation(email='test@example.org').title == 'test@example.org'
+    reservation = Reservation()
+    reservation.email = 'test@example.org'
+    assert reservation.title == 'test@example.org'
 
 
 def test_unknown_target_type() -> None:
+    reservation = Reservation()
+    reservation.target_type = 'foo'  # type: ignore[assignment]
     with pytest.raises(NotImplementedError):
-        Reservation(target_type='foo').timespans()  # type: ignore[misc]
+        reservation.timespans()
 
 
 def test_reservation_timespans(scheduler: Scheduler) -> None:

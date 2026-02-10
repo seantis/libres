@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 def test_add_allocation(scheduler: Scheduler) -> None:
 
-    allocation = Allocation(raster=15, resource=scheduler.resource)  # type: ignore[misc]
+    allocation = Allocation(raster=15, resource=scheduler.resource)
     allocation.start = datetime(2011, 1, 1, 15, tzinfo=utc)
     allocation.end = datetime(2011, 1, 1, 15, 59, tzinfo=utc)
     allocation.group = new_uuid()
@@ -30,7 +30,7 @@ def test_add_allocation(scheduler: Scheduler) -> None:
 
 
 def test_add_invalid_allocation(scheduler: Scheduler) -> None:
-    scheduler.session.add(Allocation(raster=15))  # type: ignore[misc]
+    scheduler.session.add(Allocation(raster=15))
 
     with pytest.raises(IntegrityError):
         scheduler.commit()
@@ -73,7 +73,7 @@ def test_imaginary_siblings(scheduler: Scheduler) -> None:
 
 
 def test_date_functions(scheduler: Scheduler) -> None:
-    allocation = Allocation(raster=60, resource=scheduler.resource)  # type: ignore[misc]
+    allocation = Allocation(raster=60, resource=scheduler.resource)
     allocation.timezone = 'UTC'
     allocation.start = datetime(2011, 1, 1, 12, 30, tzinfo=utc)
     allocation.end = datetime(2011, 1, 1, 14, 00, tzinfo=utc)
@@ -97,7 +97,7 @@ def test_date_functions(scheduler: Scheduler) -> None:
 
 
 def test_whole_day() -> None:
-    allocation = Allocation(  # type: ignore[misc]
+    allocation = Allocation(
         raster=15, resource=new_uuid(), timezone='Europe/Zurich'
     )
 
@@ -157,7 +157,7 @@ def test_separate_allocation(scheduler: Scheduler) -> None:
 def test_limit_timespan() -> None:
 
     # if not partly availabe the limit is always the same
-    allocation = Allocation(  # type: ignore[misc]
+    allocation = Allocation(
         raster=15, resource=new_uuid(), partly_available=False, timezone='UTC'
     )
 
@@ -173,7 +173,7 @@ def test_limit_timespan() -> None:
     )
 
     # if partly available, more complex things happen
-    allocation = Allocation(  # type: ignore[misc]
+    allocation = Allocation(
         raster=15, resource=new_uuid(), partly_available=True, timezone='UTC'
     )
 
@@ -248,7 +248,8 @@ def add_reservation(
         if s >= end or e > end:
             break
 
-        slot = ReservedSlot(resource=allocation.resource)
+        slot = ReservedSlot()
+        slot.resource = allocation.resource
         slot.start = s
         slot.end = e
         slot.allocation = allocation
@@ -273,7 +274,8 @@ def add_blocker(
         if s >= end or e > end:
             break
 
-        slot = ReservedSlot(resource=allocation.resource)
+        slot = ReservedSlot()
+        slot.resource = allocation.resource
         slot.start = s
         slot.end = e
         slot.allocation = allocation
@@ -285,7 +287,7 @@ def add_blocker(
 
 
 def test_availability_partitions(scheduler: Scheduler) -> None:
-    allocation = Allocation(  # type: ignore[misc]
+    allocation = Allocation(
         raster=15, resource=new_uuid(), partly_available=True,
         timezone='Europe/Zurich'
     )
@@ -320,7 +322,7 @@ def test_availability_partitions(scheduler: Scheduler) -> None:
 
 
 def test_availability_partitions_with_blocker(scheduler: Scheduler) -> None:
-    allocation = Allocation(  # type: ignore[misc]
+    allocation = Allocation(
         raster=15, resource=new_uuid(), partly_available=True,
         timezone='Europe/Zurich'
     )
@@ -355,7 +357,7 @@ def test_availability_partitions_with_blocker(scheduler: Scheduler) -> None:
 
 
 def test_availability_partitions_dst_to_st(scheduler: Scheduler) -> None:
-    allocation = Allocation(  # type: ignore[misc]
+    allocation = Allocation(
         raster=15, resource=new_uuid(), partly_available=True,
         timezone='Europe/Zurich'
     )
@@ -414,7 +416,7 @@ def test_availability_partitions_dst_to_st_during_ambiguous_time(
     scheduler: Scheduler
 ) -> None:
 
-    allocation = Allocation(  # type: ignore[misc]
+    allocation = Allocation(
         raster=5, resource=new_uuid(), partly_available=True,
         timezone='Europe/Zurich'
     )
@@ -442,7 +444,7 @@ def test_availability_partitions_dst_to_st_during_ambiguous_time(
 
 
 def test_availability_partitions_st_to_dst(scheduler: Scheduler) -> None:
-    allocation = Allocation(  # type: ignore[misc]
+    allocation = Allocation(
         raster=15, resource=new_uuid(), partly_available=True,
         timezone='Europe/Zurich'
     )

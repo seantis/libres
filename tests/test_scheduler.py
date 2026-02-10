@@ -9,8 +9,7 @@ from libres.db.models import Reservation, Allocation
 from libres.modules import errors, events
 from libres.modules import utils
 from unittest.mock import Mock
-from sqlalchemy.exc import StatementError
-from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.exc import MultipleResultsFound, StatementError
 from uuid import uuid4 as new_uuid
 
 

@@ -3,14 +3,15 @@ from __future__ import annotations
 import sedate
 
 from datetime import datetime, timedelta
+from uuid import UUID
 
 from sqlalchemy import types
-from sqlalchemy.orm import object_session, deferred
-from sqlalchemy.schema import Column
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import object_session
+from sqlalchemy.orm import Mapped
 from sqlalchemy.schema import Index
 
 from libres.db.models.base import ORMBase
-from libres.db.models.types import UUID, UTCDateTime, JSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timespan import Timespan
 from libres.db.models.timestamp import TimestampMixin
@@ -20,7 +21,6 @@ from typing import Any
 from typing import Literal
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    import uuid
     from sedate.types import TzInfoOrName
     from sqlalchemy.orm import Query
 
@@ -34,84 +34,45 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
 
     __tablename__ = 'reservations'
 
-    id: Column[int] = Column(
-        types.Integer(),
+    id: Mapped[int] = mapped_column(
         primary_key=True,
         autoincrement=True
     )
 
-    token: Column[uuid.UUID] = Column(
-        UUID(),
-        nullable=False,
-    )
+    token: Mapped[UUID]
 
-    target: Column[uuid.UUID] = Column(
-        UUID(),
-        nullable=False,
-    )
+    target: Mapped[UUID]
 
-    target_type: Column[Literal['group', 'allocation']] = Column(
-        types.Enum(  # type:ignore[arg-type]
+    target_type: Mapped[Literal['group', 'allocation']] = mapped_column(
+        types.Enum(
             'group', 'allocation',
             name='reservation_target_type'
-        ),
-        nullable=False
-    )
-
-    type: Column[str | None] = Column(
-        types.Text(),
-        nullable=False,
-        default='generic'
-    )
-
-    resource: Column[uuid.UUID] = Column(
-        UUID(),
-        nullable=False
-    )
-
-    start: Column[datetime | None] = Column(
-        UTCDateTime(timezone=False),
-        nullable=True
-    )
-
-    end: Column[datetime | None] = Column(
-        UTCDateTime(timezone=False),
-        nullable=True
-    )
-
-    timezone: Column[str | None] = Column(
-        types.String(),
-        nullable=True
-    )
-
-    status: Column[Literal['pending', 'approved']] = Column(
-        types.Enum(  # type:ignore[arg-type]
-            'pending', 'approved',
-            name='reservation_status'
-        ),
-        nullable=False
-    )
-
-    data: Column[dict[str, Any] | None] = deferred(
-        Column(
-            JSON(),
-            nullable=True
         )
     )
 
-    email: Column[str] = Column(
-        types.Unicode(254),
-        nullable=False
+    type: Mapped[str] = mapped_column(types.Text())
+
+    resource: Mapped[UUID]
+
+    start: Mapped[datetime | None]
+
+    end: Mapped[datetime | None]
+    timezone: Mapped[str | None]
+
+    status: Mapped[Literal['pending', 'approved']] = mapped_column(
+        types.Enum(
+            'pending', 'approved',
+            name='reservation_status'
+        )
     )
 
-    session_id: Column[uuid.UUID | None] = Column(
-        UUID()
-    )
+    data: Mapped[dict[str, Any] | None] = mapped_column(deferred=True)
 
-    quota: Column[int] = Column(
-        types.Integer(),
-        nullable=False
-    )
+    email: Mapped[str] = mapped_column(types.Unicode(254))
+
+    session_id: Mapped[UUID | None]
+
+    quota: Mapped[int]
 
     __table_args__ = (
         Index('target_status_ix', 'status', 'target', 'id'),
@@ -121,6 +82,11 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         'polymorphic_identity': 'generic',
         'polymorphic_on': type
     }
+
+    def __init__(self) -> None:
+        # NOTE: Avoid auto-generated __init__, the mypy plugin is
+        #       deprecated and cannot be used with newer versions.
+        pass
 
     def _target_allocations(self) -> Query[Allocation]:
         """ Returns the allocations this reservation is targeting. This should
@@ -134,8 +100,12 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         be dangerous.
 
         """
+        session = object_session(self)
+        assert session, (
+            "Don't call if the reservation is detached"
+        )
         Allocation = self.models.Allocation  # noqa: N806
-        query = object_session(self).query(Allocation)
+        query = session.query(Allocation)
         query = query.filter(Allocation.group == self.target)
 
         # master allocations only
@@ -144,7 +114,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         # order by date
         query = query.order_by(Allocation._start)
 
-        return query  # type: ignore[no-any-return]
+        return query
 
     def display_start(
         self,
@@ -202,10 +172,15 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
 
     @property
     def autoapprovable(self) -> bool:
+        session = object_session(self)
+        assert session, (
+            "Don't call if the reservation is detached"
+        )
+
         query = self._target_allocations()
         query = query.filter(self.models.Allocation.approve_manually == True)
 
         # A reservation is deemed autoapprovable if no allocation
         # requires explicit approval
 
-        return object_session(self).query(~query.exists()).scalar()  # type: ignore[no-any-return]
+        return session.query(~query.exists()).scalar()  # type: ignore[no-any-return]

@@ -10,10 +10,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from sqlalchemy.engine import Dialect
 
-    _Base = TypeDecorator['SoftUUID']
-else:
-    _Base = TypeDecorator
-
 
 class SoftUUID(uuid.UUID):
     """ Behaves just like the UUID class, but allows strings to be compared
@@ -38,12 +34,12 @@ class SoftUUID(uuid.UUID):
         return hash(self.int)
 
 
-class UUID(_Base):
+class UUID(TypeDecorator[SoftUUID]):
     """ Same as the Postgres UUID type, but returning SoftUUIDs instead
     of UUIDs on bind.
 
     """
-    impl = postgresql.UUID
+    impl = postgresql.UUID(as_uuid=False)
     cache_ok = True
 
     def process_bind_param(

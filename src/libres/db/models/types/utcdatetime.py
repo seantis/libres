@@ -10,12 +10,8 @@ if TYPE_CHECKING:
     from datetime import datetime
     from sqlalchemy.engine import Dialect
 
-    _Base = types.TypeDecorator[datetime]
-else:
-    _Base = types.TypeDecorator
 
-
-class UTCDateTime(_Base):
+class UTCDateTime(types.TypeDecorator['datetime']):
     """ Stores dates as UTC.
 
     Internally, they are stored as timezone naive, because Postgres takes
@@ -29,7 +25,7 @@ class UTCDateTime(_Base):
     impl = types.DateTime
     cache_ok = True
 
-    def process_bind_param(  # type:ignore[override]
+    def process_bind_param(
         self,
         value: datetime | None,
         dialect: Dialect

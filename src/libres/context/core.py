@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from sqlalchemy.orm import Session
     from sqlalchemy.orm.session import SessionTransaction
-    from typing_extensions import TypeAlias
+    from typing import TypeAlias
     from uuid import UUID
 
     from libres.context.registry import Registry

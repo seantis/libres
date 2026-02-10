@@ -6,15 +6,16 @@ from datetime import datetime, timedelta, time
 from itertools import groupby
 from sqlalchemy import types
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.schema import Column
 from sqlalchemy.schema import Index
 from sqlalchemy.schema import UniqueConstraint
 from sqlalchemy.orm import object_session
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped
 from sqlalchemy.orm.util import has_identity
+from uuid import UUID
 
 from libres.db.models.base import ORMBase
-from libres.db.models.types import UUID, UTCDateTime, JSON
 from libres.db.models.other import OtherModels
 from libres.db.models.timestamp import TimestampMixin
 from libres.modules import utils
@@ -31,7 +32,6 @@ from typing import Any
 from typing import TypeVar
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    import uuid
     from collections.abc import Iterator
     from sedate.types import TzInfoOrName
     from sqlalchemy.orm import Query
@@ -46,6 +46,11 @@ if TYPE_CHECKING:
 
     class _ReservationIdRow(NamedTuple):
         id: int
+else:
+    # NOTE: Avoids us having to register a special type mapping
+    #       for `Raster`, since we don't use an enum to represent
+    #       these values.
+    Raster = int
 
 
 class Allocation(TimestampMixin, ORMBase, OtherModels):
@@ -73,76 +78,57 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     __tablename__ = 'allocations'
 
     #: the id of the allocation, autoincremented
-    id: Column[int] = Column(
-        types.Integer(),
+    id: Mapped[int] = mapped_column(
         primary_key=True,
         autoincrement=True
     )
 
     #: the resource uuid of the allocation, may not be an actual resource
     #: see :class:`.models.Allocation` for more information
-    resource: Column[uuid.UUID] = Column(UUID(), nullable=False)
+    resource: Mapped[UUID]
 
     #: the polymorphic type of the allocation
-    type: Column[str] = Column(types.Text(), nullable=False, default='generic')
+    type: Mapped[str] = mapped_column(types.Text(), default='generic')
 
     #: resource of which this allocation is a mirror. If the mirror_of
     #: attribute equals the resource, this is a real resource
     #: see :class:`.models.Allocation` for more information
-    mirror_of: Column[uuid.UUID] = Column(UUID(), nullable=False)
+    mirror_of: Mapped[UUID]
 
     #: Group uuid to which this allocation belongs to. Every allocation has a
     #: group but some allocations may be the only one in their group.
-    group: Column[uuid.UUID] = Column(UUID(), nullable=False)
+    group: Mapped[UUID]
 
     #: Number of times this allocation may be reserved
-    # FIXME: Why is this not nullable=False? For now we pretend that it is
-    quota: Column[int] = Column(types.Integer(), default=1)
+    quota: Mapped[int] = mapped_column(default=1)
 
     #: Maximum number of times this allocation may be reserved with one
     #: single reservation.
-    quota_limit: Column[int] = Column(
-        types.Integer(),
-        default=0,
-        nullable=False
-    )
+    quota_limit: Mapped[int] = mapped_column(default=0)
 
     #: Partly available allocations may be reserved partially. How They may
     #: be partitioned is defined by the allocation's raster.
-    partly_available: Column[bool] = Column(types.Boolean(), default=False)
+    partly_available: Mapped[bool] = mapped_column(default=False)
 
     #: True if reservations for this allocation must be approved manually.
-    approve_manually: Column[bool] = Column(types.Boolean(), default=False)
+    approve_manually: Mapped[bool] = mapped_column(default=False)
 
     #: The timezone this allocation resides in.
     # FIXME: Why is this not nullable=False? A lot of properties rely on this!
-    timezone: Column[str | None] = Column(types.String())
+    timezone: Mapped[str | None]
 
     #: Custom data reserved for the user
-    data: Column[dict[str, Any] | None] = Column(
-        JSON(),
-        nullable=True
-    )
+    data: Mapped[dict[str, Any] | None]
 
-    _start: Column[datetime] = Column(
-        UTCDateTime(timezone=False),
-        nullable=False
-    )
-    _end: Column[datetime] = Column(
-        UTCDateTime(timezone=False),
-        nullable=False
-    )
-    _raster: Column[Raster] = Column(
-        types.Integer(),  # type:ignore[arg-type]
-        nullable=False
-    )
+    _start: Mapped[datetime]
+    _end: Mapped[datetime]
+    _raster: Mapped[Raster]
 
-    # Reserved_slots are eagerly joined since we usually want both
+    # Reserved_slots are eagerly loaded since we usually want both
     # allocation and reserved_slots. There's barely a function which does
     # not need to know about reserved slots when working with allocations.
-    reserved_slots: relationship[list[ReservedSlot]] = relationship(
-        'ReservedSlot',
-        lazy='joined',
+    reserved_slots: Mapped[list[ReservedSlot]] = relationship(
+        lazy='selectin',
         cascade='all, delete-orphan',
         back_populates='allocation'
     )
@@ -156,6 +142,33 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         'polymorphic_identity': 'generic',
         'polymorphic_on': type
     }
+
+    def __init__(
+        self,
+        resource: UUID | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        raster: Raster | None = None,
+        timezone: str | None = None,
+        quota: int = 1,
+        quota_limit: int = 0,
+        partly_available: bool = False,
+        approve_manually: bool = False,
+    ) -> None:
+        if resource is not None:
+            self.resource = resource
+        if start is not None:
+            self.set_start(start)
+        if end is not None:
+            self.set_end(end)
+        if raster is not None:
+            self.set_raster(raster)
+        if timezone is not None:
+            self.timezone = timezone
+        self.quota = quota
+        self.quota_limit = quota_limit
+        self.partly_available = partly_available
+        self.approve_manually = approve_manually
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Allocation):
@@ -172,6 +185,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         allocation.mirror_of = self.mirror_of
         allocation.group = self.group
         allocation.quota = self.quota
+        allocation.quota_limit = self.quota_limit
         allocation.partly_available = self.partly_available
         allocation.approve_manually = self.approve_manually
         allocation.timezone = self.timezone
@@ -492,9 +506,14 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             "Don't call if the allocation does not yet exist"
         )
 
+        session = object_session(self)
+        assert session is not None, (
+            "Don't call if the allocation is detached"
+        )
+
         Reservation = self.models.Reservation  # noqa: N806
         query: Query[_ReservationIdRow]
-        query = object_session(self).query(Reservation.id)
+        query = session.query(Reservation.id)  # type: ignore[assignment]
         query = query.filter(Reservation.target == self.group)
         query = query.filter(Reservation.status == 'pending')
 
@@ -618,7 +637,12 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     def in_group(self) -> int:
         """True if the event is in any group."""
 
-        query = object_session(self).query(Allocation.id)
+        session = object_session(self)
+        assert session is not None, (
+            "Don't call if the allocation is detached"
+        )
+
+        query = session.query(Allocation.id)
         query = query.filter(Allocation.resource == self.resource)
         query = query.filter(Allocation.group == self.group)
         query = query.limit(2)
@@ -849,9 +873,13 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
         if self.is_master:
             return self
         else:
+            session = object_session(self)
+            assert session is not None, (
+                "Don't call if the allocation is detached"
+            )
             # FIXME: This should either query `self.__class__` or
             #        we need to return `Allocation` rather than `Self`
-            query: Query[Self] = object_session(self).query(Allocation)
+            query: Query[Self] = session.query(Allocation)
             query = query.filter(Allocation._start == self._start)
             query = query.filter(Allocation.resource == self.mirror_of)
 
@@ -875,9 +903,14 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             assert self.is_master
             return [self]
 
+        session = object_session(self)
+        assert session is not None, (
+            "Don't call if the allocation is detached"
+        )
+
         # FIXME: This should either query `self.__class__` or
         #        we need to return `Allocation` rather than `Self`
-        query: Query[Self] = object_session(self).query(Allocation)
+        query: Query[Self] = session.query(Allocation)
         query = query.filter(Allocation.mirror_of == self.mirror_of)
         query = query.filter(Allocation._start == self._start)
 
