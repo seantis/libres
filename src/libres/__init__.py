@@ -5,7 +5,7 @@ from libres.db import new_scheduler
 
 registry = create_default_registry()  # noqa: RUF067
 
-__version__ = '0.10.2'
+__version__ = '1.0.0'
 __all__ = (
     'new_scheduler',
     'registry'
