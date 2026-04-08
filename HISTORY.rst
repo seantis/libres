@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+1.1.0 (08.04.2026)
+~~~~~~~~~~~~~~~~~~~
+
 - Adds support for blocking resources. ``Scheduler`` now accepts a collection
   of ``blocking_names`` to indicate related resources that will block reservations
   on the managed resource (e.g. for a soccer field where you can either reserve
