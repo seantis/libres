@@ -38,7 +38,7 @@ def new_test_scheduler(
 def scheduler(
     request: pytest.FixtureRequest,
     dsn: str
-) -> Generator[Scheduler, None, None]:
+) -> Generator[Scheduler]:
 
     # clear the events before each test
     from libres.modules import events
@@ -64,6 +64,24 @@ def scheduler(
     scheduler.commit()
     scheduler.close()
     scheduler.session_provider.stop_service()
+
+
+@pytest.fixture
+def blocked_scheduler(scheduler: Scheduler) -> Generator[Scheduler]:
+    blocked_name = new_uuid().hex
+    blocked = new_scheduler(
+        context=scheduler.context,
+        name=blocked_name,
+        blocking_names=(scheduler.name, ),
+        timezone='Europe/Zurich'
+    )
+
+    yield blocked
+
+    blocked.rollback()
+    blocked.extinguish_managed_records()
+    blocked.commit()
+    blocked.close()
 
 
 @pytest.fixture(scope="session")

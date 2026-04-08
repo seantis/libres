@@ -288,7 +288,7 @@ def add_blocker(
 
 def test_availability_partitions(scheduler: Scheduler) -> None:
     allocation = Allocation(
-        raster=15, resource=new_uuid(), partly_available=True,
+        raster=15, resource=scheduler.resource, partly_available=True,
         timezone='Europe/Zurich'
     )
     allocation.start = datetime(2022, 9, 29, 22, tzinfo=utc)
@@ -298,6 +298,14 @@ def test_availability_partitions(scheduler: Scheduler) -> None:
     scheduler.session.add(allocation)
     scheduler.session.flush()
     assert allocation.availability_partitions() == [(100.0, False)]
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 100.0
+    assert result[0][2] == [(100.0, False)]
 
     add_reservation(
         scheduler,
@@ -313,17 +321,42 @@ def test_availability_partitions(scheduler: Scheduler) -> None:
         (50.0, False),
     ]
     assert allocation.normalized_availability == 75.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 75.0
+    assert result[0][2] == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
     assert allocation.availability_partitions(normalize_dst=False) == [
         (25.0, False),
         (25.0, True),
         (50.0, False),
     ]
     assert allocation.availability == 75.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end,
+        normalize_dst=False
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 75.0
+    assert result[0][2] == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
 
 
 def test_availability_partitions_with_blocker(scheduler: Scheduler) -> None:
     allocation = Allocation(
-        raster=15, resource=new_uuid(), partly_available=True,
+        raster=15, resource=scheduler.resource, partly_available=True,
         timezone='Europe/Zurich'
     )
     allocation.start = datetime(2022, 9, 29, 22, tzinfo=utc)
@@ -333,6 +366,14 @@ def test_availability_partitions_with_blocker(scheduler: Scheduler) -> None:
     scheduler.session.add(allocation)
     scheduler.session.flush()
     assert allocation.availability_partitions() == [(100.0, False)]
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 100.0
+    assert result[0][2] == [(100.0, False)]
 
     add_blocker(
         scheduler,
@@ -348,17 +389,42 @@ def test_availability_partitions_with_blocker(scheduler: Scheduler) -> None:
         (50.0, False),
     ]
     assert allocation.normalized_availability == 100.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 100.0
+    assert result[0][2] == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
     assert allocation.availability_partitions(normalize_dst=False) == [
         (25.0, False),
         (25.0, True),
         (50.0, False),
     ]
     assert allocation.availability == 100.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end,
+        normalize_dst=False
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 100.0
+    assert result[0][2] == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
 
 
 def test_availability_partitions_dst_to_st(scheduler: Scheduler) -> None:
     allocation = Allocation(
-        raster=15, resource=new_uuid(), partly_available=True,
+        raster=15, resource=scheduler.resource, partly_available=True,
         timezone='Europe/Zurich'
     )
     allocation.start = datetime(2022, 10, 29, 22, tzinfo=utc)
@@ -381,12 +447,37 @@ def test_availability_partitions_dst_to_st(scheduler: Scheduler) -> None:
         (50.0, False),
     ]
     assert allocation.normalized_availability == 75.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 75.0
+    assert result[0][2] == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
     assert allocation.availability_partitions(normalize_dst=False) == [
         (20.0, False),
         (20.0, True),
         (60.0, False),
     ]
     assert allocation.availability == 80.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end,
+        normalize_dst=False
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 80.0
+    assert result[0][2] == [
+        (20.0, False),
+        (20.0, True),
+        (60.0, False),
+    ]
 
     # if we add a reservation during the ambiguous time period we skipped
     # it will not affect the partitions, which is not ideal, but it is the
@@ -404,12 +495,37 @@ def test_availability_partitions_dst_to_st(scheduler: Scheduler) -> None:
         (50.0, False),
     ]
     assert allocation.normalized_availability == 75.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 75.0
+    assert result[0][2] == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
     assert allocation.availability_partitions(normalize_dst=False) == [
         (20.0, False),
         (40.0, True),
         (40.0, False),
     ]
     assert allocation.availability == 60.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end,
+        normalize_dst=False
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 60.0
+    assert result[0][2] == [
+        (20.0, False),
+        (40.0, True),
+        (40.0, False),
+    ]
 
 
 def test_availability_partitions_dst_to_st_during_ambiguous_time(
@@ -417,7 +533,7 @@ def test_availability_partitions_dst_to_st_during_ambiguous_time(
 ) -> None:
 
     allocation = Allocation(
-        raster=5, resource=new_uuid(), partly_available=True,
+        raster=5, resource=scheduler.resource, partly_available=True,
         timezone='Europe/Zurich'
     )
     # our allocation starts during the ambigious time period we skip
@@ -441,11 +557,23 @@ def test_availability_partitions_dst_to_st_during_ambiguous_time(
         (50.0, False),
     ]
     assert allocation.normalized_availability == 75.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 75.0
+    assert result[0][2] == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
 
 
 def test_availability_partitions_st_to_dst(scheduler: Scheduler) -> None:
     allocation = Allocation(
-        raster=15, resource=new_uuid(), partly_available=True,
+        raster=15, resource=scheduler.resource, partly_available=True,
         timezone='Europe/Zurich'
     )
     allocation.start = datetime(2022, 3, 26, 23, tzinfo=utc)
@@ -460,11 +588,34 @@ def test_availability_partitions_st_to_dst(scheduler: Scheduler) -> None:
         (40.0, False),
     ]
     assert allocation.normalized_availability == 80.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 80.0
+    assert result[0][2] == [
+        (40.0, False),
+        (20.0, True),  # our imaginary reserved hour
+        (40.0, False),
+    ]
     # if we don't normalize the missing hour doesn't get marked
     assert allocation.availability_partitions(normalize_dst=False) == [
         (100.0, False),
     ]
     assert allocation.availability == 100.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end,
+        normalize_dst=False
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 100.0
+    assert result[0][2] == [
+        (100.0, False),
+    ]
 
     add_reservation(
         scheduler,
@@ -478,6 +629,18 @@ def test_availability_partitions_st_to_dst(scheduler: Scheduler) -> None:
         (20.0, False),
     ]
     assert allocation.normalized_availability == 60.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 60.0
+    assert result[0][2] == [
+        (40.0, False),
+        (40.0, True),
+        (20.0, False),
+    ]
     # if we don't normalize we should only get a 4 hour interval, so the
     # partitions should be quarters instead of fifths
     assert allocation.availability_partitions(normalize_dst=False) == [
@@ -486,3 +649,16 @@ def test_availability_partitions_st_to_dst(scheduler: Scheduler) -> None:
         (25.0, False),
     ]
     assert allocation.availability == 75.0
+    result = list(scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end,
+        normalize_dst=False
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 75.0
+    assert result[0][2] == [
+        (50.0, False),
+        (25.0, True),
+        (25.0, False),
+    ]

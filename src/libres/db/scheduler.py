@@ -3,9 +3,12 @@ from __future__ import annotations
 import sedate
 
 from datetime import datetime, time, timedelta
+from functools import cached_property
+from itertools import groupby
 from operator import attrgetter
 from sqlalchemy import exc
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.sql import and_, not_
 from uuid import uuid4 as new_uuid, UUID
 
@@ -85,6 +88,7 @@ class Scheduler(ContextServicesMixin):
         name: str,
         # FIXME: Not quite sure why we don't allow a PyTzInfo
         timezone: str,
+        blocking_names: Collection[str] = (),
         allocation_cls: type[Allocation] = Allocation,
         reservation_cls: type[Reservation] = Reservation
     ):
@@ -112,6 +116,15 @@ class Scheduler(ContextServicesMixin):
             This timezone cannot change after allocations have been created!
             If it does, a migration has to be written (as of yet no such
             migration exists).
+
+        :blocking_names:
+            A collection of other names in the same context that map to
+            resources, whose reserved slots will block reservations on our
+            allocations.
+
+            Note that this feature does not change how the availability
+            of allocations is calculated, so it's your own responsibility
+            to take blocking allocations into account for those metrics.
         """
 
         assert isinstance(timezone, str)
@@ -121,6 +134,8 @@ class Scheduler(ContextServicesMixin):
 
         self.name = name
         self.timezone = timezone
+
+        self.blocking_names = blocking_names
 
         self.allocation_cls = allocation_cls
         self.reservation_cls = reservation_cls
@@ -135,8 +150,9 @@ class Scheduler(ContextServicesMixin):
             self.context,
             self.name,
             self.timezone,
-            self.allocation_cls,
-            self.reservation_cls
+            blocking_names=self.blocking_names,
+            allocation_cls=self.allocation_cls,
+            reservation_cls=self.reservation_cls
         )
 
     @property
@@ -147,6 +163,13 @@ class Scheduler(ContextServicesMixin):
 
         """
         return self.generate_uuid(self.name)
+
+    @cached_property
+    def blocking_resources(self) -> frozenset[UUID]:
+        return frozenset(
+            self.generate_uuid(name)
+            for name in self.blocking_names
+        )
 
     def setup_database(self) -> None:
         """ Creates the tables and indices required for libres. This needs
@@ -185,6 +208,29 @@ class Scheduler(ContextServicesMixin):
 
         return query
 
+    def blocking_allocations(self) -> Query[Allocation]:
+        """
+        The allocations managed by blocking resources.
+        """
+        query = self.session.query(Allocation)
+        query = query.filter(Allocation.mirror_of.in_(
+            self.blocking_resources
+        ))
+
+        return query
+
+    def visible_allocations(self) -> Query[Allocation]:
+        """
+        The allocations visible by this scheduler i.e. this resource and
+        any blocking resources.
+        """
+        query = self.session.query(Allocation)
+        query = query.filter(Allocation.mirror_of.in_(
+            {self.resource, *self.blocking_resources}
+        ))
+
+        return query
+
     def managed_reserved_slots(self) -> Query[ReservedSlot]:
         """ The reserved_slots managed by this scheduler / resource. """
         uuids = self.managed_allocations().with_entities(Allocation.resource)
@@ -201,10 +247,34 @@ class Scheduler(ContextServicesMixin):
 
         return query
 
+    def visible_reservations(self) -> Query[Reservation]:
+        """
+        The reservations visible by this scheduler i.e. this resource and
+        any blocking resources.
+        """
+        query = self.session.query(Reservation)
+        query = query.filter(Reservation.resource.in_(
+            {self.resource, *self.blocking_resources}
+        ))
+
+        return query
+
     def managed_blockers(self) -> Query[ReservationBlocker]:
         """ The blockers managed by this scheduler / resource. """
         query = self.session.query(ReservationBlocker)
         query = query.filter(ReservationBlocker.resource == self.resource)
+
+        return query
+
+    def visible_blockers(self) -> Query[ReservationBlocker]:
+        """
+        The blockers visible by this scheduler i.e. this resource and
+        any blocking resources.
+        """
+        query = self.session.query(ReservationBlocker)
+        query = query.filter(ReservationBlocker.resource.in_(
+            {self.resource, *self.blocking_resources}
+        ))
 
         return query
 
@@ -323,16 +393,20 @@ class Scheduler(ContextServicesMixin):
         self,
         start: datetime,
         end: datetime,
-        masters_only: bool = True
+        masters_only: bool = True,
+        managed_only: bool = True,
     ) -> Query[Allocation]:
 
         start, end = self._prepare_range(start, end)
 
-        query = self.managed_allocations()
+        if managed_only:
+            query = self.managed_allocations()
+        else:
+            query = self.visible_allocations()
         query = self.queries.allocations_in_range(query, start, end)
 
         if masters_only:
-            query = query.filter(Allocation.resource == self.resource)
+            query = query.filter(Allocation.resource == Allocation.mirror_of)
 
         return query
 
@@ -755,7 +829,7 @@ class Scheduler(ContextServicesMixin):
     def availability(
         self,
         start: datetime | None = None,
-        end: datetime | None = None
+        end: datetime | None = None,
     ) -> float:
         """Goes through all allocations and sums up the availability."""
 
@@ -763,8 +837,31 @@ class Scheduler(ContextServicesMixin):
         end = end if end else sedate.maxdatetime
 
         start, end = self._prepare_range(start, end)
+        if not self.blocking_names:
+            return self.queries.availability_by_range(
+                start,
+                end,
+                [self.resource]
+            )
 
-        return self.queries.availability_by_range(start, end, [self.resource])
+        # If we have blocking resources, we need to something a little bit
+        # more complex. In the future we may want a specialized function
+        # that only calculates the availability, without the partitions
+        # but for now this should work fine.
+        allocations = self.queries.allocations_with_availability_by_range(
+            start,
+            end,
+            resource=self.resource,
+            blocking_resources=self.blocking_resources,
+            # NOTE: This matches the old behavior, but maybe we want to allow
+            #       this to be normalized?
+            normalize_dst=False
+        )
+        total, count = 0.0, 0
+        for allocation, availability, _ in allocations:
+            total += availability
+            count += allocation.quota
+        return total / count
 
     def move_allocation(
         self,
@@ -1209,8 +1306,13 @@ class Scheduler(ContextServicesMixin):
             if start > end or (end - start).seconds < 5 * 60:
                 raise errors.ReservationTooShort
 
-            # can all allocations be reserved?
-            for allocation in self.allocations_in_range(start, end):
+            # can all targeted allocations be reserved?
+            for allocation in self.allocations_in_range(
+                start,
+                end,
+                masters_only=True,
+                managed_only=False
+            ):
 
                 # start and end are not rasterized, so we need this check
                 if not allocation.overlaps(start, end):
@@ -1228,8 +1330,13 @@ class Scheduler(ContextServicesMixin):
                     if free < quota:
                         raise errors.AlreadyReservedError
 
-                if not allocation.contains(start, end):
-                    raise errors.TimerangeTooLong()
+                if allocation.resource != self.resource:
+                    # only our own allocations need to fully contain/match
+                    # the desired range, for blocking allocations it only
+                    # matters whether or not they're free.
+                    pass
+                elif not allocation.contains(start, end):
+                    raise errors.TimerangeTooLong
 
                 if 0 < allocation.quota_limit < quota:
                     raise errors.QuotaOverLimit
@@ -1292,10 +1399,11 @@ class Scheduler(ContextServicesMixin):
                     else:
                         reservation = self.reservation_cls()
                         reservation.token = token
-                        reservation.start, reservation.end\
-                            = rasterizer.rasterize_span(
+                        reservation.start, reservation.end = (
+                            rasterizer.rasterize_span(
                                 start, end, allocation.raster
                             )
+                        )
                         reservation.timezone = allocation.timezone
                         reservation.target = allocation.group
                         reservation.status = 'pending'
@@ -1354,9 +1462,20 @@ class Scheduler(ContextServicesMixin):
             assert reservation.end is not None
             dates = ((reservation.start, reservation.end),)
 
+        # first check that all blocking resources are still free
+        if self.blocking_resources:
+            for start, end in dates:
+                for allocation in self.queries.allocations_in_range(
+                    self.blocking_allocations(),
+                    start,
+                    end
+                ):
+                    free = self.free_allocations_count(allocation, start, end)
+                    if free < reservation.quota:
+                        raise errors.AlreadyReservedError
+
         # the reservation quota is simply implemented by multiplying the
         # dates which are approved
-
         dates = dates * reservation.quota
 
         for start, end in dates:
@@ -1681,7 +1800,11 @@ class Scheduler(ContextServicesMixin):
                 raise errors.ReservationTooShort
 
             # can all allocations be reserved?
-            for allocation in self.allocations_in_range(start, end):
+            for allocation in self.allocations_in_range(
+                start,
+                end,
+                managed_only=False
+            ):
 
                 # start and end are not rasterized, so we need this check
                 if not allocation.overlaps(start, end):
@@ -1696,8 +1819,13 @@ class Scheduler(ContextServicesMixin):
                 if free < allocation.quota:
                     raise errors.AlreadyReservedError
 
-                if not allocation.contains(start, end):
-                    raise errors.TimerangeTooLong()
+                if allocation.resource != self.resource:
+                    # only our own allocations need to fully contain/match
+                    # the desired range, for blocking allocations it only
+                    # matters whether or not they're free.
+                    pass
+                elif not allocation.contains(start, end):
+                    raise errors.TimerangeTooLong
 
         # ok, we're good to go
         if token is None:
@@ -1972,6 +2100,15 @@ class Scheduler(ContextServicesMixin):
         assert whole_day in ('yes', 'no', 'any')
         assert groups in ('yes', 'no', 'any')
 
+        if available_only and self.blocking_names:
+            # TODO: We don't yet support blocking resources with this option
+            #       the main reason being, that we would have to calculate
+            #       the overlapping availability, which the end-user of the
+            #       matching allocations would probably also like to be able
+            #       to use, so we would need to think of a way to not duplicate
+            #       that work.
+            raise NotImplementedError
+
         day_numbers: set[DayNumber] | None
         if days:
             # get the day from the map - if impossible take the verbatim value
@@ -2236,3 +2373,84 @@ class Scheduler(ContextServicesMixin):
             raise errors.InvalidReservationToken from None
 
         return query
+
+    def reserved_slots_by_range(
+        self,
+        start: datetime,
+        end: datetime,
+    ) -> tuple[dict[datetime, int], set[datetime]]:
+        """ Returns two lookups for reserved slots for the resource managed by
+        this scheduler / resource and any blocking resources.
+
+        The first lookup is a ``dict`` containing reserved slot start times in
+        :attr:`~libres.modules.rasterizer.MIN_RASTER` minute slices and
+        the corresponding used up quota. The second is a ``set`` containing
+        the same slices but for reservation blockers, which always use up
+        all the remaining quota.
+
+        This method can be used when blocking resources are involved, since
+        :attr:`~libres.db.models.allocation.Allocation.availability` and
+        :meth:`~libres.db.models.allocation.Allocation.availability_partitions`
+        only take into account the linked resource.
+
+        """
+        return self.queries.reserved_slots_by_range(
+            start,
+            end,
+            resource=self.resource,
+            blocking_resources=self.blocking_resources,
+        )
+
+    def allocations_with_availability_by_range(
+        self,
+        start: datetime,
+        end: datetime,
+        normalize_dst: bool = True,
+    ) -> Iterator[tuple[Allocation, float, list[tuple[float, bool]]]]:
+        """ Yields a sequence of all allocations along with their availability
+        and availability partitions managed by this scheduler / resource.
+
+        """
+        if self.blocking_resources:
+            yield from self.queries.allocations_with_availability_by_range(
+                start,
+                end,
+                resource=self.resource,
+                blocking_resources=self.blocking_resources,
+                normalize_dst=normalize_dst
+            )
+            return
+
+        # If there are no blocking resources, we can make direct use of
+        # the attributes/methods on the allocation
+        query = self.allocations_in_range(start, end, masters_only=False)
+        query = query.order_by(Allocation._start)
+        query = query.options(
+            selectinload(Allocation.reserved_slots)
+            .defer(ReservedSlot.reservation_token)
+            .defer(ReservedSlot.allocation_id)
+            .defer(ReservedSlot.end)
+        )
+
+        for key, group in groupby(query, key=attrgetter('_start')):
+            grouped = tuple(group)
+            if len(grouped) == 1 and grouped[0].partly_available:
+                # in this case we might need to normalize the availability
+                if normalize_dst:
+                    availability = grouped[0].normalized_availability
+                else:
+                    availability = grouped[0].availability
+            else:
+                availability = self.queries.availability_by_allocations(
+                    grouped
+                )
+
+            for allocation in grouped:
+                if allocation.is_master:
+                    yield (
+                        allocation,
+                        availability,
+                        allocation.availability_partitions(
+                            normalize_dst=normalize_dst
+                        )
+                    )

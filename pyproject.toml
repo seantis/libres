@@ -84,8 +84,7 @@ tox = [
 ]
 dev = [
     "bump-my-version",
-    "pre-commit",
-    "pre-commit-uv",
+    "prek",
     "uv",
     {include-group = "tox"},
     {include-group = "test"},

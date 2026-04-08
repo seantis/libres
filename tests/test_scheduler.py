@@ -427,6 +427,100 @@ def test_reserve_single_token_per_session(scheduler: Scheduler) -> None:
     assert token3 == token4
 
 
+def test_reserve_blocking_resources(
+    scheduler: Scheduler,
+    blocked_scheduler: Scheduler
+) -> None:
+
+    assert scheduler.resource in blocked_scheduler.blocking_resources
+
+    # create an allocation on the blocking scheduler
+    scheduler.allocate(
+        (datetime(2011, 1, 1, 15), datetime(2011, 1, 1, 16)),
+        partly_available=True,
+        raster=15
+    )
+
+    # reserve half of the slots
+    token = scheduler.reserve(
+        'test@example.org',
+        (datetime(2011, 1, 1, 15), datetime(2011, 1, 1, 15, 30))
+    )
+    slots = scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    # this allocation should be visible by the blocked scheduler
+    assert blocked_scheduler.visible_allocations().count() == 1
+
+    # create a partially overlapping allocation on the blocked scheduler
+    allocations = blocked_scheduler.allocate(
+        (datetime(2011, 1, 1, 14, 30), datetime(2011, 1, 1, 16, 30)),
+        partly_available=True,
+        raster=15
+    )
+
+    assert len(allocations) == 1
+    allocation = allocations[0]
+
+    # 2 hour / 15 min = 8, not affected by blocking resources
+    possible_dates = list(allocation.all_slots())
+    assert len(possible_dates) == 8
+
+    # both allocations should be visible by the blocked scheduler
+    assert blocked_scheduler.visible_allocations().count() == 2
+
+    # and the calculated availability partitions should take the blocking
+    # resource into account
+    result = list(blocked_scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 75.0
+    assert result[0][2] == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
+
+    # reserving a slot that's partially blocked will fail
+    with pytest.raises(errors.AlreadyReservedError):
+        blocked_scheduler.reserve(
+            'test@example.org',
+            (datetime(2011, 1, 1, 14, 30), datetime(2011, 1, 1, 15, 15))
+        )
+
+    # reserving a slot that is not fully allocated by a blocking resource
+    # will succeed, the only thing that matters is that it's not reserved
+    token = blocked_scheduler.reserve(
+        'test@example.org',
+        (datetime(2011, 1, 1, 15, 30), datetime(2011, 1, 1, 16, 30))
+    )
+    slots = blocked_scheduler.approve_reservations(token)
+
+    assert len(slots) == 4
+    scheduler.commit()
+
+    # check the remaining slots
+    remaining = allocation.free_slots()
+    assert len(remaining) == 4
+    assert remaining == possible_dates[:4]
+
+    # check the availability partitions
+    result = list(blocked_scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert result[0][1] == 25.0
+    assert result[0][2] == [
+        (25.0, False),
+        (75.0, True),
+    ]
+
+
 def test_change_email(scheduler: Scheduler) -> None:
     # reserve multiple allocations
     dates = (

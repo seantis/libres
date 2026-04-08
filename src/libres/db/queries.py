@@ -7,8 +7,10 @@ from datetime import date, datetime, timedelta
 from itertools import groupby
 from libres.context.core import ContextServicesMixin
 from libres.db.models import Allocation, Reservation, ReservedSlot
-from libres.modules import errors, events
-from sqlalchemy import func, text
+from libres.db.models.types import UTCDateTime
+from libres.modules import errors, events, rasterizer
+from operator import itemgetter
+from sqlalchemy import column, func, text, type_coerce
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import and_, or_
 
@@ -18,6 +20,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Collection
     from collections.abc import Iterable
+    from collections.abc import Iterator
     from sqlalchemy.orm import Query
     from uuid import UUID
 
@@ -124,6 +127,236 @@ class Queries(ContextServicesMixin):
         total += missing * 100
 
         return total / expected_count
+
+    def reserved_slots_by_range(
+        self,
+        start: datetime,
+        end: datetime,
+        resource: UUID,
+        blocking_resources: Collection[UUID],
+    ) -> tuple[dict[datetime, int], set[datetime]]:
+        """ Returns two lookups for reserved slots for the given resource
+        and the given blocking resources.
+
+        The first lookup is a ``dict`` containing reserved slot start times in
+        :attr:`~libres.modules.rasterizer.MIN_RASTER` minute slices and
+        the corresponding used up quota. The second is a ``set`` containing
+        the same slices but for reservation blockers, which always use up
+        all the remaining quota.
+
+        This method can be used when blocking resources are involved, since
+        :attr:`~libres.db.models.allocation.Allocation.availability` and
+        :meth:`~libres.db.models.allocation.Allocation.availability_partitions`
+        only take into account the linked resource.
+
+        """
+        start, end = rasterizer.rasterize_span(
+            start, end, rasterizer.MIN_RASTER
+        )
+
+        slot_series = func.generate_series(
+            type_coerce(start, UTCDateTime),
+            type_coerce(end, UTCDateTime),
+            timedelta(minutes=rasterizer.MIN_RASTER)
+        ).table_valued(column('slot', UTCDateTime)).render_derived()
+        reserved_slots = self.session.query(
+            ReservedSlot.source_type,
+            slot_series.c.slot,
+            func.count(text('1')).label('quota')
+        ).join(
+            ReservedSlot,
+            and_(
+                func.tsrange(
+                    ReservedSlot.start,
+                    ReservedSlot.end
+                ).op('@>')(slot_series.c.slot),
+                ReservedSlot.resource.in_({resource, *blocking_resources})
+            )
+        ).group_by(
+            ReservedSlot.source_type,
+            slot_series.c.slot
+        ).order_by(ReservedSlot.source_type)
+        reserved: dict[datetime, int] = {}
+        blocked: set[datetime] = set()
+        for source_type, slots_group in groupby(
+            reserved_slots,
+            key=itemgetter(0)
+        ):
+            if source_type == 'reservation':
+                reserved = {
+                    slot: quota
+                    for _, slot, quota in slots_group
+                }
+            elif source_type == 'blocker':
+                blocked = {slot for _, slot, _ in slots_group}
+        return reserved, blocked
+
+    def availability_and_partitions_by_allocations(
+        self,
+        allocations: Collection[Allocation],
+        resource: UUID,
+        blocking_resources: Collection[UUID],
+        normalize_dst: bool = True,
+    ) -> Iterator[tuple[Allocation, float, list[tuple[float, bool]]]]:
+        """ Takes any collection of alloctions and for each allocation
+        calculates the availability and availability partitions for the
+        given resource and the given  blocking resources.
+
+        This method should be used when blocking resources are involved, since
+        :attr:`~libres.db.models.allocation.Allocation.availability` and
+        :meth:`~libres.db.models.allocation.Allocation.availability_partitions`
+        only take into account the linked resource.
+
+        """
+        if not allocations:
+            return
+
+        reserved, blocked = self.reserved_slots_by_range(
+            min(allocation._start for allocation in allocations),
+            max(allocation._end for allocation in allocations),
+            resource=resource,
+            blocking_resources=blocking_resources
+        )
+
+        # NOTE: This yields a sequence of partitions with two boolean values
+        #       corresponding to whether or not the slot is reserved at all
+        #       and whether it is reserved by a blocker
+        def iter_partitions(
+            slots: Iterable[tuple[datetime, datetime] | tuple[None, None]]
+        ) -> Iterator[tuple[bool, bool]]:
+            for start, end in slots:
+                if start is None:
+                    yield True, False
+                    continue
+
+                # NOTE: Since the slots on the allocation may be larger
+                #       than the minimum raster, we need to rasterize
+                #       each slot into subslots, to check if any of
+                #       them overlap.
+                is_reserved = False
+                is_blocked = False
+                for slot, _ in rasterizer.iterate_span(
+                    start,
+                    end,  # type: ignore[arg-type]
+                    rasterizer.MIN_RASTER
+                ):
+                    if slot in blocked:
+                        is_reserved = is_blocked = True
+                        break
+
+                    if slot in reserved:
+                        is_reserved = True
+                yield is_reserved, is_blocked
+
+        for allocation in allocations:
+            if not allocation.partly_available:
+                # NOTE: simple case, just return one partition with the total
+                #       availability based on allocation.quota, the maximum
+                #       amount of overlaps with any sub-partition accounts
+                #       for the total used quota
+                quota_used = max(
+                    (
+                        allocation.quota
+                        if slot in blocked
+                        else reserved.get(slot, 0)
+                        for slot, _ in rasterizer.iterate_span(
+                            allocation._start,
+                            allocation._end,
+                            rasterizer.MIN_RASTER
+                        )
+                    ),
+                    default=0
+                )
+                quota_left = max(0, allocation.quota - quota_used)
+                yield (
+                    allocation,
+                    100.0 * quota_left / allocation.quota,
+                    [(100.0, quota_left == 0)]
+                )
+                continue
+
+            # TODO: For now we don't support allocations with mirrors that
+            #       are partly available. It would be possible to support
+            #       by slightly altering the algorithm, but it would be
+            #       more expensive, than what we're doing right now. We never
+            #       use this specific combination of features in our
+            #       applications so it's not worth implementing this branch
+            #       yet.
+            if allocation.quota > 1:
+                raise NotImplementedError
+
+            if normalize_dst:
+                slots = tuple(allocation.normalized_slots())
+            else:
+                slots = tuple(allocation.all_slots())
+
+            step = 100.0 / float(len(slots))
+            partitions = []
+            total = 0.0
+            blocked_num = 0
+            reserved_num = 0
+            for flag, _group in groupby(
+                iter_partitions(slots),
+                key=itemgetter(0)
+            ):
+                group = tuple(_group)
+                percentage = len(group) * step
+                partitions.append((percentage, flag))
+                total += percentage
+                if flag:
+                    group_blocked_num = sum(1 for item in group if item[1])
+                    reserved_num += len(group) - group_blocked_num
+                    blocked_num += group_blocked_num
+
+            # Make sure to get rid of floating point rounding errors
+            diff = 100.0 - total
+            if partitions:
+                percentage, flag = partitions[-1]
+                partitions[-1] = (percentage - diff, flag)
+
+            # Calculate the availability based on the number of slots
+            total_num = len(slots)
+            if total_num == blocked_num:
+                availability = 0.0
+            elif reserved_num == 0:
+                availability = 100.0
+            else:
+                total_num -= blocked_num
+                if total_num <= reserved_num:
+                    availability = 0.0
+                else:
+                    availability = 100.0 - 100.0 * (reserved_num / total_num)
+            yield allocation, availability, partitions
+
+    def allocations_with_availability_by_range(
+        self,
+        start: datetime,
+        end: datetime,
+        resource: UUID,
+        blocking_resources: Collection[UUID],
+        normalize_dst: bool = True,
+    ) -> Iterator[tuple[Allocation, float, list[tuple[float, bool]]]]:
+        """ Yields a sequence of all allocations along with their availability
+        and availability partitions for the given resource and the given
+        blocking resources.
+
+        This method should be used when blocking resources are involved, since
+        :attr:`~libres.db.models.allocation.Allocation.availability` and
+        :meth:`~libres.db.models.allocation.Allocation.availability_partitions`
+        only take into account the linked resource.
+
+        """
+
+        query = self.all_allocations_in_range(start, end)
+        query = query.filter(Allocation.mirror_of == resource)
+        query = query.filter(Allocation.resource == resource)
+
+        return self.availability_and_partitions_by_allocations(
+            tuple(a for a in query if self.is_allocation_exposed(a)),
+            resource=resource,
+            blocking_resources=blocking_resources,
+            normalize_dst=normalize_dst
+        )
 
     def availability_by_range(
         self,

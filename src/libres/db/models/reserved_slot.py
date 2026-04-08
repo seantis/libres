@@ -5,7 +5,7 @@ import sedate
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import types
+from sqlalchemy import func, types
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Mapped
@@ -43,7 +43,7 @@ class ReservedSlot(TimestampMixin, ORMBase):
         autoincrement=False
     )
 
-    end: Mapped[datetime]
+    end: Mapped[datetime] = mapped_column()
 
     allocation_id: Mapped[int] = mapped_column(ForeignKey('allocations.id'))
 
@@ -59,13 +59,20 @@ class ReservedSlot(TimestampMixin, ORMBase):
         types.Enum(
             'reservation', 'blocker',
             name='reserved_slot_source_type'
-        )
+        ),
+        index=True
     )
 
     reservation_token: Mapped[UUID]
 
     __table_args__ = (
         Index('reservation_resource_ix', 'reservation_token', 'resource'),
+        # NOTE: GiST index for temporal queries on reserved slots
+        Index(
+            'start_end_tsrange_ix',
+            func.tsrange(start, end),
+            postgresql_using='gist'
+        ),
     )
 
     def __init__(self) -> None:

@@ -128,6 +128,125 @@ def test_add_blocker(scheduler: Scheduler) -> None:
     assert len(allocation.free_slots()) == 2
 
 
+def test_add_blocker_blocking_resources(
+    scheduler: Scheduler,
+    blocked_scheduler: Scheduler
+) -> None:
+
+    assert scheduler.resource in blocked_scheduler.blocking_resources
+
+    # create an allocation on the blocking scheduler
+    scheduler.allocate(
+        (datetime(2011, 1, 1, 15), datetime(2011, 1, 1, 15, 30)),
+        partly_available=True,
+        raster=15
+    )
+
+    # block the first slot
+    scheduler.add_blocker(
+        (datetime(2011, 1, 1, 15), datetime(2011, 1, 1, 15, 15))
+    )
+
+    # reserve the second slot
+    token = scheduler.reserve(
+        'test@example.org',
+        (datetime(2011, 1, 1, 15, 15), datetime(2011, 1, 1, 15, 30))
+    )
+    slots = scheduler.approve_reservations(token)
+    assert len(slots) == 1
+    scheduler.commit()
+
+    # this allocation should be visible by the blocked scheduler
+    assert blocked_scheduler.visible_allocations().count() == 1
+    assert blocked_scheduler.visible_blockers().count() == 1
+    assert blocked_scheduler.visible_reservations().count() == 1
+
+    # create a partially overlapping allocation on the blocked scheduler
+    allocations = blocked_scheduler.allocate(
+        (datetime(2011, 1, 1, 14, 30), datetime(2011, 1, 1, 16, 30)),
+        partly_available=True,
+        raster=15
+    )
+
+    assert len(allocations) == 1
+    allocation = allocations[0]
+
+    # 2 hour / 15 min = 8, not affected by blocking resources
+    possible_dates = list(allocation.all_slots())
+    assert len(possible_dates) == 8
+
+    # both allocations should be visible by the blocked scheduler
+    assert blocked_scheduler.visible_allocations().count() == 2
+
+    # and the calculated availability partitions should take the blocking
+    # resource into account
+    result = list(blocked_scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert round(result[0][1]) == 86
+    assert result[0][2] == [
+        (25.0, False),
+        (25.0, True),
+        (50.0, False),
+    ]
+
+    # but blocking a slot that's partially blocked will fail
+    with pytest.raises(errors.AlreadyReservedError):
+        blocked_scheduler.add_blocker(
+            (datetime(2011, 1, 1, 14, 30), datetime(2011, 1, 1, 15, 15))
+        )
+
+    # no matter what it's blocked by
+    with pytest.raises(errors.AlreadyReservedError):
+        blocked_scheduler.add_blocker(
+            (datetime(2011, 1, 1, 15, 15), datetime(2011, 1, 1, 16, 30))
+        )
+
+    # reserving a slot that's partially blocked will also fail
+    with pytest.raises(errors.AlreadyReservedError):
+        blocked_scheduler.reserve(
+            'test@example.org',
+            (datetime(2011, 1, 1, 14, 30), datetime(2011, 1, 1, 15, 15))
+        )
+
+    # blocking a slot that is not fully allocated by a blocking resource
+    # will succeed, the only thing that matters is that it's not reserved
+    blocked_scheduler.add_blocker(
+        (datetime(2011, 1, 1, 15, 30), datetime(2011, 1, 1, 16, 30))
+    )
+
+    # check the remaining slots
+    remaining = allocation.free_slots()
+    assert len(remaining) == 4
+    assert remaining == possible_dates[:4]
+    assert blocked_scheduler.visible_blockers().count() == 2
+    assert blocked_scheduler.visible_reservations().count() == 1
+
+    # check the availability partitions
+    result = list(blocked_scheduler.allocations_with_availability_by_range(
+        allocation.start,
+        allocation.end
+    ))
+    assert len(result) == 1
+    assert result[0][0] == allocation
+    assert round(result[0][1]) == 67
+    assert result[0][2] == [
+        (25.0, False),
+        (75.0, True),
+    ]
+    # NOTE: These are in 5 minute chunks even if the allocation
+    #       itself has a raster of 15 minutes
+    reserved, blocked = blocked_scheduler.reserved_slots_by_range(
+        allocation.start,
+        allocation.end
+    )
+    assert len(blocked) == 15
+    assert len(reserved) == 3
+
+
 def test_change_reason(scheduler: Scheduler) -> None:
     # block multiple allocations
     dates = (

@@ -7,7 +7,6 @@ and requires Postgresql 9.2+.
 
 `Documentation <http://libres.readthedocs.org/en/latest/>`_ | `Source <http://github.com/seantis/libres/>`_ | `Bugs <http://github.com/seantis/libres/issues>`_
 
-**This library is at an experimental stage and not yet suitable for production**
 
 .. image:: https://github.com/seantis/libres/actions/workflows/python-tox.yaml/badge.svg
   :target: https://github.com/seantis/libres/actions

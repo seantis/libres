@@ -1,6 +1,38 @@
 Changelog
 ---------
 
+- Adds support for blocking resources. ``Scheduler`` now accepts a collection
+  of ``blocking_names`` to indicate related resources that will block reservations
+  on the managed resource (e.g. for a soccer field where you can either reserve
+  the entire field or one of the two halves, the two halves should block the
+  entire field and vice versa, but the halves shouldn't block each other).
+
+  For schedulers with blocking resources you should use the new method
+  ``allocations_with_availability_by_range`` to retrieve the availability and
+  availability partitions for a set of allocations, since the corresponding
+  attributes/method on the ``Allocation`` will be inaccurate when blocking
+  resources are involved.
+
+  For decent performance it's absolutely vital that the new GiST index on
+  ``tsrange(reserved_slots.start, reserved_slots."end")`` exists, it's also worth
+  adding a potentially missing index on the ``source_type`` column, you can
+  use the following recipe using an alembic ``Operations`` object to migrate
+  existing databases::
+
+    context.operations.create_index(
+      'ix_reserved_slots_source_type',
+      'reserved_slots',
+      columns=['source_type'],
+      if_not_exists=True
+    )
+    context.operations.create_index(
+      'start_end_tsrange_ix',
+      'reserved_slots',
+      columns=[text('tsrange(start, "end")')],
+      postgresql_using='gist',
+      if_not_exists=True
+    )
+
 1.0.0 (10.02.2026)
 ~~~~~~~~~~~~~~~~~~~
 
@@ -26,9 +58,9 @@ Changelog
 ~~~~~~~~~~~~~~~~~~~
 
 - Adds proper support for SQLAlchemy 1.4. As a result of this
-  `Allocation.type` and `Reservation.type` are no longer nullable
-  and have a default value of 'generic', you may use the following
-  recipe using an alembic `Operations` object to migrate existing
+  ``Allocation.type`` and ``Reservation.type`` are no longer nullable
+  and have a default value of ``'generic'``, you may use the following
+  recipe using an alembic ``Operations`` object to migrate existing
   databases::
 
     context.operations.execute("""
@@ -47,10 +79,10 @@ Changelog
 0.10.0 (15.01.2026)
 ~~~~~~~~~~~~~~~~~~~
 
-- Adds new entity `ReservationBlocker` for administrative blockers
+- Adds new entity ``ReservationBlocker`` for administrative blockers
   of targeted allocations for the targeted timespans, this also ends
-  up adding a new column `source_type` to `ReservedSlot` which can be
-  added using the following recipe using an alembic `Operations` object::
+  up adding a new column ``source_type`` to ``ReservedSlot`` which can be
+  added using the following recipe using an alembic ``Operations`` object::
 
     operations.add_column(
       'reserved_slots',
@@ -74,17 +106,17 @@ Changelog
 0.9.1 (05.08.2025)
 ~~~~~~~~~~~~~~~~~~~
 
-- Fixes bug in `Scheduler.search_allocations` when the searched
+- Fixes bug in ``Scheduler.search_allocations`` when the searched
   time range contains multiple DST <-> ST transitions.
   [Daverball]
 
 0.9.0 (23.05.2025)
 ~~~~~~~~~~~~~~~~~~~
 
-- Replaces `JSON` database type with `JSONB`, this means
+- Replaces ``JSON`` database type with ``JSONB``, this means
   Postgres as a backend is not required. You will also need
   to write a migration for existing JSON columns. You may use
-  the following recipe using an alembic `Operations` object::
+  the following recipe using an alembic ``Operations`` object::
 
     operations.alter_column(
       'table_name',
@@ -114,13 +146,13 @@ Changelog
 0.7.2 (2024-02-07)
 ~~~~~~~~~~~~~~~~~~~
 
-- Fixes another incorrect type annotation in `Scheduler`.
+- Fixes another incorrect type annotation in ``Scheduler``.
   [Daverball]
 
 0.7.1 (2024-01-18)
 ~~~~~~~~~~~~~~~~~~~
 
-- Fixes some incorrect type annotations in `Scheduler`.
+- Fixes some incorrect type annotations in ``Scheduler``.
   [Daverball]
 
 0.7.0 (2023-07-11)
