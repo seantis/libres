@@ -12,6 +12,10 @@ if TYPE_CHECKING:
         @property
         def end(self) -> datetime | None: ...
 
+    class ReservationId(Protocol):
+        @property
+        def id(self) -> int: ...
+
 
 class LibresError(Exception):
     __slots__ = ('reservation',)
@@ -126,7 +130,7 @@ class AffectedReservationError(LibresError):
 
     def __init__(
         self,
-        existing: HasStartAndEnd | None
+        existing: HasStartAndEnd | ReservationId | None
     ):
         self.existing = existing
 

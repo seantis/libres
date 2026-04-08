@@ -41,6 +41,7 @@ def test_reservation_timespans(scheduler: Scheduler) -> None:
     assert len(timespans) == 1
 
     assert timespans[0].start == reservation.start
+    assert reservation.end is not None
     assert timespans[0].end == reservation.end + timedelta(microseconds=1)
 
 
