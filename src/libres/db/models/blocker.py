@@ -42,22 +42,23 @@ class ReservationBlocker(TimestampMixin, ORMBase, OtherModels):
         autoincrement=True
     )
 
-    token: Mapped[UUID]
+    token: Mapped[UUID] = mapped_column(index=True)
 
-    target: Mapped[UUID]
+    target: Mapped[UUID] = mapped_column(index=True)
 
     target_type: Mapped[Literal['group', 'allocation']] = mapped_column(
         types.Enum(
             'group', 'allocation',
             name='reservation_blocker_target_type'
-        )
+        ),
+        index=True
     )
 
-    resource: Mapped[UUID]
+    resource: Mapped[UUID] = mapped_column(index=True)
 
-    start: Mapped[datetime | None]
+    start: Mapped[datetime | None] = mapped_column(index=True)
 
-    end: Mapped[datetime | None]
+    end: Mapped[datetime | None] = mapped_column(index=True)
 
     timezone: Mapped[str | None]
 

@@ -39,38 +39,41 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         autoincrement=True
     )
 
-    token: Mapped[UUID]
+    token: Mapped[UUID] = mapped_column(index=True)
 
-    target: Mapped[UUID]
+    target: Mapped[UUID] = mapped_column(index=True)
 
     target_type: Mapped[Literal['group', 'allocation']] = mapped_column(
         types.Enum(
             'group', 'allocation',
             name='reservation_target_type'
-        )
+        ),
+        index=True
     )
 
-    type: Mapped[str] = mapped_column(types.Text())
+    type: Mapped[str] = mapped_column(types.Text(), index=True)
 
-    resource: Mapped[UUID]
+    resource: Mapped[UUID] = mapped_column(index=True)
 
-    start: Mapped[datetime | None]
+    start: Mapped[datetime | None] = mapped_column(index=True)
 
-    end: Mapped[datetime | None]
+    end: Mapped[datetime | None] = mapped_column(index=True)
+
     timezone: Mapped[str | None]
 
     status: Mapped[Literal['pending', 'approved']] = mapped_column(
         types.Enum(
             'pending', 'approved',
             name='reservation_status'
-        )
+        ),
+        index=True
     )
 
     data: Mapped[dict[str, Any] | None] = mapped_column(deferred=True)
 
-    email: Mapped[str] = mapped_column(types.Unicode(254))
+    email: Mapped[str] = mapped_column(types.Unicode(254), index=True)
 
-    session_id: Mapped[UUID | None]
+    session_id: Mapped[UUID | None] = mapped_column(index=True)
 
     quota: Mapped[int]
 

@@ -43,9 +43,12 @@ class ReservedSlot(TimestampMixin, ORMBase):
         autoincrement=False
     )
 
-    end: Mapped[datetime] = mapped_column()
+    end: Mapped[datetime] = mapped_column(index=True)
 
-    allocation_id: Mapped[int] = mapped_column(ForeignKey('allocations.id'))
+    allocation_id: Mapped[int] = mapped_column(
+        ForeignKey('allocations.id'),
+        index=True
+    )
 
     # Reserved_slots are eagerly joined since we usually want both
     # allocation and reserved_slots. There's barely a function which does

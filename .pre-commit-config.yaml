@@ -19,9 +19,9 @@ repos:
       - id: nocheckin
         exclude: .pre-commit-config.yaml
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.9
+    rev: v0.15.14
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [ "--fix" ]
         exclude: 'setup.py'
   - repo: https://github.com/PyCQA/flake8

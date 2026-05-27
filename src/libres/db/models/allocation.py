@@ -85,19 +85,23 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     #: the resource uuid of the allocation, may not be an actual resource
     #: see :class:`.models.Allocation` for more information
-    resource: Mapped[UUID]
+    resource: Mapped[UUID] = mapped_column(index=True)
 
     #: the polymorphic type of the allocation
-    type: Mapped[str] = mapped_column(types.Text(), default='generic')
+    type: Mapped[str] = mapped_column(
+        types.Text(),
+        default='generic',
+        index=True
+    )
 
     #: resource of which this allocation is a mirror. If the mirror_of
     #: attribute equals the resource, this is a real resource
     #: see :class:`.models.Allocation` for more information
-    mirror_of: Mapped[UUID]
+    mirror_of: Mapped[UUID] = mapped_column(index=True)
 
     #: Group uuid to which this allocation belongs to. Every allocation has a
     #: group but some allocations may be the only one in their group.
-    group: Mapped[UUID]
+    group: Mapped[UUID] = mapped_column(index=True)
 
     #: Number of times this allocation may be reserved
     quota: Mapped[int] = mapped_column(default=1)
@@ -134,6 +138,8 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
     )
 
     __table_args__ = (
+        Index('ix_allocations_start', '_start'),
+        Index('ix_allocations_end', '_end'),
         Index('mirror_resource_ix', 'mirror_of', 'resource'),
         UniqueConstraint('resource', '_start', name='resource_start_ix')
     )
