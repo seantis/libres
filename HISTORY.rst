@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+1.1.1 (27.05.2026)
+~~~~~~~~~~~~~~~~~~~
+
 - Fixes bug in `Registry.context` context manager, that could result
   in the outer context not getting restored, if an exception
   occurred in the `with` block.
