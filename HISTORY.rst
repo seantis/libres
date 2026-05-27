@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+- Fixes bug in `Registry.context` context manager, that could result
+  in the outer context not getting restored, if an exception
+  occurred in the `with` block.
+  [Daverball]
+
 - Adds additional indexes to speed up DB operations, you can use
   the following recipe using an alembic ``Operations`` object to
   migrate existing databases::

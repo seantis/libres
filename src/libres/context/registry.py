@@ -146,8 +146,10 @@ class Registry:
     def context(self, name: str) -> Iterator[Context]:
         previous = self.current_context.name
         self.switch_context(name)
-        yield self.current_context
-        self.switch_context(previous)
+        try:
+            yield self.current_context
+        finally:
+            self.switch_context(previous)
 
     def get_current_context(self) -> Context:
         return self.current_context
