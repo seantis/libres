@@ -1668,7 +1668,9 @@ class Scheduler(ContextServicesMixin):
         assert new_start and new_end
 
         new_start, new_end = self._prepare_range(new_start, new_end)
-        existing_reservation = self.reservations_by_token(token, id).one()
+        existing_reservation = self.reservations_by_token(token, id).first()
+        if existing_reservation is None:
+            raise errors.InvalidReservationToken()
 
         # if there's nothing to change, do not change
         if quota is None or existing_reservation.quota == quota:  # noqa: SIM102
@@ -1680,7 +1682,10 @@ class Scheduler(ContextServicesMixin):
 
         # will raise a MultipleResultsFound exception if this is a group
         if existing_reservation.status == 'approved':
-            allocation = self.allocations_by_reservation(token, id).one()
+            try:
+                allocation = self.allocations_by_reservation(token, id).one()
+            except exc.NoResultFound as ex:
+                raise errors.InvalidReservationError() from ex
         else:
             _allocation = existing_reservation._target_allocations().first()
             assert _allocation is not None
@@ -2299,7 +2304,20 @@ class Scheduler(ContextServicesMixin):
         else:
             allocations = self.allocations_by_reservation(token, id)
             ids = allocations.with_entities(Allocation.id)
-            return query.filter(ReservedSlot.allocation_id.in_(ids))
+            query = query.filter(ReservedSlot.allocation_id.in_(ids))
+
+            # When multiple reservations share the same token on the same
+            # partly_available allocation, allocation_id alone doesn't
+            # distinguish their slots. Filter by the reservation's time range
+            # as a workaround until ReservedSlot has a reservation_id column.
+            reservation = self.reservations_by_token(token, id).first()
+            if reservation is not None and reservation.start is not None:
+                query = query.filter(
+                    ReservedSlot.start >= reservation.start,
+                    ReservedSlot.end <= reservation.end
+                )
+
+            return query
 
     def reserved_slots_by_blocker(
         self,

@@ -618,6 +618,83 @@ def test_change_reservation_assertions(scheduler: Scheduler) -> None:
         )
 
 
+def test_change_reservation_with_nonexistent_id(
+    scheduler: Scheduler,
+) -> None:
+    dates = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 0))
+    scheduler.allocate(dates, partly_available=True)
+    token = scheduler.reserve('user@example.org', dates)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    with pytest.raises(errors.InvalidReservationToken):
+        scheduler.change_reservation(
+            token, reservation.id + 99999,
+            datetime(2014, 3, 7, 9, 0), datetime(2014, 3, 7, 16, 0)
+        )
+
+
+def test_remove_reservation_does_not_affect_sibling_reservations(
+    scheduler: Scheduler,
+) -> None:
+    """Removing one reservation on a partly_available allocation must not
+    delete the ReservedSlot of another reservation sharing the same token
+    on the same allocation (the root cause of a production NoResultFound)."""
+    dates_full = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 18, 0))
+    scheduler.allocate(dates_full, partly_available=True)
+
+    dates_a = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 10, 0))
+    dates_b = (datetime(2014, 3, 7, 10, 0), datetime(2014, 3, 7, 12, 0))
+
+    session = new_uuid()
+    token_a = scheduler.reserve(
+        'user@example.org', dates_a,
+        session_id=session, single_token_per_session=True
+    )
+    scheduler.commit()
+    # Both reservations share the same token because single_token_per_session
+    # is used — this is how onegov groups multiple dates into one booking.
+    token_b = scheduler.reserve(
+        'user@example.org', dates_b,
+        session_id=session, single_token_per_session=True
+    )
+    assert token_a == token_b
+    scheduler.commit()
+
+    scheduler.approve_reservations(token_a)
+    scheduler.commit()
+
+    reservations = sorted(
+        scheduler.reservations_by_token(token_a).all(),
+        key=lambda r: r.start
+    )
+    assert len(reservations) == 2
+    res_a, res_b = reservations  # res_a starts at 08:00, res_b at 10:00
+
+    # Each reservation on a partly_available allocation has its own slots.
+    slots_a_count = scheduler.reserved_slots_by_reservation(
+        token_a, res_a.id
+    ).count()
+    slots_b_count = scheduler.reserved_slots_by_reservation(
+        token_a, res_b.id
+    ).count()
+    assert slots_a_count > 0
+    assert slots_b_count > 0
+    # The two reservations cover different time ranges so their slots differ.
+    assert slots_a_count != 0
+    assert slots_b_count != 0
+
+    # Remove only res_b — res_a's slots must survive intact.
+    scheduler.remove_reservation(token_a, res_b.id)
+    scheduler.commit()
+
+    remaining_count = scheduler.reserved_slots_by_reservation(token_a).count()
+    assert remaining_count == slots_a_count
+
+
 def test_change_unapproved_reservation_quota(scheduler: Scheduler) -> None:
     dates = (datetime(2014, 8, 7, 8, 0), datetime(2014, 8, 7, 10, 0))
     scheduler.allocate(dates, quota=2)
