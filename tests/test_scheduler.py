@@ -622,13 +622,11 @@ def test_change_reservation_with_nonexistent_id(
     scheduler: Scheduler,
 ) -> None:
     dates = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 0))
-    scheduler.allocate(dates, partly_available=True)
+    scheduler.allocate(dates)
     token = scheduler.reserve('user@example.org', dates)
     scheduler.commit()
 
     reservation = scheduler.reservations_by_token(token).one()
-    scheduler.approve_reservations(token)
-    scheduler.commit()
 
     with pytest.raises(NoResultFound):
         scheduler.change_reservation(
@@ -683,15 +681,46 @@ def test_remove_reservation_does_not_affect_sibling_reservations(
     ).count()
     assert slots_a_count > 0
     assert slots_b_count > 0
-    # The two reservations cover different time ranges so their slots differ.
-    assert slots_a_count != 0
-    assert slots_b_count != 0
 
     # Remove only res_b — res_a's slots must survive intact.
     scheduler.remove_reservation(token_a, res_b.id)
     scheduler.commit()
 
     remaining_count = scheduler.reserved_slots_by_reservation(token_a).count()
+    assert remaining_count == slots_a_count
+
+
+def test_remove_blocker_does_not_affect_sibling_blockers(
+    scheduler: Scheduler,
+) -> None:
+    """Removing one blocker on a partly_available allocation must not delete
+    the ReservedSlots of another blocker sharing the same token."""
+    dates_full = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 18, 0))
+    scheduler.allocate(dates_full, partly_available=True)
+
+    dates_a = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 10, 0))
+    dates_b = (datetime(2014, 3, 7, 10, 0), datetime(2014, 3, 7, 12, 0))
+
+    # A single add_blocker call with multiple date ranges shares one token.
+    blockers = scheduler.add_blocker([dates_a, dates_b])
+    scheduler.commit()
+
+    assert len(blockers) == 2
+    token = blockers[0].token
+    assert blockers[1].token == token
+
+    blocker_a, blocker_b = sorted(blockers, key=lambda b: b.start)
+
+    slots_a_count = scheduler.reserved_slots_by_blocker(token, blocker_a.id).count()
+    slots_b_count = scheduler.reserved_slots_by_blocker(token, blocker_b.id).count()
+    assert slots_a_count > 0
+    assert slots_b_count > 0
+
+    # Remove only blocker_b — blocker_a's slots must survive intact.
+    scheduler.remove_blocker(token, blocker_b.id)
+    scheduler.commit()
+
+    remaining_count = scheduler.reserved_slots_by_blocker(token).count()
     assert remaining_count == slots_a_count
 
 
