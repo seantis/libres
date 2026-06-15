@@ -1668,9 +1668,7 @@ class Scheduler(ContextServicesMixin):
         assert new_start and new_end
 
         new_start, new_end = self._prepare_range(new_start, new_end)
-        existing_reservation = self.reservations_by_token(token, id).first()
-        if existing_reservation is None:
-            raise errors.InvalidReservationToken()
+        existing_reservation = self.reservations_by_token(token, id).one()
 
         # if there's nothing to change, do not change
         if quota is None or existing_reservation.quota == quota:  # noqa: SIM102
@@ -1682,10 +1680,7 @@ class Scheduler(ContextServicesMixin):
 
         # will raise a MultipleResultsFound exception if this is a group
         if existing_reservation.status == 'approved':
-            try:
-                allocation = self.allocations_by_reservation(token, id).one()
-            except exc.NoResultFound as ex:
-                raise errors.InvalidReservationError() from ex
+            allocation = self.allocations_by_reservation(token, id).one()
         else:
             _allocation = existing_reservation._target_allocations().first()
             assert _allocation is not None
@@ -2310,11 +2305,15 @@ class Scheduler(ContextServicesMixin):
             # partly_available allocation, allocation_id alone doesn't
             # distinguish their slots. Filter by the reservation's time range
             # as a workaround until ReservedSlot has a reservation_id column.
-            reservation = self.reservations_by_token(token, id).first()
-            if reservation is not None and reservation.start is not None:
+            result = (
+                self.reservations_by_token(token, id)
+                .with_entities(Reservation.start, Reservation.end)
+                .one_or_none()
+            )
+            if result is not None and result.start is not None:
                 query = query.filter(
-                    ReservedSlot.start >= reservation.start,
-                    ReservedSlot.end <= reservation.end
+                    ReservedSlot.start >= result.start,
+                    ReservedSlot.end <= result.end
                 )
 
             return query

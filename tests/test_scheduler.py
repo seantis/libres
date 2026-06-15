@@ -9,7 +9,7 @@ from libres.db.models import Reservation, Allocation
 from libres.modules import errors, events
 from libres.modules import utils
 from unittest.mock import Mock
-from sqlalchemy.exc import MultipleResultsFound, StatementError
+from sqlalchemy.exc import MultipleResultsFound, NoResultFound, StatementError
 from uuid import uuid4 as new_uuid
 
 
@@ -630,7 +630,7 @@ def test_change_reservation_with_nonexistent_id(
     scheduler.approve_reservations(token)
     scheduler.commit()
 
-    with pytest.raises(errors.InvalidReservationToken):
+    with pytest.raises(NoResultFound):
         scheduler.change_reservation(
             token, reservation.id + 99999,
             datetime(2014, 3, 7, 9, 0), datetime(2014, 3, 7, 16, 0)
