@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta, time
 from libres.db.models import Reservation, Allocation
 from libres.modules import errors, events
 from libres.modules import utils
+from operator import attrgetter
 from unittest.mock import Mock
 from sqlalchemy.exc import MultipleResultsFound, NoResultFound, StatementError
 from uuid import uuid4 as new_uuid
@@ -666,8 +667,8 @@ def test_remove_reservation_does_not_affect_sibling_reservations(
     scheduler.commit()
 
     reservations = sorted(
-        scheduler.reservations_by_token(token_a).all(),
-        key=lambda r: r.start
+        scheduler.reservations_by_token(token_a),
+        key=attrgetter('start')
     )
     assert len(reservations) == 2
     res_a, res_b = reservations  # res_a starts at 08:00, res_b at 10:00
@@ -709,7 +710,7 @@ def test_remove_blocker_does_not_affect_sibling_blockers(
     token = blockers[0].token
     assert blockers[1].token == token
 
-    blocker_a, blocker_b = sorted(blockers, key=lambda b: b.start)
+    blocker_a, blocker_b = sorted(blockers, key=attrgetter('start'))
 
     slots_a_count = scheduler.reserved_slots_by_blocker(
         token, blocker_a.id
