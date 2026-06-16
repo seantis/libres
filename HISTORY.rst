@@ -1,6 +1,15 @@
 Changelog
 ---------
 
+1.1.2 (16.06.2026)
+~~~~~~~~~~~~~~~~~~~
+
+- Fixes reserved_slots_by_reservation deleting sibling slots on partly_available allocations
+
+  When multiple reservations share the same token on a partly available allocation, filtering by allocation_id alone returned all slots for that allocation, not just the one belonging to the specific reservation. Rejecting one reservation would therefore delete the sibling's ReservedSlot, leaving it orphaned.
+  [Tschuppi81]
+
+
 1.1.1 (27.05.2026)
 ~~~~~~~~~~~~~~~~~~~
 
