@@ -8,8 +8,9 @@ from datetime import date, datetime, timedelta, time
 from libres.db.models import Reservation, Allocation
 from libres.modules import errors, events
 from libres.modules import utils
+from operator import attrgetter
 from unittest.mock import Mock
-from sqlalchemy.exc import MultipleResultsFound, StatementError
+from sqlalchemy.exc import MultipleResultsFound, NoResultFound, StatementError
 from uuid import uuid4 as new_uuid
 
 
@@ -616,6 +617,116 @@ def test_change_reservation_assertions(scheduler: Scheduler) -> None:
             token, reservation.id,
             datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 1)
         )
+
+
+def test_change_reservation_with_nonexistent_id(
+    scheduler: Scheduler,
+) -> None:
+    dates = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 17, 0))
+    scheduler.allocate(dates)
+    token = scheduler.reserve('user@example.org', dates)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+
+    with pytest.raises(NoResultFound):
+        scheduler.change_reservation(
+            token, reservation.id + 99999,
+            datetime(2014, 3, 7, 9, 0), datetime(2014, 3, 7, 16, 0)
+        )
+
+
+def test_remove_reservation_does_not_affect_sibling_reservations(
+    scheduler: Scheduler,
+) -> None:
+    """Removing one reservation on a partly_available allocation must not
+    delete the ReservedSlot of another reservation sharing the same token
+    on the same allocation (the root cause of a production NoResultFound)."""
+    dates_full = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 18, 0))
+    scheduler.allocate(dates_full, partly_available=True)
+
+    dates_a = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 10, 0))
+    dates_b = (datetime(2014, 3, 7, 10, 0), datetime(2014, 3, 7, 12, 0))
+
+    session = new_uuid()
+    token_a = scheduler.reserve(
+        'user@example.org', dates_a,
+        session_id=session, single_token_per_session=True
+    )
+    scheduler.commit()
+    # Both reservations share the same token because single_token_per_session
+    # is used — this is how onegov groups multiple dates into one booking.
+    token_b = scheduler.reserve(
+        'user@example.org', dates_b,
+        session_id=session, single_token_per_session=True
+    )
+    assert token_a == token_b
+    scheduler.commit()
+
+    scheduler.approve_reservations(token_a)
+    scheduler.commit()
+
+    reservations = sorted(
+        scheduler.reservations_by_token(token_a),
+        key=attrgetter('start')
+    )
+    assert len(reservations) == 2
+    res_a, res_b = reservations  # res_a starts at 08:00, res_b at 10:00
+
+    # Each reservation on a partly_available allocation has its own slots.
+    slots_a_count = scheduler.reserved_slots_by_reservation(
+        token_a, res_a.id
+    ).count()
+    slots_b_count = scheduler.reserved_slots_by_reservation(
+        token_a, res_b.id
+    ).count()
+    assert slots_a_count > 0
+    assert slots_b_count > 0
+
+    # Remove only res_b — res_a's slots must survive intact.
+    scheduler.remove_reservation(token_a, res_b.id)
+    scheduler.commit()
+
+    remaining_count = scheduler.reserved_slots_by_reservation(token_a).count()
+    assert remaining_count == slots_a_count
+
+
+def test_remove_blocker_does_not_affect_sibling_blockers(
+    scheduler: Scheduler,
+) -> None:
+    """Removing one blocker on a partly_available allocation must not delete
+    the ReservedSlots of another blocker sharing the same token."""
+    dates_full = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 18, 0))
+    scheduler.allocate(dates_full, partly_available=True)
+
+    dates_a = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 10, 0))
+    dates_b = (datetime(2014, 3, 7, 10, 0), datetime(2014, 3, 7, 12, 0))
+
+    # A single add_blocker call with multiple date ranges shares one token.
+    blockers = scheduler.add_blocker([dates_a, dates_b])
+    scheduler.commit()
+
+    assert len(blockers) == 2
+    token = blockers[0].token
+    assert blockers[1].token == token
+
+    blocker_a, blocker_b = sorted(blockers, key=attrgetter('start'))
+
+    slots_a_count = scheduler.reserved_slots_by_blocker(
+        token, blocker_a.id
+    ).count()
+    slots_b_count = scheduler.reserved_slots_by_blocker(
+        token, blocker_b.id
+    ).count()
+    assert slots_a_count > 0
+    assert slots_b_count > 0
+
+    # Remove only blocker_b — blocker_a's slots must survive intact.
+    scheduler.remove_blocker(token, blocker_b.id)
+    scheduler.commit()
+
+    remaining_count = scheduler.reserved_slots_by_blocker(token).count()
+    assert remaining_count == slots_a_count
 
 
 def test_change_unapproved_reservation_quota(scheduler: Scheduler) -> None:

@@ -9,7 +9,7 @@ from operator import attrgetter
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
-from sqlalchemy.sql import and_, not_
+from sqlalchemy.sql import and_, not_, or_
 from uuid import uuid4 as new_uuid, UUID
 
 from libres.context.core import ContextServicesMixin
@@ -2296,10 +2296,25 @@ class Scheduler(ContextServicesMixin):
 
         if id is None:
             return query
-        else:
-            allocations = self.allocations_by_reservation(token, id)
-            ids = allocations.with_entities(Allocation.id)
-            return query.filter(ReservedSlot.allocation_id.in_(ids))
+
+        # allocation_id is ambiguous when multiple reservations share a token
+        # on a partly_available allocation; filter by time range instead.
+        # start is None for group reservations — the or_ includes all their
+        # slots.
+        return (
+            query
+            .join(Reservation, and_(
+                Reservation.token == ReservedSlot.reservation_token,
+                Reservation.id == id
+            ))
+            .filter(or_(
+                Reservation.start.is_(None),
+                and_(
+                    ReservedSlot.start >= Reservation.start,
+                    ReservedSlot.end <= Reservation.end,
+                )
+            ))
+        )
 
     def reserved_slots_by_blocker(
         self,
@@ -2315,10 +2330,22 @@ class Scheduler(ContextServicesMixin):
 
         if id is None:
             return query
-        else:
-            allocations = self.allocations_by_blocker(token, id)
-            ids = allocations.with_entities(Allocation.id)
-            return query.filter(ReservedSlot.allocation_id.in_(ids))
+
+        # Same rationale as reserved_slots_by_reservation.
+        return (
+            query
+            .join(ReservationBlocker, and_(
+                ReservationBlocker.token == ReservedSlot.reservation_token,
+                ReservationBlocker.id == id
+            ))
+            .filter(or_(
+                ReservationBlocker.start.is_(None),
+                and_(
+                    ReservedSlot.start >= ReservationBlocker.start,
+                    ReservedSlot.end <= ReservationBlocker.end,
+                )
+            ))
+        )
 
     def reservations_by_group(self, group: UUID) -> Query[Reservation]:
         tokens = self.managed_reservations().with_entities(Reservation.token)
