@@ -2303,8 +2303,10 @@ class Scheduler(ContextServicesMixin):
         # slots.
         return (
             query
-            .join(Reservation, Reservation.token == ReservedSlot.reservation_token)
-            .filter(Reservation.id == id)
+            .join(Reservation, and_(
+                Reservation.token == ReservedSlot.reservation_token,
+                Reservation.id == id
+            ))
             .filter(or_(
                 Reservation.start.is_(None),
                 and_(
@@ -2332,8 +2334,10 @@ class Scheduler(ContextServicesMixin):
         # Same rationale as reserved_slots_by_reservation.
         return (
             query
-            .join(ReservationBlocker, ReservationBlocker.token == ReservedSlot.reservation_token)
-            .filter(ReservationBlocker.id == id)
+            .join(ReservationBlocker, and_(
+                ReservationBlocker.token == ReservedSlot.reservation_token,
+                ReservationBlocker.id == id
+            ))
             .filter(or_(
                 ReservationBlocker.start.is_(None),
                 and_(
