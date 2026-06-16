@@ -711,8 +711,12 @@ def test_remove_blocker_does_not_affect_sibling_blockers(
 
     blocker_a, blocker_b = sorted(blockers, key=lambda b: b.start)
 
-    slots_a_count = scheduler.reserved_slots_by_blocker(token, blocker_a.id).count()
-    slots_b_count = scheduler.reserved_slots_by_blocker(token, blocker_b.id).count()
+    slots_a_count = scheduler.reserved_slots_by_blocker(
+        token, blocker_a.id
+    ).count()
+    slots_b_count = scheduler.reserved_slots_by_blocker(
+        token, blocker_b.id
+    ).count()
     assert slots_a_count > 0
     assert slots_b_count > 0
 
