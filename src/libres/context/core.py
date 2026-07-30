@@ -30,8 +30,8 @@ class _Marker(enum.Enum):
     required = enum.auto()
 
 
-missing_t: TypeAlias = Literal[_Marker.missing]  # noqa: PYI042
-required_t: TypeAlias = Literal[_Marker.required]  # noqa: PYI042
+missing_t: TypeAlias = Literal[_Marker.missing]  # ruff: ignore[snake-case-type-alias]
+required_t: TypeAlias = Literal[_Marker.required]  # ruff: ignore[snake-case-type-alias]
 missing: missing_t = _Marker.missing
 required: required_t = _Marker.required
 
@@ -95,7 +95,7 @@ class ContextServicesMixin:
 
     @property
     def session(self) -> Session:
-        """ Returns the current session. """
+        """ The current session. """
         return self.session_provider.session()  # type: ignore[no-any-return]
 
     def close(self) -> None:

@@ -502,7 +502,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     @property
     def pending_reservations(self) -> Query[_ReservationIdRow]:
-        """ Returns the pending reservations query for this allocation.
+        """ The pending reservations query for this allocation.
         As the pending reservations target the group and not a specific
         allocation this function returns the same value for masters and
         mirrors.
@@ -517,7 +517,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
             "Don't call if the allocation is detached"
         )
 
-        Reservation = self.models.Reservation  # noqa: N806
+        Reservation = self.models.Reservation  # ruff: ignore[non-lowercase-variable-in-function]
         query: Query[_ReservationIdRow]
         query = session.query(Reservation.id)  # type: ignore[assignment]
         query = query.filter(Reservation.target == self.group)
@@ -531,7 +531,7 @@ class Allocation(TimestampMixin, ORMBase, OtherModels):
 
     @property
     def availability(self) -> float:
-        """Returns the availability in percent."""
+        """The availability in percent."""
 
         total = self.count_slots()
         blocked = sum(

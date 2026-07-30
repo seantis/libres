@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from libres.context.core import Context
     from libres.modules.rasterizer import Raster
 
-    _dtrange: TypeAlias = tuple[datetime, datetime]  # noqa: PYI042
+    _dtrange: TypeAlias = tuple[datetime, datetime]  # ruff: ignore[snake-case-type-alias]
 
     class _ReserveArgs1(TypedDict):
         email: str
@@ -1671,7 +1671,7 @@ class Scheduler(ContextServicesMixin):
         existing_reservation = self.reservations_by_token(token, id).one()
 
         # if there's nothing to change, do not change
-        if quota is None or existing_reservation.quota == quota:  # noqa: SIM102
+        if quota is None or existing_reservation.quota == quota:  # ruff: ignore[collapsible-if]
             if existing_reservation.start == new_start:
                 ends = (new_end, new_end - timedelta(microseconds=1))
 
