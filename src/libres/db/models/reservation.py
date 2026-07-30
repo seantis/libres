@@ -107,7 +107,7 @@ class Reservation(TimestampMixin, ORMBase, OtherModels):
         assert session, (
             "Don't call if the reservation is detached"
         )
-        Allocation = self.models.Allocation  # noqa: N806
+        Allocation = self.models.Allocation  # ruff: ignore[non-lowercase-variable-in-function]
         query = session.query(Allocation)
         query = query.filter(Allocation.group == self.target)
 
