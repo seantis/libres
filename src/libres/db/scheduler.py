@@ -2297,22 +2297,29 @@ class Scheduler(ContextServicesMixin):
         if id is None:
             return query
 
-        # allocation_id is ambiguous when multiple reservations share a token
-        # on a partly_available allocation; filter by time range instead.
-        # start is None for group reservations — the or_ includes all their
-        # slots.
+        # Map each slot to the requested reservation via its allocation. On
+        # partly_available allocations siblings of the same token are told
+        # apart by time range; non-partly allocations are reserved whole, so
+        # their slot is wider than the reservation and is matched by group.
+        # start is None for group reservations (include all their slots).
         return (
             query
             .join(Reservation, and_(
                 Reservation.token == ReservedSlot.reservation_token,
                 Reservation.id == id
             ))
+            .join(Allocation, Allocation.id == ReservedSlot.allocation_id)
             .filter(or_(
                 Reservation.start.is_(None),
                 and_(
+                    Allocation.partly_available.is_(False),
+                    Allocation.group == Reservation.target,
+                ),
+                and_(
+                    Allocation.partly_available.is_(True),
                     ReservedSlot.start >= Reservation.start,
                     ReservedSlot.end <= Reservation.end,
-                )
+                ),
             ))
         )
 
@@ -2338,12 +2345,18 @@ class Scheduler(ContextServicesMixin):
                 ReservationBlocker.token == ReservedSlot.reservation_token,
                 ReservationBlocker.id == id
             ))
+            .join(Allocation, Allocation.id == ReservedSlot.allocation_id)
             .filter(or_(
                 ReservationBlocker.start.is_(None),
                 and_(
+                    Allocation.partly_available.is_(False),
+                    Allocation.group == ReservationBlocker.target,
+                ),
+                and_(
+                    Allocation.partly_available.is_(True),
                     ReservedSlot.start >= ReservationBlocker.start,
                     ReservedSlot.end <= ReservationBlocker.end,
-                )
+                ),
             ))
         )
 
