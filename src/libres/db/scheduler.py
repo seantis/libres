@@ -1730,7 +1730,8 @@ class Scheduler(ContextServicesMixin):
         dates: _dtrange | Collection[_dtrange],
         group: None = ...,
         reason: str | None = ...,
-        token: UUID | None = ...
+        token: UUID | None = ...,
+        id: int | None = ...
     ) -> list[ReservationBlocker]: ...
 
     @overload
@@ -1739,7 +1740,8 @@ class Scheduler(ContextServicesMixin):
         dates: None,
         group: UUID,
         reason: str | None = ...,
-        token: UUID | None = ...
+        token: UUID | None = ...,
+        id: int | None = ...
     ) -> list[ReservationBlocker]: ...
 
     @overload
@@ -1749,7 +1751,8 @@ class Scheduler(ContextServicesMixin):
         *,
         group: UUID,
         reason: str | None = ...,
-        token: UUID | None = ...
+        token: UUID | None = ...,
+        id: int | None = ...
     ) -> list[ReservationBlocker]: ...
 
     def add_blocker(
@@ -1757,7 +1760,8 @@ class Scheduler(ContextServicesMixin):
         dates: _dtrange | Collection[_dtrange] | None = None,
         group: UUID | None = None,
         reason: str | None = None,
-        token: UUID | None = None
+        token: UUID | None = None,
+        id: int | None = None
     ) -> list[ReservationBlocker]:
         """ Adds a blocker to one or many allocations.
 
@@ -1828,7 +1832,6 @@ class Scheduler(ContextServicesMixin):
                 elif not allocation.contains(start, end):
                     raise errors.TimerangeTooLong
 
-        # ok, we're good to go
         if token is None:
             token = new_uuid()
         reserved_slots = []
@@ -1880,6 +1883,8 @@ class Scheduler(ContextServicesMixin):
                 blocker.target_type = 'group'
                 blocker.resource = self.resource
                 blocker.reason = reason
+                if id is not None:
+                    blocker.id = id
 
                 # flush to assign the blocker id before its slots reference it
                 self.session.add(blocker)
@@ -1926,6 +1931,8 @@ class Scheduler(ContextServicesMixin):
                         blocker.target_type = 'allocation'
                         blocker.resource = self.resource
                         blocker.reason = reason
+                        if id is not None:
+                            blocker.id = id
 
                         # flush to assign the id before its slots reference it
                         self.session.add(blocker)
@@ -2027,16 +2034,9 @@ class Scheduler(ContextServicesMixin):
             new_blocker, = self.add_blocker(
                 dates=(new_start, new_end),
                 reason=old_reason,
-                token=token
+                token=token,
+                id=id
             )
-            # add_blocker linked the new slots to the freshly assigned id;
-            # realign them when we force the original id back onto the blocker
-            new_id = new_blocker.id
-            new_blocker.id = id
-            if new_id != id:
-                for slot in self.reserved_slots_by_blocker(token).filter(
-                        ReservedSlot.source_id == new_id):
-                    slot.source_id = id
 
         return new_blocker
 

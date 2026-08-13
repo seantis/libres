@@ -751,6 +751,7 @@ def test_reserved_slots_store_source_id(scheduler: Scheduler) -> None:
     blocker = scheduler.add_blocker(
         (datetime(2014, 3, 7, 10, 0), datetime(2014, 3, 7, 12, 0))
     )[0]
+    assert blocker.id is not None
     scheduler.commit()
 
     blocker_slots = scheduler.reserved_slots_by_blocker(blocker.token).all()

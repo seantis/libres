@@ -255,6 +255,7 @@ def add_reservation(
         slot.allocation = allocation
         slot.reservation_token = reservation
         slot.source_type = 'reservation'
+        slot.source_id = 1  # synthetic slot, no real owner
         scheduler.session.add(slot)
     scheduler.session.flush()
     scheduler.session.refresh(allocation)
@@ -281,6 +282,7 @@ def add_blocker(
         slot.allocation = allocation
         slot.reservation_token = blocker
         slot.source_type = 'blocker'
+        slot.source_id = 1  # synthetic slot, no real owner
         scheduler.session.add(slot)
     scheduler.session.flush()
     scheduler.session.refresh(allocation)

@@ -68,8 +68,7 @@ class ReservedSlot(TimestampMixin, ORMBase):
 
     reservation_token: Mapped[UUID]
 
-    # id of the owning Reservation or ReservationBlocker (see source_type);
-    # nullable only for rows predating the column (backfilled by a migration)
+    # id of the owning Reservation or ReservationBlocker (see source_type)
     source_id: Mapped[int] = mapped_column(index=True)
 
     __table_args__ = (
