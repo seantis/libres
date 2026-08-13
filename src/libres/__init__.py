@@ -5,7 +5,7 @@ from libres.db import new_scheduler
 
 registry = create_default_registry()  # ruff: ignore[non-empty-init-module]
 
-__version__ = '1.1.2'
+__version__ = '1.2.0'
 __all__ = (
     'new_scheduler',
     'registry'

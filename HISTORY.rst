@@ -1,7 +1,7 @@
 Changelog
 ---------
 
-1.1.3 (unreleased)
+1.2.0 (13.08.2026)
 ~~~~~~~~~~~~~~~~~~~
 
 - Records the owning reservation/blocker id on each reserved slot
