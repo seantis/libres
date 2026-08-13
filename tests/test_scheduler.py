@@ -691,6 +691,41 @@ def test_remove_reservation_does_not_affect_sibling_reservations(
     assert remaining_count == slots_a_count
 
 
+def test_remove_reservation_on_non_partly_allocation_removes_slot(
+    scheduler: Scheduler,
+) -> None:
+    """On a non-partly allocation the reserved slot spans the whole
+    allocation, even if the reservation was made for a narrower (but
+    contained) range. Matching slots by time range would then drop the slot,
+    leaving an orphaned ReservedSlot behind that keeps showing up on the
+    calendar after the reservation was removed (OGC-3388)."""
+    dates = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 18, 0))
+    scheduler.allocate(dates, partly_available=False)
+
+    # a contained sub-range is accepted on a whole-only allocation, but the
+    # slot still covers the entire allocation
+    sub = (datetime(2014, 3, 7, 9, 0), datetime(2014, 3, 7, 17, 0))
+    token = scheduler.reserve('user@example.org', sub)
+    scheduler.commit()
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+    slot = scheduler.reserved_slots_by_reservation(token).one()
+    # the slot is wider than the reservation range
+    assert slot.start < reservation.start or slot.end > reservation.end
+
+    # the slot must still be attributed to this reservation ...
+    assert scheduler.reserved_slots_by_reservation(
+        token, reservation.id
+    ).count() == 1
+
+    # ... and removing the reservation must not leave an orphaned slot
+    scheduler.remove_reservation(token, reservation.id)
+    scheduler.commit()
+    assert scheduler.reserved_slots_by_type(token, 'reservation').count() == 0
+
+
 def test_remove_blocker_does_not_affect_sibling_blockers(
     scheduler: Scheduler,
 ) -> None:
