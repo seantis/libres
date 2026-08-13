@@ -711,6 +711,7 @@ def test_remove_reservation_on_non_partly_allocation_removes_slot(
     scheduler.commit()
 
     reservation = scheduler.reservations_by_token(token).one()
+    assert reservation.start is not None and reservation.end is not None
     slot = scheduler.reserved_slots_by_reservation(token).one()
     # the slot is wider than the reservation range
     assert slot.start < reservation.start or slot.end > reservation.end
@@ -724,6 +725,39 @@ def test_remove_reservation_on_non_partly_allocation_removes_slot(
     scheduler.remove_reservation(token, reservation.id)
     scheduler.commit()
     assert scheduler.reserved_slots_by_type(token, 'reservation').count() == 0
+
+
+def test_reserved_slots_store_source_id(scheduler: Scheduler) -> None:
+    """Every reserved slot records the id of its owning reservation/blocker
+    (source_id), so it can be attributed to its exact object directly."""
+    dates = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 18, 0))
+    scheduler.allocate(dates, partly_available=True)
+
+    token = scheduler.reserve(
+        'user@example.org',
+        (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 10, 0))
+    )
+    scheduler.commit()
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+    slots = scheduler.reserved_slots_by_reservation(token).all()
+    assert slots
+    for slot in slots:
+        assert slot.source_type == 'reservation'
+        assert slot.source_id == reservation.id
+
+    blocker = scheduler.add_blocker(
+        (datetime(2014, 3, 7, 10, 0), datetime(2014, 3, 7, 12, 0))
+    )[0]
+    scheduler.commit()
+
+    blocker_slots = scheduler.reserved_slots_by_blocker(blocker.token).all()
+    assert blocker_slots
+    for slot in blocker_slots:
+        assert slot.source_type == 'blocker'
+        assert slot.source_id == blocker.id
 
 
 def test_remove_blocker_does_not_affect_sibling_blockers(

@@ -68,6 +68,10 @@ class ReservedSlot(TimestampMixin, ORMBase):
 
     reservation_token: Mapped[UUID]
 
+    # id of the owning Reservation or ReservationBlocker (see source_type);
+    # nullable only for rows predating the column (backfilled by a migration)
+    source_id: Mapped[int | None] = mapped_column(index=True)
+
     __table_args__ = (
         Index('reservation_resource_ix', 'reservation_token', 'resource'),
         # NOTE: GiST index for temporal queries on reserved slots
