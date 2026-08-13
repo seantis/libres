@@ -1,6 +1,14 @@
 Changelog
 ---------
 
+1.1.3 (unreleased)
+~~~~~~~~~~~~~~~~~~~
+
+- Fixes reserved_slots_by_reservation dropping the slot on non-partly_available allocations
+
+  On a non-partly allocation the ReservedSlot spans the whole allocation even if the reservation was made for a narrower (but contained) range. Matching slots to a reservation by time range would then drop that slot, so removing the reservation left an orphaned ReservedSlot behind that kept showing up on the calendar. Slots are now attributed to non-partly reservations by allocation group; the time range is only used to disambiguate sibling reservations on partly available allocations.
+  [Tschuppi81]
+
 1.1.2 (16.06.2026)
 ~~~~~~~~~~~~~~~~~~~
 
