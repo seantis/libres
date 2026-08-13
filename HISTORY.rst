@@ -1,6 +1,21 @@
 Changelog
 ---------
 
+1.1.3 (unreleased)
+~~~~~~~~~~~~~~~~~~~
+
+- Records the owning reservation/blocker id on each reserved slot
+
+  ReservedSlot gains a ``source_id`` column holding the id of its owning
+  reservation or blocker (see ``source_type``). A slot can now be attributed to
+  its exact object directly, instead of inferring it from the allocation and
+  time range. This fixes ``reserved_slots_by_reservation`` dropping the slot on
+  non-partly_available allocations (where the slot spans the whole allocation
+  and is wider than a narrower reservation), which left orphaned slots behind on
+  removal. Consumers must add the column and backfill it (see the onegov
+  ``add_source_id_to_reserved_slots`` upgrade).
+  [Tschuppi81]
+
 1.1.2 (16.06.2026)
 ~~~~~~~~~~~~~~~~~~~
 

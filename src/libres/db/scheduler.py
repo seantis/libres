@@ -9,7 +9,7 @@ from operator import attrgetter
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
-from sqlalchemy.sql import and_, not_, or_
+from sqlalchemy.sql import and_, not_
 from uuid import uuid4 as new_uuid, UUID
 
 from libres.context.core import ContextServicesMixin
@@ -1491,6 +1491,7 @@ class Scheduler(ContextServicesMixin):
                     slot.resource = allocation.resource
                     slot.reservation_token = reservation.token
                     slot.source_type = 'reservation'
+                    slot.source_id = reservation.id
 
                     # the slots are written with the allocation
                     allocation.reserved_slots.append(slot)
@@ -1729,7 +1730,8 @@ class Scheduler(ContextServicesMixin):
         dates: _dtrange | Collection[_dtrange],
         group: None = ...,
         reason: str | None = ...,
-        token: UUID | None = ...
+        token: UUID | None = ...,
+        id: int | None = ...
     ) -> list[ReservationBlocker]: ...
 
     @overload
@@ -1738,7 +1740,8 @@ class Scheduler(ContextServicesMixin):
         dates: None,
         group: UUID,
         reason: str | None = ...,
-        token: UUID | None = ...
+        token: UUID | None = ...,
+        id: int | None = ...
     ) -> list[ReservationBlocker]: ...
 
     @overload
@@ -1748,7 +1751,8 @@ class Scheduler(ContextServicesMixin):
         *,
         group: UUID,
         reason: str | None = ...,
-        token: UUID | None = ...
+        token: UUID | None = ...,
+        id: int | None = ...
     ) -> list[ReservationBlocker]: ...
 
     def add_blocker(
@@ -1756,7 +1760,8 @@ class Scheduler(ContextServicesMixin):
         dates: _dtrange | Collection[_dtrange] | None = None,
         group: UUID | None = None,
         reason: str | None = None,
-        token: UUID | None = None
+        token: UUID | None = None,
+        id: int | None = None
     ) -> list[ReservationBlocker]:
         """ Adds a blocker to one or many allocations.
 
@@ -1827,7 +1832,6 @@ class Scheduler(ContextServicesMixin):
                 elif not allocation.contains(start, end):
                     raise errors.TimerangeTooLong
 
-        # ok, we're good to go
         if token is None:
             token = new_uuid()
         reserved_slots = []
@@ -1836,6 +1840,7 @@ class Scheduler(ContextServicesMixin):
             allocation: Allocation,
             start: datetime,
             end: datetime,
+            source_id: int,
             including_mirrors: bool = True
         ) -> None:
             for slot_start, slot_end in allocation.all_slots(start, end):
@@ -1845,6 +1850,7 @@ class Scheduler(ContextServicesMixin):
                 slot.resource = allocation.resource
                 slot.reservation_token = token
                 slot.source_type = 'blocker'
+                slot.source_id = source_id
 
                 # the slots are written with the allocation
                 allocation.reserved_slots.append(slot)
@@ -1859,7 +1865,7 @@ class Scheduler(ContextServicesMixin):
 
             for mirror in self.allocation_mirrors_by_master(allocation):
                 create_reserved_slots(
-                    mirror, start, end,
+                    mirror, start, end, source_id,
                     including_mirrors=False
                 )
 
@@ -1877,12 +1883,18 @@ class Scheduler(ContextServicesMixin):
                 blocker.target_type = 'group'
                 blocker.resource = self.resource
                 blocker.reason = reason
+                if id is not None:
+                    blocker.id = id
 
+                # flush to assign the blocker id before its slots reference it
+                self.session.add(blocker)
+                self.session.flush()
                 for allocation in self.allocations_by_group(group):
                     create_reserved_slots(
                         allocation,
                         allocation._start,
-                        allocation._end
+                        allocation._end,
+                        blocker.id
                     )
 
                 yield blocker
@@ -1919,8 +1931,15 @@ class Scheduler(ContextServicesMixin):
                         blocker.target_type = 'allocation'
                         blocker.resource = self.resource
                         blocker.reason = reason
+                        if id is not None:
+                            blocker.id = id
 
-                        create_reserved_slots(allocation, start, end)
+                        # flush to assign the id before its slots reference it
+                        self.session.add(blocker)
+                        self.session.flush()
+                        create_reserved_slots(
+                            allocation, start, end, blocker.id
+                        )
 
                         yield blocker
 
@@ -1935,9 +1954,6 @@ class Scheduler(ContextServicesMixin):
 
         if not reserved_slots:
             raise errors.NotReservableError
-
-        for blocker in blockers:
-            self.session.add(blocker)
 
         return blockers
 
@@ -2018,9 +2034,9 @@ class Scheduler(ContextServicesMixin):
             new_blocker, = self.add_blocker(
                 dates=(new_start, new_end),
                 reason=old_reason,
-                token=token
+                token=token,
+                id=id
             )
-            new_blocker.id = id
 
         return new_blocker
 
@@ -2297,24 +2313,7 @@ class Scheduler(ContextServicesMixin):
         if id is None:
             return query
 
-        # allocation_id is ambiguous when multiple reservations share a token
-        # on a partly_available allocation; filter by time range instead.
-        # start is None for group reservations — the or_ includes all their
-        # slots.
-        return (
-            query
-            .join(Reservation, and_(
-                Reservation.token == ReservedSlot.reservation_token,
-                Reservation.id == id
-            ))
-            .filter(or_(
-                Reservation.start.is_(None),
-                and_(
-                    ReservedSlot.start >= Reservation.start,
-                    ReservedSlot.end <= Reservation.end,
-                )
-            ))
-        )
+        return query.filter(ReservedSlot.source_id == id)
 
     def reserved_slots_by_blocker(
         self,
@@ -2331,21 +2330,7 @@ class Scheduler(ContextServicesMixin):
         if id is None:
             return query
 
-        # Same rationale as reserved_slots_by_reservation.
-        return (
-            query
-            .join(ReservationBlocker, and_(
-                ReservationBlocker.token == ReservedSlot.reservation_token,
-                ReservationBlocker.id == id
-            ))
-            .filter(or_(
-                ReservationBlocker.start.is_(None),
-                and_(
-                    ReservedSlot.start >= ReservationBlocker.start,
-                    ReservedSlot.end <= ReservationBlocker.end,
-                )
-            ))
-        )
+        return query.filter(ReservedSlot.source_id == id)
 
     def reservations_by_group(self, group: UUID) -> Query[Reservation]:
         tokens = self.managed_reservations().with_entities(Reservation.token)

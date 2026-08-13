@@ -691,6 +691,77 @@ def test_remove_reservation_does_not_affect_sibling_reservations(
     assert remaining_count == slots_a_count
 
 
+def test_remove_reservation_on_non_partly_allocation_removes_slot(
+    scheduler: Scheduler,
+) -> None:
+    """On a non-partly allocation the reserved slot spans the whole
+    allocation, even if the reservation was made for a narrower (but
+    contained) range. Matching slots by time range would then drop the slot,
+    leaving an orphaned ReservedSlot behind that keeps showing up on the
+    calendar after the reservation was removed (OGC-3388)."""
+    dates = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 18, 0))
+    scheduler.allocate(dates, partly_available=False)
+
+    # a contained sub-range is accepted on a whole-only allocation, but the
+    # slot still covers the entire allocation
+    sub = (datetime(2014, 3, 7, 9, 0), datetime(2014, 3, 7, 17, 0))
+    token = scheduler.reserve('user@example.org', sub)
+    scheduler.commit()
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+    assert reservation.start is not None
+    assert reservation.end is not None
+    slot = scheduler.reserved_slots_by_reservation(token).one()
+    # the slot is wider than the reservation range
+    assert slot.start < reservation.start or slot.end > reservation.end
+
+    # the slot must still be attributed to this reservation ...
+    assert scheduler.reserved_slots_by_reservation(
+        token, reservation.id
+    ).count() == 1
+
+    # ... and removing the reservation must not leave an orphaned slot
+    scheduler.remove_reservation(token, reservation.id)
+    scheduler.commit()
+    assert scheduler.reserved_slots_by_type(token, 'reservation').count() == 0
+
+
+def test_reserved_slots_store_source_id(scheduler: Scheduler) -> None:
+    """Every reserved slot records the id of its owning reservation/blocker
+    (source_id), so it can be attributed to its exact object directly."""
+    dates = (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 18, 0))
+    scheduler.allocate(dates, partly_available=True)
+
+    token = scheduler.reserve(
+        'user@example.org',
+        (datetime(2014, 3, 7, 8, 0), datetime(2014, 3, 7, 10, 0))
+    )
+    scheduler.commit()
+    scheduler.approve_reservations(token)
+    scheduler.commit()
+
+    reservation = scheduler.reservations_by_token(token).one()
+    slots = scheduler.reserved_slots_by_reservation(token).all()
+    assert slots
+    for slot in slots:
+        assert slot.source_type == 'reservation'
+        assert slot.source_id == reservation.id
+
+    blocker = scheduler.add_blocker(
+        (datetime(2014, 3, 7, 10, 0), datetime(2014, 3, 7, 12, 0))
+    )[0]
+    assert blocker.id is not None
+    scheduler.commit()
+
+    blocker_slots = scheduler.reserved_slots_by_blocker(blocker.token).all()
+    assert blocker_slots
+    for slot in blocker_slots:
+        assert slot.source_type == 'blocker'
+        assert slot.source_id == blocker.id
+
+
 def test_remove_blocker_does_not_affect_sibling_blockers(
     scheduler: Scheduler,
 ) -> None:
