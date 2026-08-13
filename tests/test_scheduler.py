@@ -711,7 +711,8 @@ def test_remove_reservation_on_non_partly_allocation_removes_slot(
     scheduler.commit()
 
     reservation = scheduler.reservations_by_token(token).one()
-    assert reservation.start is not None and reservation.end is not None
+    assert reservation.start is not None
+    assert reservation.end is not None
     slot = scheduler.reserved_slots_by_reservation(token).one()
     # the slot is wider than the reservation range
     assert slot.start < reservation.start or slot.end > reservation.end
