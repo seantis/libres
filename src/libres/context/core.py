@@ -14,7 +14,7 @@ from typing import Literal
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from collections.abc import Iterator
+    from collections.abc import Generator
     from sqlalchemy.orm import Session
     from sqlalchemy.orm.session import SessionTransaction
     from typing import TypeAlias
@@ -164,7 +164,7 @@ class Context:
         return f"<Libres Context(name='{self.name}')>"
 
     @contextmanager
-    def as_current_context(self) -> Iterator[None]:
+    def as_current_context(self) -> Generator[None]:
         with self.registry.context(self.name):
             yield
 

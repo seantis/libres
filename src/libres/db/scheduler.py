@@ -35,8 +35,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from sedate.types import DateLike
     from sqlalchemy.orm import Query
+    from typing import NotRequired
     from typing import TypeAlias
-    from typing_extensions import NotRequired, Self, TypedDict
+    from typing import TypedDict
+    from typing import Self
 
     from libres.context.core import Context
     from libres.modules.rasterizer import Raster

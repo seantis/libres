@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from sedate.types import TzInfoOrName
     from sqlalchemy.orm import Query
     from typing import NamedTuple
-    from typing_extensions import Self
+    from typing import Self
 
     from libres.db.models import ReservedSlot
     from libres.modules.rasterizer import Raster

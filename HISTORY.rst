@@ -1,9 +1,16 @@
 Changelog
 ---------
 
+- Adds Python 3.15 support
+  [Daverball]
+
+- Drops Python 3.10 support
+  [Daverball]
+
 - Fixes `ZeroDivisionError` in `Scheduler.availability` if there
   are blocking resources, but there are no allocations in the
   specified time period.
+  [Daverball]
 
 1.2.0 (13.08.2026)
 ~~~~~~~~~~~~~~~~~~~

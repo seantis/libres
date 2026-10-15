@@ -11,7 +11,7 @@ from libres.context.core import Context
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from collections.abc import Iterator
+    from collections.abc import Generator
     from uuid import UUID
 
 
@@ -143,7 +143,7 @@ class Registry:
             self.local.current_context = self.get_context(name)
 
     @contextmanager
-    def context(self, name: str) -> Iterator[Context]:
+    def context(self, name: str) -> Generator[Context]:
         previous = self.current_context.name
         self.switch_context(name)
         try:

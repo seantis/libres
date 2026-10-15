@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "libres"
 dynamic = ["version", "readme"]
 description = "A library to reserve things"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Denis Krienbühl", email = "denis@href.ch" },
 ]
@@ -22,15 +22,17 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
+    # FIXME: Remove this pin after upgrading to SQLAlchemy 2.1
+    "jsonpickle < 5",
     "python-dateutil",
     "pytz",
     "sedate >= 1.0.0",
@@ -94,6 +96,10 @@ dev = [
 [tool.pytest.ini_options]
 log_level = "INFO"
 testpaths = ["tests"]
+filterwarnings = [
+    # FIXME: Remove after upgrading to SQLAlchemy 2.1
+    '''ignore:keys will default to True in jsonpickle 5\.0\.0:DeprecationWarning''',
+]
 
 [tool.coverage.run]
 branch = true
@@ -124,7 +130,7 @@ replace = """
 """
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 namespace_packages = true
 explicit_package_bases = true
 strict = true
@@ -192,7 +198,7 @@ include = [
 ]
 line-length = 79
 indent-width = 4
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [
@@ -326,11 +332,11 @@ docstring-code-line-length = "dynamic"
 [tool.tox]
 requires = ["tox>=4.21"]
 envlist = [
-    "3.10",
     "3.11",
     "3.12",
     "3.13",
     "3.14",
+    "3.15",
     "flake8",
     "ruff",
     "bandit",
@@ -339,11 +345,11 @@ envlist = [
 ]
 
 [tool.tox.gh.python]
-"3.10" = ["3.10"]
-"3.11" = ["3.11", "flake8", "bandit", "ruff", "mypy"]
-"3.12" = ["3.12"]
+"3.11" = ["3.11"]
+"3.12" = ["3.12", "flake8", "bandit", "ruff", "mypy"]
 "3.13" = ["3.13"]
 "3.14" = ["3.14"]
+"3.15" = ["3.15"]
 
 [tool.tox.env_run_base]
 use_develop = true
@@ -359,37 +365,37 @@ commands = [
     ],
 ]
 [tool.tox.env.ruff]
-base_python = ["python3.11"]
+base_python = ["python3.12"]
 skip_install = true
 dependency_groups = ["ruff"]
 commands = [["ruff", "check"]]
 
 [tool.tox.env.flake8]
-base_python = ["python3.11"]
+base_python = ["python3.12"]
 skip_install = true
 dependency_groups = ["flake8"]
 commands = [["flake8", "src{/}", "tests{/}"]]
 
 [tool.tox.env.bandit]
-base_python = ["python3.11"]
+base_python = ["python3.12"]
 skip_install = true
 dependency_groups = ["bandit"]
 commands = [["bandit", "-q", "-c", "pyproject.toml", "-r", "src"]]
 
 [tool.tox.env.mypy]
-base_python = ["python3.11"]
+base_python = ["python3.12"]
 skip_install = true
 dependency_groups = ["mypy"]
 commands = [
-    ["mypy", "-p", "libres", "--python-version", "3.10"],
     ["mypy", "-p", "libres", "--python-version", "3.11"],
     ["mypy", "-p", "libres", "--python-version", "3.12"],
     ["mypy", "-p", "libres", "--python-version", "3.13"],
     ["mypy", "-p", "libres", "--python-version", "3.14"],
+    ["mypy", "-p", "libres", "--python-version", "3.15"],
 ]
 
 [tool.tox.env.report]
-base_python = ["python3.11"]
+base_python = ["python3.12"]
 skip_install = true
 ignore_errors = true
 ignore_outcome = true
