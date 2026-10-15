@@ -5,12 +5,13 @@ import sedate
 
 from copy import copy
 from datetime import date, datetime, timedelta, time
+from functools import partial
 from libres.db.models import Reservation, Allocation
 from libres.modules import errors, events
 from libres.modules import utils
 from operator import attrgetter
 from unittest.mock import Mock
-from sqlalchemy.exc import MultipleResultsFound, NoResultFound, StatementError
+from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from uuid import uuid4 as new_uuid
 
 
@@ -2095,7 +2096,7 @@ def test_data_coding(scheduler: Scheduler) -> None:
     end = datetime(2014, 1, 30, 19, 0)
 
     # this won't work as json doesn't do datetimes by default
-    with pytest.raises(StatementError):
+    with pytest.raises(TypeError, match=r'not JSON serializable'):
         scheduler.allocate((start, end), data=data)
 
     scheduler.rollback()
@@ -2106,8 +2107,8 @@ def test_data_coding(scheduler: Scheduler) -> None:
 
     def session_provider(context: Context) -> SessionProvider:
         return SessionProvider(context.get_setting('dsn'), engine_config=dict(
-            json_serializer=jsonpickle.encode,
-            json_deserializer=jsonpickle.decode
+            json_serializer=partial(jsonpickle.encode, keys=True),
+            json_deserializer=partial(jsonpickle.decode, keys=True)
         ))
 
     # setting the service again will get rid of the existing cached value

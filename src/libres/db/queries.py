@@ -521,7 +521,7 @@ class Queries(ContextServicesMixin):
 
         # first get the session ids which are expired
         query: Query[tuple[UUID, datetime, datetime | None]]
-        query = self.session.query(  # type: ignore[assignment]
+        query = self.session.query(
             Reservation.session_id,
             func.max(Reservation.created),
             func.max(Reservation.modified)

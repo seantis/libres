@@ -7,7 +7,7 @@ from datetime import datetime
 from libres.context.session import SessionProvider
 from libres.db.models import Allocation
 from libres.db.scheduler import Scheduler
-from psycopg2.extensions import TransactionRollbackError
+from psycopg.errors import OperationalError
 from threading import Thread
 from uuid import uuid4 as new_uuid
 
@@ -105,7 +105,10 @@ def test_collision(scheduler: Scheduler) -> None:
     exceptions = (t1.exception, t2.exception)
 
     def is_rollback(ex: Exception | None) -> bool:
-        return isinstance(getattr(ex, 'orig', None), TransactionRollbackError)
+        return (
+            isinstance(err := getattr(ex, 'orig', None), OperationalError)
+            and (err.sqlstate or '').startswith('40')
+        )
 
     def is_nothing(ex: Exception | None) -> bool:
         return not is_rollback(ex)
@@ -147,7 +150,10 @@ def test_non_collision(scheduler: Scheduler) -> None:
     exceptions = (t1.exception, t2.exception)
 
     def is_rollback(ex: Exception | None) -> bool:
-        return isinstance(getattr(ex, 'orig', None), TransactionRollbackError)
+        return (
+            isinstance(err := getattr(ex, 'orig', None), OperationalError)
+            and (err.sqlstate or '').startswith('40')
+        )
 
     rollbacks = list(filter(is_rollback, exceptions))
     assert len(rollbacks) == 0

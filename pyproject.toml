@@ -31,12 +31,10 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    # FIXME: Remove this pin after upgrading to SQLAlchemy 2.1
-    "jsonpickle < 5",
     "python-dateutil",
     "pytz",
     "sedate >= 1.0.0",
-    "SQLAlchemy >= 2.0.0, < 2.1.0",
+    "SQLAlchemy >= 2.1.0, < 2.2.0",
 ]
 
 [project.urls]
@@ -75,7 +73,7 @@ lint = [
 ]
 test = [
     "jsonpickle",
-    "psycopg2-binary",
+    "psycopg[binary]",
     "pytest",
     "pytest-codecov[git]",
     "testing.postgresql",
@@ -96,10 +94,6 @@ dev = [
 [tool.pytest.ini_options]
 log_level = "INFO"
 testpaths = ["tests"]
-filterwarnings = [
-    # FIXME: Remove after upgrading to SQLAlchemy 2.1
-    '''ignore:keys will default to True in jsonpickle 5\.0\.0:DeprecationWarning''',
-]
 
 [tool.coverage.run]
 branch = true

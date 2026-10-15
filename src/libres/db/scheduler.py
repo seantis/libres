@@ -33,7 +33,9 @@ if TYPE_CHECKING:
     from collections.abc import Collection
     from collections.abc import Iterable
     from collections.abc import Iterator
+    from collections.abc import Sequence
     from sedate.types import DateLike
+    from sqlalchemy.engine import Row
     from sqlalchemy.orm import Query
     from typing import NotRequired
     from typing import TypeAlias
@@ -419,12 +421,12 @@ class Scheduler(ContextServicesMixin):
     def allocation_dates_by_group(
         self,
         group: UUID
-    ) -> list[tuple[datetime, datetime]]:
+    ) -> list[Row[datetime, datetime]]:
 
         return self.allocations_by_group(group).with_entities(
             Allocation._start,
             Allocation._end
-        ).tuples().all()
+        ).all()
 
     def allocation_mirrors_by_master(
         self,
@@ -941,7 +943,10 @@ class Scheduler(ContextServicesMixin):
                 if change.is_master:  # (mirrors return the same values)
                     for pending in change.pending_reservations.with_entities(
                             Reservation.start, Reservation.end):
-                        if not new.contains(*pending):
+                        # FIXME: Technically start/end can be None, we may
+                        #        want to remove this ability, since we don't
+                        #        use it anywhere anymore
+                        if not new.contains(pending.start, pending.end):
                             raise errors.AffectedPendingReservationError(
                                 pending
                             )
@@ -1458,7 +1463,7 @@ class Scheduler(ContextServicesMixin):
         # write out the slots
         slots_to_reserve = []
 
-        dates: tuple[_dtrange, ...] | list[_dtrange]
+        dates: Sequence[_dtrange]
         if reservation.target_type == 'group':
             dates = self.allocation_dates_by_group(reservation.target)
         else:
