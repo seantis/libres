@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+1.4.0 (15.10.2026)
+~~~~~~~~~~~~~~~~~~~
+
 - Adds support for SQLAlchemy 2.1
   [Daverball]
 
