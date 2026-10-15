@@ -861,6 +861,8 @@ class Scheduler(ContextServicesMixin):
         for allocation, availability, _ in allocations:
             total += availability
             count += allocation.quota
+        if not count:
+            return 0.0
         return total / count
 
     def move_allocation(

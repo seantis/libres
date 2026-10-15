@@ -1,6 +1,10 @@
 Changelog
 ---------
 
+- Fixes `ZeroDivisionError` in `Scheduler.availability` if there
+  are blocking resources, but there are no allocations in the
+  specified time period.
+
 1.2.0 (13.08.2026)
 ~~~~~~~~~~~~~~~~~~~
 

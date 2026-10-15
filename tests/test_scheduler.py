@@ -433,6 +433,7 @@ def test_reserve_blocking_resources(
     blocked_scheduler: Scheduler
 ) -> None:
 
+    assert blocked_scheduler.availability() == 0.0
     assert scheduler.resource in blocked_scheduler.blocking_resources
 
     # create an allocation on the blocking scheduler
@@ -484,6 +485,7 @@ def test_reserve_blocking_resources(
         (25.0, True),
         (50.0, False),
     ]
+    assert blocked_scheduler.availability() == 75.0
 
     # reserving a slot that's partially blocked will fail
     with pytest.raises(errors.AlreadyReservedError):
@@ -520,6 +522,7 @@ def test_reserve_blocking_resources(
         (25.0, False),
         (75.0, True),
     ]
+    assert blocked_scheduler.availability() == 25.0
 
 
 def test_change_email(scheduler: Scheduler) -> None:
@@ -1906,6 +1909,7 @@ def test_quota_changes_advanced(scheduler: Scheduler) -> None:
 def test_availability(scheduler: Scheduler) -> None:
     start = datetime(2011, 1, 1, 15, 0)
     end = datetime(2011, 1, 1, 16, 0)
+    assert not scheduler.availability()
 
     a = scheduler.allocate(
         (start, end), raster=15, partly_available=True)[0]
