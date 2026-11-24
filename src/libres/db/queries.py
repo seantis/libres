@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import sedate
 
 from datetime import date, datetime, timedelta
@@ -12,7 +13,7 @@ from libres.modules import errors, events, rasterizer
 from operator import itemgetter
 from sqlalchemy import column, func, text, type_coerce
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql import and_, or_
+from sqlalchemy.sql import and_, case, or_
 
 
 from typing import TypeVar
@@ -139,10 +140,13 @@ class Queries(ContextServicesMixin):
         and the given blocking resources.
 
         The first lookup is a ``dict`` containing reserved slot start times in
-        :attr:`~libres.modules.rasterizer.MIN_RASTER` minute slices and
-        the corresponding used up quota. The second is a ``set`` containing
-        the same slices but for reservation blockers, which always use up
-        all the remaining quota.
+        :attr:`~libres.modules.rasterizer.MIN_RASTER` minute slices and the
+        corresponding used up availability as a normalized factor between ``0``
+        and ``1``. You can calculate the used quota as ``ceil(quota * factor)``
+        based on the target allocation's quota and the retrieved factor.
+
+        The second is a ``set`` containing the same slices but for reservation
+        blockers, which always use up all the remaining quota.
 
         This method can be used when blocking resources are involved, since
         :attr:`~libres.db.models.allocation.Allocation.availability` and
@@ -159,23 +163,55 @@ class Queries(ContextServicesMixin):
             type_coerce(end, UTCDateTime),
             timedelta(minutes=rasterizer.MIN_RASTER)
         ).table_valued(column('slot', UTCDateTime)).render_derived()
-        reserved_slots = self.session.query(
+        # NOTE: For some reason Postgres will create duplicate rows
+        #       for this query when joining against the time series
+        #       so we use a DISTINCT query before grouping, so none
+        #       of the reserved slots is counted more than once for
+        #       the same slot.
+        all_reserved_slots = self.session.query(
+            ReservedSlot.source_type,
+            ReservedSlot.resource,
+            slot_series.c.slot,
+            case(
+                (Allocation.mirror_of == resource, 1 / func.greatest(
+                    1,
+                    Allocation.quota
+                )),
+                # if a time slot is blocked via a blocking resource
+                # then the whole time slot is used up regardless of
+                # the blocking resource's quota, since we disallow
+                # sharing the same slot between resources.
+                else_=1
+            ).label('used_factor')
+        ).join(
+            Allocation,
+            and_(
+                Allocation.resource == ReservedSlot.resource,
+                Allocation.mirror_of.in_({resource, *blocking_resources}),
+            )
+        ).join(
+            slot_series,
+            and_(
+                ReservedSlot.start <= slot_series.c.slot,
+                ReservedSlot.end > slot_series.c.slot
+            ),
+        ).order_by(
             ReservedSlot.source_type,
             slot_series.c.slot,
-            func.count(text('1')).label('quota')
-        ).join(
-            ReservedSlot,
-            and_(
-                func.tsrange(
-                    ReservedSlot.start,
-                    ReservedSlot.end
-                ).op('@>')(slot_series.c.slot),
-                ReservedSlot.resource.in_({resource, *blocking_resources})
-            )
+            ReservedSlot.resource
+        ).distinct().subquery()
+        reserved_slots = self.session.query(
+            all_reserved_slots.c.source_type,
+            all_reserved_slots.c.slot,
+            func.least(
+                # clamp usage at 1.0
+                1,
+                func.sum(all_reserved_slots.c.used_factor)
+            ).label('used_factor')
         ).group_by(
-            ReservedSlot.source_type,
-            slot_series.c.slot
-        ).order_by(ReservedSlot.source_type)
+            all_reserved_slots.c.source_type,
+            all_reserved_slots.c.slot
+        )
         reserved: dict[datetime, int] = {}
         blocked: set[datetime] = set()
         for source_type, slots_group in groupby(
@@ -184,8 +220,8 @@ class Queries(ContextServicesMixin):
         ):
             if source_type == 'reservation':
                 reserved = {
-                    slot: quota
-                    for _, slot, quota in slots_group
+                    slot: used_factor
+                    for _, slot, used_factor in slots_group
                 }
             elif source_type == 'blocker':
                 blocked = {slot for _, slot, _ in slots_group}
@@ -258,7 +294,9 @@ class Queries(ContextServicesMixin):
                     (
                         allocation.quota
                         if slot in blocked
-                        else reserved.get(slot, 0)
+                        else math.ceil(
+                            allocation.quota * reserved.get(slot, 0)
+                        )
                         for slot, _ in rasterizer.iterate_span(
                             allocation._start,
                             allocation._end,

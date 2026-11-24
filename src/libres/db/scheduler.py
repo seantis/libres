@@ -863,7 +863,7 @@ class Scheduler(ContextServicesMixin):
         )
         total, count = 0.0, 0
         for allocation, availability, _ in allocations:
-            total += availability
+            total += availability * allocation.quota
             count += allocation.quota
         if not count:
             return 0.0
@@ -1336,7 +1336,17 @@ class Scheduler(ContextServicesMixin):
                         raise errors.AlreadyReservedError
 
                     free = self.free_allocations_count(allocation, start, end)
-                    if free < quota:
+                    # for blocking resources we consider the allocation
+                    # blocking as soon as there are any reservations at all
+                    # otherwise we would need to sum up the reserved spots
+                    # between all overlapping allocations and make sure the
+                    # sum doesn't exceed any of the quotas, which is expensive
+                    # it's easier to just disallow sharing spots between
+                    # multiple resources.
+                    if allocation.resource != self.resource:
+                        if free < allocation.quota:
+                            raise errors.AlreadyReservedError
+                    elif free < quota:
                         raise errors.AlreadyReservedError
 
                 if allocation.resource != self.resource:
@@ -1344,14 +1354,15 @@ class Scheduler(ContextServicesMixin):
                     # the desired range, for blocking allocations it only
                     # matters whether or not they're free.
                     pass
-                elif not allocation.contains(start, end):
-                    raise errors.TimerangeTooLong
+                else:
+                    if not allocation.contains(start, end):
+                        raise errors.TimerangeTooLong
 
-                if 0 < allocation.quota_limit < quota:
-                    raise errors.QuotaOverLimit
+                    if 0 < allocation.quota_limit < quota:
+                        raise errors.QuotaOverLimit
 
-                if allocation.quota < quota:
-                    raise errors.QuotaImpossible
+                    if allocation.quota < quota:
+                        raise errors.QuotaImpossible
 
                 if quota < 1:
                     raise errors.InvalidQuota
@@ -1479,8 +1490,12 @@ class Scheduler(ContextServicesMixin):
                     start,
                     end
                 ):
+                    # for blocking resources it's all or nothing, if any
+                    # of the quota has been used up it's considered blocking
+                    # if none of it has been used, it's considered free
+                    # it doesn't necessarily need to support the same quota
                     free = self.free_allocations_count(allocation, start, end)
-                    if free < reservation.quota:
+                    if free < allocation.quota:
                         raise errors.AlreadyReservedError
 
         # the reservation quota is simply implemented by multiplying the

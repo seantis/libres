@@ -1,6 +1,23 @@
 Changelog
 ---------
 
+- Improves behavior of blocking resources with allocations that can
+  be reserved more than once. Reservations that exceed the quota of
+  a blocking resource are allowed, as long as the blocking resource
+  is completely free in the targeted range. Conversely reservations
+  will be blocked as soon as some of the spots on a blocking resource
+  have been occupied.
+  [Daverball]
+
+- `allocations_with_availability_by_range` no longer yields integer
+  values for used up quota, instead it returns a normalized usage
+  factor in the range 0 - 1. The used quota can be calculated by
+  multiplying this factor with the target allocation's quota and
+  rounding up to the next integer value. This better reflects how
+  the blocking logic works, but means any code that uses this
+  function will need to be adapted.
+  [Daverball]
+
 1.4.0 (15.10.2026)
 ~~~~~~~~~~~~~~~~~~~
 
