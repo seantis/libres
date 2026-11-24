@@ -1,6 +1,9 @@
 Changelog
 ---------
 
+1.5.0 (24.11.2026)
+~~~~~~~~~~~~~~~~~~~
+
 - Improves behavior of blocking resources with allocations that can
   be reserved more than once. Reservations that exceed the quota of
   a blocking resource are allowed, as long as the blocking resource
